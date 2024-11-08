@@ -39,6 +39,11 @@ DragForcing::DragForcing(const CFDSim& sim)
         amrex::Gpu::copy(
             amrex::Gpu::hostToDevice, fa_velocity.line_average().begin(),
             fa_velocity.line_average().end(), m_device_vel_vals.begin());
+        amrex::ParmParse pp_abl("ABL");
+        pp_abl.query("surface_roughness_z0", m_roughness);
+        pp_abl.query("obukhov_length", m_obukhov_length);
+        pp_abl.query("mo_gamma_m", m_gamma);
+        pp_abl.query("mo_beta_m", m_beta);
     } else {
         m_sponge_strength = 0.0;
     }
@@ -66,8 +71,14 @@ void DragForcing::operator()(
     auto* const m_terrain_drag =
         &this->m_sim.repo().get_int_field("terrain_drag");
     const auto& drag = (*m_terrain_drag)(lev).const_array(mfi);
-    auto* const m_terrainz0 = &this->m_sim.repo().get_field("terrainz0");
-    const auto& terrainz0 = (*m_terrainz0)(lev).const_array(mfi);
+    const bool has_variable_surf_roughness =
+        this->m_sim.repo().field_exists("terrainz0");
+    const auto* m_terrainz0 = has_variable_surf_roughness
+                                  ? &this->m_sim.repo().get_field("terrainz0")
+                                  : nullptr;
+    const auto& terrainz0 = (has_variable_surf_roughness)
+                                ? (*m_terrainz0)(lev).const_array(mfi)
+                                : amrex::Array4<double>();
     const auto& geom = m_mesh.Geom(lev);
     const auto& dx = geom.CellSizeArray();
     const auto& prob_lo = geom.ProbLoArray();
@@ -96,6 +107,10 @@ void DragForcing::operator()(
     const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
     const amrex::Real kappa = 0.41;
     const amrex::Real cd_max = 1000.0;
+    const amrex::Real roughness = m_roughness;
+    const amrex::Real obukhov_length = m_obukhov_length;
+    const amrex::Real gamma = m_gamma;
+    const amrex::Real beta = m_beta;
     amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
         const amrex::Real x = prob_lo[0] + (i + 0.5) * dx[0];
         const amrex::Real y = prob_lo[1] + (j + 0.5) * dx[1];
@@ -143,10 +158,32 @@ void DragForcing::operator()(
             const amrex::Real ux2 = vel(i, j, k + 1, 0);
             const amrex::Real uy2 = vel(i, j, k + 1, 1);
             const amrex::Real m2 = std::sqrt(ux2 * ux2 + uy2 * uy2);
-            const amrex::Real z0 = std::max(terrainz0(i, j, k), z0_min);
-            const amrex::Real ustar = m2 * kappa / std::log(1.5 * dx[2] / z0);
+            const amrex::Real z0 = has_variable_surf_roughness
+                                       ? std::max(terrainz0(i, j, k), z0_min)
+                                       : roughness;
+            amrex::Real psiM = 0.0;
+            amrex::Real zeta = 1.5 * dx[2] / obukhov_length;
+            if (zeta > 0) {
+                psiM = -gamma * zeta;
+            } else {
+                amrex::Real xmol = std::sqrt(std::sqrt(1 - beta * zeta));
+                psiM = 2.0 * std::log(0.5 * (1.0 + xmol)) +
+                       log(0.5 * (1 + xmol * xmol)) - 2.0 * std::atan(xmol) +
+                       utils::half_pi();
+            }
+            const amrex::Real ustar =
+                m2 * kappa / (std::log(1.5 * dx[2] / z0) - psiM);
+            zeta = 0.5 * dx[2] / obukhov_length;
+            if (zeta > 0) {
+                psiM = -gamma * zeta;
+            } else {
+                amrex::Real xmol = std::sqrt(std::sqrt(1 - beta * zeta));
+                psiM = 2.0 * std::log(0.5 * (1.0 + xmol)) +
+                       log(0.5 * (1 + xmol * xmol)) - 2.0 * std::atan(xmol) +
+                       utils::half_pi();
+            }
             const amrex::Real uTarget =
-                ustar / kappa * std::log(0.5 * dx[2] / z0);
+                ustar / kappa * (std::log(0.5 * dx[2] / z0) - psiM);
             const amrex::Real uxTarget =
                 uTarget * ux2 / (tiny + std::sqrt(ux2 * ux2 + uy2 * uy2));
             const amrex::Real uyTarget =

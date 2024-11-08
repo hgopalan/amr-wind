@@ -33,10 +33,13 @@ private:
     Field& m_buoy_prod;
     Field& m_dissip;
     Field& m_tke;
+    amrex::Real m_obukhov_length{10000};
+    amrex::Real m_gamma{5.0};
+    amrex::Real m_beta{16.0};
     amrex::Real m_Cmu{0.556};
     amrex::Real m_heat_flux{0.0};
     amrex::Real m_ref_temp{300.0};
-    amrex::Real m_z0{0.1};
+    amrex::Real m_roughness{0.1};
     amrex::Real m_kappa{0.41};
     amrex::Real m_sponge_start{600};
     amrex::Real m_ref_tke{1e-10};

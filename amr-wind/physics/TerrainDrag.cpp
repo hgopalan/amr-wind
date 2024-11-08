@@ -20,29 +20,17 @@ TerrainDrag::TerrainDrag(CFDSim& sim)
     , m_velocity(sim.repo().get_field("velocity"))
     , m_terrain_blank(sim.repo().declare_int_field("terrain_blank", 1, 1, 1))
     , m_terrain_drag(sim.repo().declare_int_field("terrain_drag", 1, 1, 1))
-    , m_terrainz0(sim.repo().declare_field("terrainz0", 1, 1, 1))
     , m_terrain_height(sim.repo().declare_field("terrain_height", 1, 1, 1))
 {
     std::string terrain_file("terrain.amrwind");
-    std::string roughness_file("terrain.roughness");
     amrex::ParmParse pp(identifier());
     pp.query("terrain_file", terrain_file);
-    pp.query("roughness_file", roughness_file);
 
     ioutils::read_flat_grid_file(
         terrain_file, m_xterrain, m_yterrain, m_zterrain);
 
-    // No checks for the file as it is optional currently
-    std::ifstream file(roughness_file, std::ios::in);
-    if (file.good()) {
-        ioutils::read_flat_grid_file(
-            roughness_file, m_xrough, m_yrough, m_z0rough);
-    }
-    file.close();
-
     m_sim.io_manager().register_output_int_var("terrain_drag");
     m_sim.io_manager().register_output_int_var("terrain_blank");
-    m_sim.io_manager().register_io_var("terrainz0");
     m_sim.io_manager().register_io_var("terrain_height");
 }
 
@@ -57,7 +45,6 @@ void TerrainDrag::post_init_actions()
         const auto& prob_lo = geom.ProbLoArray();
         auto& velocity = m_velocity(level);
         auto& blanking = m_terrain_blank(level);
-        auto& terrainz0 = m_terrainz0(level);
         auto& terrain_height = m_terrain_height(level);
         auto& drag = m_terrain_drag(level);
         // copy terrain data to gpu
@@ -79,30 +66,10 @@ void TerrainDrag::post_init_actions()
         const auto* xterrain_ptr = device_xterrain.data();
         const auto* yterrain_ptr = device_yterrain.data();
         const auto* zterrain_ptr = device_zterrain.data();
-        // Copy Roughness to gpu
-        const auto xrough_size = m_xrough.size();
-        const auto yrough_size = m_yrough.size();
-        const auto z0rough_size = m_z0rough.size();
-        amrex::Gpu::DeviceVector<amrex::Real> device_xrough(xrough_size);
-        amrex::Gpu::DeviceVector<amrex::Real> device_yrough(yrough_size);
-        amrex::Gpu::DeviceVector<amrex::Real> device_z0rough(z0rough_size);
-        amrex::Gpu::copy(
-            amrex::Gpu::hostToDevice, m_xrough.begin(), m_xrough.end(),
-            device_xrough.begin());
-        amrex::Gpu::copy(
-            amrex::Gpu::hostToDevice, m_yrough.begin(), m_yrough.end(),
-            device_yrough.begin());
-        amrex::Gpu::copy(
-            amrex::Gpu::hostToDevice, m_z0rough.begin(), m_z0rough.end(),
-            device_z0rough.begin());
-        const auto* xrough_ptr = device_xrough.data();
-        const auto* yrough_ptr = device_yrough.data();
-        const auto* z0rough_ptr = device_z0rough.data();
         for (amrex::MFIter mfi(velocity); mfi.isValid(); ++mfi) {
             const auto& vbx = mfi.validbox();
             auto levelBlanking = blanking.array(mfi);
             auto levelDrag = drag.array(mfi);
-            auto levelz0 = terrainz0.array(mfi);
             auto levelheight = terrain_height.array(mfi);
             amrex::ParallelFor(
                 vbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
@@ -117,14 +84,6 @@ void TerrainDrag::post_init_actions()
                         static_cast<int>(z <= terrainHt);
                     levelheight(i, j, k, 0) =
                         std::max(std::abs(z - terrainHt), 0.5 * dx[2]);
-
-                    amrex::Real roughz0 = 0.1;
-                    if (xrough_size > 0) {
-                        roughz0 = interp::bilinear(
-                            xrough_ptr, xrough_ptr + xrough_size, yrough_ptr,
-                            yrough_ptr + yrough_size, z0rough_ptr, x, y);
-                    }
-                    levelz0(i, j, k, 0) = roughz0;
                 });
 
             amrex::ParallelFor(

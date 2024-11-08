@@ -43,15 +43,11 @@ private:
     const FieldRepo& m_repo;
     const amrex::AmrCore& m_mesh;
     Field& m_velocity;
-    //! Blanking Field for Terrain or Buildings
-    IntField& m_terrain_blank;
-    //! Terrain Drag Force Term
-    IntField& m_terrain_drag;
-    //! Reading the Terrain Coordinates from  file
-    amrex::Vector<amrex::Real> m_xterrain;
-    amrex::Vector<amrex::Real> m_yterrain;
-    amrex::Vector<amrex::Real> m_zterrain;
-    Field& m_terrain_height;
+    //! Reading the Roughness Coordinates from file
+    //! Need updates to ABLWallFunction in future
+    amrex::Vector<amrex::Real> m_xrough;
+    amrex::Vector<amrex::Real> m_yrough;
+    amrex::Vector<amrex::Real> m_z0rough;
 };
 } // namespace amr_wind::terraindrag
 

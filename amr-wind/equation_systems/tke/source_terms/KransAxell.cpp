@@ -22,10 +22,13 @@ KransAxell::KransAxell(const CFDSim& sim)
     amrex::ParmParse pp("ABL");
     pp.query("Cmu", m_Cmu);
     pp.query("kappa", m_kappa);
-    pp.query("surface_roughness_z0", m_z0);
+    pp.query("surface_roughness_z0", m_roughness);
     pp.query("reference_temperature", m_ref_temp);
     pp.query("surface_temp_flux", m_heat_flux);
     pp.query("meso_sponge_start", m_sponge_start);
+    pp.query("obukhov_length", m_obukhov_length);
+    pp.query("mo_gamma_m", m_gamma);
+    pp.query("mo_beta_m", m_beta);
     {
         amrex::ParmParse pp_incflow("incflo");
         pp_incflow.queryarr("gravity", m_gravity);
@@ -61,15 +64,41 @@ void KransAxell::operator()(
     const amrex::Real ref_tke = m_ref_tke;
     const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
     const amrex::Real kappa = m_kappa;
-    const amrex::Real z0 = m_z0;
+    const amrex::Real roughness = m_roughness;
+    const amrex::Real obukhov_length = m_obukhov_length;
+    const amrex::Real gamma = m_gamma;
+    const amrex::Real beta = m_beta;
+    const amrex::Real z0_min = 1e-4;
+    const bool has_variable_surf_roughness =
+        this->m_sim.repo().field_exists("terrainz0");
+    const auto* m_terrainz0 = has_variable_surf_roughness
+                                  ? &this->m_sim.repo().get_field("terrainz0")
+                                  : nullptr;
+    const auto& terrainz0 = (has_variable_surf_roughness)
+                                ? (*m_terrainz0)(lev).const_array(mfi)
+                                : amrex::Array4<double>();
+    const amrex::Real half_pi = 0.5 * M_PI;
     amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
         amrex::Real bcforcing = 0;
         const amrex::Real ux = vel(i, j, k, 0);
         const amrex::Real uy = vel(i, j, k, 1);
         const amrex::Real z = problo[2] + (k + 0.5) * dx[2];
+        const amrex::Real z0 = has_variable_surf_roughness
+                                   ? std::max(terrainz0(i, j, k), z0_min)
+                                   : roughness;
         if (k == 0) {
             const amrex::Real m = std::sqrt(ux * ux + uy * uy);
-            const amrex::Real ustar = m * kappa / std::log(z / z0);
+            const amrex::Real zeta = z / obukhov_length;
+            amrex::Real psiM = 0.0;
+            if (zeta > 0) {
+                psiM = -gamma * zeta;
+            } else {
+                amrex::Real xmol = std::sqrt(std::sqrt(1 - beta * zeta));
+                psiM = 2.0 * std::log(0.5 * (1.0 + xmol)) +
+                       log(0.5 * (1 + xmol * xmol)) - 2.0 * std::atan(xmol) +
+                       half_pi;
+            }
+            const amrex::Real ustar = m * kappa / (std::log(z / z0) - psiM);
             const amrex::Real rans_b = std::pow(
                 std::max(heat_flux, 0.0) * kappa * z / std::pow(Cmu, 3),
                 (2.0 / 3.0));
@@ -104,7 +133,21 @@ void KransAxell::operator()(
                 const amrex::Real uy = vel(i, j, k, 1);
                 const amrex::Real z = 0.5 * dx[2];
                 amrex::Real m = std::sqrt(ux * ux + uy * uy);
-                const amrex::Real ustar = m * kappa / std::log(z / z0);
+                const amrex::Real z0 =
+                    has_variable_surf_roughness
+                        ? std::max(terrainz0(i, j, k), z0_min)
+                        : roughness;
+                const amrex::Real zeta = z / obukhov_length;
+                amrex::Real psiM = 0.0;
+                if (zeta > 0) {
+                    psiM = -gamma * zeta;
+                } else {
+                    amrex::Real xmol = std::sqrt(std::sqrt(1 - beta * zeta));
+                    psiM = 2.0 * std::log(0.5 * (1.0 + xmol)) +
+                           log(0.5 * (1 + xmol * xmol)) -
+                           2.0 * std::atan(xmol) + half_pi;
+                }
+                const amrex::Real ustar = m * kappa / (std::log(z / z0) - psiM);
                 const amrex::Real rans_b = std::pow(
                     std::max(heat_flux, 0.0) * kappa * z / std::pow(Cmu, 3),
                     (2.0 / 3.0));
