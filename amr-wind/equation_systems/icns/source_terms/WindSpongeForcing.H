@@ -35,7 +35,8 @@ private:
     amrex::Gpu::DeviceVector<amrex::Real> m_u_values_d;
     amrex::Gpu::DeviceVector<amrex::Real> m_v_values_d;
     amrex::Gpu::DeviceVector<amrex::Real> m_w_values_d;
-    amrex::Real m_sponge_start{600};
+    amrex::Real m_meso_start{600};
+    amrex::Real m_meso_timescale{30};
     const CFDSim& m_sim;
 };
 

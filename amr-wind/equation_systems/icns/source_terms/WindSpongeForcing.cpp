@@ -31,7 +31,8 @@ WindSpongeForcing::WindSpongeForcing(const CFDSim& sim)
     } else {
         amrex::Abort("Cannot find 1-D RANS profile file " + m_1d_rans);
     }
-    pp_abl.query("meso_sponge_start", m_sponge_start);
+    pp_abl.query("meso_sponge_start", m_meso_start);
+    pp_abl.query("meso_timescale", m_meso_timescale);
     int num_wind_values = static_cast<int>(m_wind_heights.size());
     m_wind_heights_d.resize(num_wind_values);
     m_u_values_d.resize(num_wind_values);
@@ -66,7 +67,8 @@ void WindSpongeForcing::operator()(
     const auto& prob_hi = geom.ProbHiArray();
     const auto& velocity =
         m_velocity.state(field_impl::dof_state(fstate))(lev).const_array(mfi);
-    const amrex::Real sponge_start = m_sponge_start;
+    const amrex::Real sponge_start = m_meso_start;
+    const amrex::Real meso_timescale = m_meso_timescale;
     const auto vsize = m_wind_heights_d.size();
     const auto* wind_heights_d = m_wind_heights_d.data();
     const auto* u_values_d = m_u_values_d.data();
@@ -105,11 +107,11 @@ void WindSpongeForcing::operator()(
                                     : velocity(i, j, k, 2);
                 }
                 src_term(i, j, k, 0) -=
-                    zi * zi * (velocity(i, j, k, 0) - ref_windx);
+                    1.0 / meso_timescale * (velocity(i, j, k, 0) - ref_windx);
                 src_term(i, j, k, 1) -=
-                    zi * zi * (velocity(i, j, k, 1) - ref_windy);
+                    1.0 / meso_timescale * (velocity(i, j, k, 1) - ref_windy);
                 src_term(i, j, k, 2) -=
-                    zi * zi * (velocity(i, j, k, 2) - ref_windz);
+                    1.0 / meso_timescale * (velocity(i, j, k, 2) - ref_windz);
             });
     } else {
         amrex::ParallelFor(
@@ -138,11 +140,11 @@ void WindSpongeForcing::operator()(
                                     : velocity(i, j, k, 2);
                 }
                 src_term(i, j, k, 0) -=
-                    zi * zi * (velocity(i, j, k, 0) - ref_windx);
+                    1.0 / meso_timescale * (velocity(i, j, k, 0) - ref_windx);
                 src_term(i, j, k, 1) -=
-                    zi * zi * (velocity(i, j, k, 1) - ref_windy);
+                    1.0 / meso_timescale * (velocity(i, j, k, 1) - ref_windy);
                 src_term(i, j, k, 2) -=
-                    zi * zi * (velocity(i, j, k, 2) - ref_windz);
+                    1.0 / meso_timescale * (velocity(i, j, k, 2) - ref_windz);
             });
     }
 }
