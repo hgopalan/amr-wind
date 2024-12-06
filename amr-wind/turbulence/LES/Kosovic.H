@@ -58,6 +58,7 @@ private:
     amrex::Real m_LESTurnOff{1e15};
     bool m_writeTerms{false};
     amrex::Real m_refMOL{-1e30};
+    amrex::Real m_meso_start{600};
     const Field& m_vel;
     const Field& m_rho;
     Field& m_Nij;

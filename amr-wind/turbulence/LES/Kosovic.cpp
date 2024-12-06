@@ -40,6 +40,8 @@ Kosovic<Transport>::Kosovic(CFDSim& sim)
         this->m_sim.io_manager().register_io_var("divNij");
     }
     pp.query("LESOff", m_LESTurnOff);
+    amrex::ParmParse pp_abl("ABL");
+    pp_abl.query("meso_sponge_start", m_meso_start);
 }
 template <typename Transport>
 void Kosovic<Transport>::update_turbulent_viscosity(
@@ -56,9 +58,6 @@ void Kosovic<Transport>::update_turbulent_viscosity(
     const amrex::Real Cs_sqr = this->m_Cs * this->m_Cs;
     const bool has_terrain =
         this->m_sim.repo().int_field_exists("terrain_blank");
-    const auto* m_terrain_blank =
-        has_terrain ? &this->m_sim.repo().get_int_field("terrain_blank")
-                    : nullptr;
     // Populate strainrate into the turbulent viscosity arrays to avoid creating
     // a temporary buffer
     fvm::strainrate(mu_turb, vel);
@@ -81,48 +80,94 @@ void Kosovic<Transport>::update_turbulent_viscosity(
         const amrex::Real locSurfaceRANSExp = m_surfaceRANSExp;
         const amrex::Real locSurfaceFactor = m_surfaceFactor;
         const amrex::Real locC1 = m_C1;
+        const amrex::Real meso_start = m_meso_start;
         for (amrex::MFIter mfi(mu_turb(lev)); mfi.isValid(); ++mfi) {
             const auto& bx = mfi.tilebox();
             const auto& mu_arr = mu_turb(lev).array(mfi);
             const auto& rho_arr = den(lev).const_array(mfi);
             const auto& divNijLevel = (this->m_divNij)(lev).array(mfi);
-            const auto& blank_arr =
-                has_terrain ? (*m_terrain_blank)(lev).const_array(mfi)
-                            : amrex::Array4<int>();
-            amrex::ParallelFor(
-                bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                    const amrex::Real rho = rho_arr(i, j, k);
-                    const amrex::Real x3 = problo[2] + (k + 0.5) * dz;
-                    const amrex::Real fmu = std::exp(-x3 / locSwitchLoc);
-                    const amrex::Real phiM =
-                        (locMOL < 0) ? std::pow(1 - 16 * x3 / locMOL, -0.25)
-                                     : 1 + 5 * x3 / locMOL;
-                    const amrex::Real ransL =
-                        std::pow(0.41 * (k + 1) * dz / phiM, 2);
-                    amrex::Real turnOff = std::exp(-x3 / locLESTurnOff);
-                    amrex::Real viscosityScale =
-                        locSurfaceFactor *
-                            (std::pow(1 - fmu, locSurfaceRANSExp) *
-                                 smag_factor +
-                             std::pow(fmu, locSurfaceRANSExp) * ransL) +
-                        (1 - locSurfaceFactor) * smag_factor;
-                    const amrex::Real blankTerrain =
-                        (has_terrain) ? 1 - blank_arr(i, j, k, 0) : 1.0;
-                    mu_arr(i, j, k) *=
-                        rho * viscosityScale * turnOff * blankTerrain;
-                    amrex::Real stressScale =
-                        locSurfaceFactor *
-                            (std::pow(1 - fmu, locSurfaceRANSExp) *
-                                 smag_factor * 0.25 * locC1 +
-                             std::pow(fmu, locSurfaceRANSExp) * ransL) +
-                        (1 - locSurfaceFactor) * smag_factor * 0.25 * locC1;
-                    divNijLevel(i, j, k, 0) *=
-                        rho * stressScale * turnOff * blankTerrain;
-                    divNijLevel(i, j, k, 1) *=
-                        rho * stressScale * turnOff * blankTerrain;
-                    divNijLevel(i, j, k, 2) *=
-                        rho * stressScale * turnOff * blankTerrain;
-                });
+            if (has_terrain) {
+                const auto* m_terrain_blank =
+                    &this->m_sim.repo().get_int_field("terrain_blank");
+                const auto& blank_arr =
+                    (*m_terrain_blank)(lev).const_array(mfi);
+                const auto* m_terrain_height =
+                    &this->m_sim.repo().get_field("terrain_height");
+                const auto& terrain_height =
+                    (*m_terrain_height)(lev).const_array(mfi);
+                amrex::ParallelFor(
+                    bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+                        const amrex::Real rho = rho_arr(i, j, k);
+                        const amrex::Real x3 = std::max(
+                            problo[2] + (k + 0.5) * dz -
+                                terrain_height(i, j, k),
+                            0.5 * dz);
+                        const amrex::Real fmu = std::exp(-x3 / locSwitchLoc);
+                        const amrex::Real phiM =
+                            (locMOL < 0) ? std::pow(1 - 16 * x3 / locMOL, -0.25)
+                                         : 1 + 5 * x3 / locMOL;
+                        const amrex::Real ransL =
+                            std::pow(0.41 * (k + 1) * dz / phiM, 2);
+                        amrex::Real turnOff = std::exp(-x3 / locLESTurnOff);
+                        amrex::Real viscosityScale =
+                            locSurfaceFactor *
+                                (std::pow(1 - fmu, locSurfaceRANSExp) *
+                                     smag_factor +
+                                 std::pow(fmu, locSurfaceRANSExp) * ransL) +
+                            (1 - locSurfaceFactor) * smag_factor;
+                        const amrex::Real blankTerrain =
+                            1 - blank_arr(i, j, k, 0);
+                        const amrex::Real meso_zone = (x3 > meso_start) ? 0 : 1;
+                        mu_arr(i, j, k) *= rho * viscosityScale * turnOff *
+                                           blankTerrain * meso_zone;
+                        amrex::Real stressScale =
+                            locSurfaceFactor *
+                                (std::pow(1 - fmu, locSurfaceRANSExp) *
+                                     smag_factor * 0.25 * locC1 +
+                                 std::pow(fmu, locSurfaceRANSExp) * ransL) +
+                            (1 - locSurfaceFactor) * smag_factor * 0.25 * locC1;
+                        divNijLevel(i, j, k, 0) *= rho * stressScale * turnOff *
+                                                   blankTerrain * meso_zone;
+                        divNijLevel(i, j, k, 1) *= rho * stressScale * turnOff *
+                                                   blankTerrain * meso_zone;
+                        divNijLevel(i, j, k, 2) *= rho * stressScale * turnOff *
+                                                   blankTerrain * meso_zone;
+                    });
+            } else {
+                amrex::ParallelFor(
+                    bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+                        const amrex::Real rho = rho_arr(i, j, k);
+                        const amrex::Real x3 = problo[2] + (k + 0.5) * dz;
+                        const amrex::Real fmu = std::exp(-x3 / locSwitchLoc);
+                        const amrex::Real phiM =
+                            (locMOL < 0) ? std::pow(1 - 16 * x3 / locMOL, -0.25)
+                                         : 1 + 5 * x3 / locMOL;
+                        const amrex::Real ransL =
+                            std::pow(0.41 * (k + 1) * dz / phiM, 2);
+                        amrex::Real turnOff = std::exp(-x3 / locLESTurnOff);
+                        amrex::Real viscosityScale =
+                            locSurfaceFactor *
+                                (std::pow(1 - fmu, locSurfaceRANSExp) *
+                                     smag_factor +
+                                 std::pow(fmu, locSurfaceRANSExp) * ransL) +
+                            (1 - locSurfaceFactor) * smag_factor;
+                        const amrex::Real meso_zone = (x3 > meso_start) ? 0 : 1;
+                        mu_arr(i, j, k) *=
+                            rho * viscosityScale * turnOff * meso_zone;
+                        amrex::Real stressScale =
+                            locSurfaceFactor *
+                                (std::pow(1 - fmu, locSurfaceRANSExp) *
+                                     smag_factor * 0.25 * locC1 +
+                                 std::pow(fmu, locSurfaceRANSExp) * ransL) +
+                            (1 - locSurfaceFactor) * smag_factor * 0.25 * locC1;
+                        divNijLevel(i, j, k, 0) *=
+                            rho * stressScale * turnOff * meso_zone;
+                        divNijLevel(i, j, k, 1) *=
+                            rho * stressScale * turnOff * meso_zone;
+                        divNijLevel(i, j, k, 2) *=
+                            rho * stressScale * turnOff * meso_zone;
+                    });
+            }
         }
     }
 
