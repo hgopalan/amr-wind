@@ -1,0 +1,836 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AMR-Wind API: amr_wind::MetMastMarking::MetMastMarking Class Reference &mdash; AMR-Wind 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            AMR-Wind
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../walkthrough/index.html">Walkthrough</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user/user.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../theory/theory.html">Theory Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../developer/index.html">Developer Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../references.html">How to Cite AMR-Wind</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bibrefs.html">Bibliography</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">AMR-Wind</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">AMR-Wind API: amr_wind::MetMastMarking::MetMastMarking Class Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/doxygen/html/classamr__wind_1_1_met_mast_marking_1_1_met_mast_marking.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="metmastmarking-class-reference">
+<h1>MetMastMarking Class Reference<a class="headerlink" href="#metmastmarking-class-reference" title="Link to this heading"></a></h1>
+<div class="doxygen-content docutils container">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=11"/>
+<meta name="generator" content="Doxygen 1.14.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AMR-Wind API: amr_wind::MetMastMarking::MetMastMarking Class Reference</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<script type="text/javascript" src="clipboard.js"></script>
+<script type="text/javascript" src="cookie.js"></script>
+<link href="search/search.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="search/searchdata.js"></script>
+<script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+<link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr id="projectrow">
+  <td id="projectalign">
+   <div id="projectname">AMR-Wind API<span id="projectnumber">&#160;v0.1.0</span>
+   </div>
+   <div id="projectbrief">CFD solver for wind plant simulations</div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Generated by Doxygen 1.14.0 -->
+<script type="text/javascript">
+var searchBox = new SearchBox("searchBox", "search/",'.html');
+</script>
+<script type="text/javascript">
+$(function() { codefold.init(); });
+</script>
+<script type="text/javascript" src="menudata.js"></script>
+<script type="text/javascript" src="menu.js"></script>
+<script type="text/javascript">
+$(function() {
+  initMenu('',true,false,'search.php','Search',false);
+  $(function() { init_search(); });
+});
+</script>
+<div id="main-nav"></div>
+<!-- window showing the filter options -->
+<div id="MSearchSelectWindow"
+     onmouseover="return searchBox.OnSearchSelectShow()"
+     onmouseout="return searchBox.OnSearchSelectHide()"
+     onkeydown="return searchBox.OnSearchSelectKey(event)">
+</div>
+
+<!-- iframe showing the search results (closed by default) -->
+<div id="MSearchResultsWindow">
+<div id="MSearchResults">
+<div class="SRPage">
+<div id="SRIndex">
+<div id="SRResults"></div>
+<div class="SRStatus" id="Loading">Loading...</div>
+<div class="SRStatus" id="Searching">Searching...</div>
+<div class="SRStatus" id="NoMatches">No Matches</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="nav-path" class="navpath">
+  <ul>
+<li class="navelem"><a href="namespaceamr__wind.html">amr_wind</a></li><li class="navelem"><a href="namespaceamr__wind_1_1_met_mast_marking.html">MetMastMarking</a></li><li class="navelem"><a href="classamr__wind_1_1_met_mast_marking_1_1_met_mast_marking.html">MetMastMarking</a></li>  </ul>
+</div>
+</div><!-- top -->
+<div id="doc-content">
+<div class="header">
+  <div class="summary">
+<a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="#pri-attribs">Private Attributes</a> &#124;
+<a href="classamr__wind_1_1_met_mast_marking_1_1_met_mast_marking-members.html">List of all members</a>  </div>
+  <div class="headertitle"><div class="title">amr_wind::MetMastMarking::MetMastMarking Class Reference<div class="ingroups"><a class="el" href="group__physics.html">Physics models</a></div></div></div>
+</div><!--header-->
+<div class="contents">
+
+<p><code>#include &lt;<a class="el" href="_met_mast_marking_8_h_source.html">MetMastMarking.H</a>&gt;</code></p>
+<div class="dynheader">
+Inheritance diagram for amr_wind::MetMastMarking::MetMastMarking:</div>
+<div class="dyncontent">
+<div class="center"><iframe scrolling="no" loading="lazy" frameborder="0" src="classamr__wind_1_1_met_mast_marking_1_1_met_mast_marking__inherit__graph.svg" width="215" height="139"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<div class="dynheader">
+Collaboration diagram for amr_wind::MetMastMarking::MetMastMarking:</div>
+<div class="dyncontent">
+<div class="center"><div class="zoom"><iframe scrolling="no" loading="lazy" frameborder="0" src="classamr__wind_1_1_met_mast_marking_1_1_met_mast_marking__coll__graph.svg" width="100%" height="600"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div></div>
+<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 id="header-pub-methods" class="groupheader"><a id="pub-methods" name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:a31b6d630a33ef48c76bdfc04f5764c4b" id="r_a31b6d630a33ef48c76bdfc04f5764c4b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a31b6d630a33ef48c76bdfc04f5764c4b">MetMastMarking</a> (<a class="el" href="classamr__wind_1_1_c_f_d_sim.html">CFDSim</a> &amp;sim)</td></tr>
+<tr class="memitem:a42e0801883deb68ecbf0095afd85664c" id="r_a42e0801883deb68ecbf0095afd85664c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a42e0801883deb68ecbf0095afd85664c">~MetMastMarking</a> () override=default</td></tr>
+<tr class="memitem:aadaec14e175bff9f59be8103c77c22ce" id="r_aadaec14e175bff9f59be8103c77c22ce"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aadaec14e175bff9f59be8103c77c22ce">initialize_fields</a> (int level, const amrex::Geometry &amp;geom) override</td></tr>
+<tr class="memitem:a35ce50b8c14b595bbe1a0e878b300540" id="r_a35ce50b8c14b595bbe1a0e878b300540"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a35ce50b8c14b595bbe1a0e878b300540">pre_init_actions</a> () override</td></tr>
+<tr class="memitem:adec5d495e6488531f151a2ace5f680f0" id="r_adec5d495e6488531f151a2ace5f680f0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#adec5d495e6488531f151a2ace5f680f0">post_init_actions</a> () override</td></tr>
+<tr class="memitem:a0ae9978d203440dd964a63ed0284cbb1" id="r_a0ae9978d203440dd964a63ed0284cbb1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0ae9978d203440dd964a63ed0284cbb1">post_regrid_actions</a> () override</td></tr>
+<tr class="memitem:a941970a4a7652019f588915eca2b04dc" id="r_a941970a4a7652019f588915eca2b04dc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a941970a4a7652019f588915eca2b04dc">pre_advance_work</a> () override</td></tr>
+<tr class="memitem:a3044abd7d9c018af5f41ae32c77911b4" id="r_a3044abd7d9c018af5f41ae32c77911b4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3044abd7d9c018af5f41ae32c77911b4">post_advance_work</a> () override</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 id="header-pub-static-methods" class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a1586307589d6e1566dec6b3180a0ed0c" id="r_a1586307589d6e1566dec6b3180a0ed0c"><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1586307589d6e1566dec6b3180a0ed0c">identifier</a> ()</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 id="header-pri-attribs" class="groupheader"><a id="pri-attribs" name="pri-attribs"></a>
+Private Attributes</h2></td></tr>
+<tr class="memitem:a160ece59c6b9cffc13657b29c39736ab" id="r_a160ece59c6b9cffc13657b29c39736ab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classamr__wind_1_1_c_f_d_sim.html">CFDSim</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a160ece59c6b9cffc13657b29c39736ab">m_sim</a></td></tr>
+<tr class="memitem:af25a16a88909d9871eb3486b063576a3" id="r_af25a16a88909d9871eb3486b063576a3"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classamr__wind_1_1_field_repo.html">FieldRepo</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af25a16a88909d9871eb3486b063576a3">m_repo</a></td></tr>
+<tr class="memitem:ad4c0101788282a2cf5d41f0bbadadc15" id="r_ad4c0101788282a2cf5d41f0bbadadc15"><td class="memItemLeft" align="right" valign="top">const amrex::AmrCore &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad4c0101788282a2cf5d41f0bbadadc15">m_mesh</a></td></tr>
+<tr class="memitem:add1c30854d36fe72396889d19efe77f6" id="r_add1c30854d36fe72396889d19efe77f6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classamr__wind_1_1_field.html">Field</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#add1c30854d36fe72396889d19efe77f6">m_metmast_blank</a></td></tr>
+<tr class="memdesc:add1c30854d36fe72396889d19efe77f6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Blanking field for met mast.  <br /></td></tr>
+<tr class="memitem:a329bba66e257bc9d17e2a8a0d22ce87a" id="r_a329bba66e257bc9d17e2a8a0d22ce87a"><td class="memItemLeft" align="right" valign="top">amrex::Vector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a329bba66e257bc9d17e2a8a0d22ce87a">m_metmast_x</a></td></tr>
+<tr class="memitem:a2b6c11a57f3159fde07ec9c9cc63b43e" id="r_a2b6c11a57f3159fde07ec9c9cc63b43e"><td class="memItemLeft" align="right" valign="top">amrex::Vector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2b6c11a57f3159fde07ec9c9cc63b43e">m_metmast_y</a></td></tr>
+<tr class="memitem:a4e753aba3da262100173a71db0bb00a7" id="r_a4e753aba3da262100173a71db0bb00a7"><td class="memItemLeft" align="right" valign="top">amrex::Vector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4e753aba3da262100173a71db0bb00a7">m_metmast_z</a></td></tr>
+<tr class="memitem:ab3310caaaa1c2cc347493711f1c8ab14" id="r_ab3310caaaa1c2cc347493711f1c8ab14"><td class="memItemLeft" align="right" valign="top">amrex::Vector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab3310caaaa1c2cc347493711f1c8ab14">m_metmast_horizontal_radius</a></td></tr>
+<tr class="memitem:a69c93d226ba165afcac1be704d60b6fa" id="r_a69c93d226ba165afcac1be704d60b6fa"><td class="memItemLeft" align="right" valign="top">amrex::Vector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a69c93d226ba165afcac1be704d60b6fa">m_metmast_vertical_radius</a></td></tr>
+<tr class="memitem:ac3c2460fcc60e31755677cdde9f373c0" id="r_ac3c2460fcc60e31755677cdde9f373c0"><td class="memItemLeft" align="right" valign="top">amrex::Gpu::DeviceVector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac3c2460fcc60e31755677cdde9f373c0">m_metmast_x_d</a></td></tr>
+<tr class="memitem:ab23204c350ad0967fa7169644ca1f5e5" id="r_ab23204c350ad0967fa7169644ca1f5e5"><td class="memItemLeft" align="right" valign="top">amrex::Gpu::DeviceVector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab23204c350ad0967fa7169644ca1f5e5">m_metmast_y_d</a></td></tr>
+<tr class="memitem:ac1005fb620b744f82b3ab8ff9efecca1" id="r_ac1005fb620b744f82b3ab8ff9efecca1"><td class="memItemLeft" align="right" valign="top">amrex::Gpu::DeviceVector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac1005fb620b744f82b3ab8ff9efecca1">m_metmast_z_d</a></td></tr>
+<tr class="memitem:a84807634d08d15953bd8dc3244e15062" id="r_a84807634d08d15953bd8dc3244e15062"><td class="memItemLeft" align="right" valign="top">amrex::Gpu::DeviceVector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a84807634d08d15953bd8dc3244e15062">m_metmast_horizontal_radius_d</a></td></tr>
+<tr class="memitem:a49e11df68c91793879b4e92c63ba5066" id="r_a49e11df68c91793879b4e92c63ba5066"><td class="memItemLeft" align="right" valign="top">amrex::Gpu::DeviceVector&lt; amrex::Real &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a49e11df68c91793879b4e92c63ba5066">m_metmast_vertical_radius_d</a></td></tr>
+<tr class="memitem:a22fcb257b4e2c74fbdb716b80604b7dc" id="r_a22fcb257b4e2c74fbdb716b80604b7dc"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a22fcb257b4e2c74fbdb716b80604b7dc">m_metmast_file</a> {&quot;metmast.amrwind&quot;}</td></tr>
+<tr class="memdesc:a22fcb257b4e2c74fbdb716b80604b7dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Met mast file.  <br /></td></tr>
+</table>
+<a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
+<div class="textblock"><p><a class="el" href="classamr__wind_1_1_met_mast_marking_1_1_met_mast_marking.html">MetMastMarking</a> Flow physics </p>
+</div><a name="doc-constructors" id="doc-constructors"></a><h2 id="header-doc-constructors" class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a31b6d630a33ef48c76bdfc04f5764c4b" name="a31b6d630a33ef48c76bdfc04f5764c4b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a31b6d630a33ef48c76bdfc04f5764c4b">&#9670;&#160;</a></span>MetMastMarking()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amr_wind::MetMastMarking::MetMastMarking::MetMastMarking </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classamr__wind_1_1_c_f_d_sim.html">CFDSim</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>sim</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel explicit">explicit</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a42e0801883deb68ecbf0095afd85664c" name="a42e0801883deb68ecbf0095afd85664c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a42e0801883deb68ecbf0095afd85664c">&#9670;&#160;</a></span>~MetMastMarking()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amr_wind::MetMastMarking::MetMastMarking::~MetMastMarking </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel override">override</span><span class="mlabel default">default</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Member Function Documentation</h2>
+<a id="a1586307589d6e1566dec6b3180a0ed0c" name="a1586307589d6e1566dec6b3180a0ed0c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1586307589d6e1566dec6b3180a0ed0c">&#9670;&#160;</a></span>identifier()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string amr_wind::MetMastMarking::MetMastMarking::identifier </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel inline">inline</span><span class="mlabel static">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aadaec14e175bff9f59be8103c77c22ce" name="aadaec14e175bff9f59be8103c77c22ce"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aadaec14e175bff9f59be8103c77c22ce">&#9670;&#160;</a></span>initialize_fields()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void amr_wind::MetMastMarking::MetMastMarking::initialize_fields </td>
+          <td>(</td>
+          <td class="paramtype">int</td>          <td class="paramname"><span class="paramname"><em>level</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const amrex::Geometry &amp;</td>          <td class="paramname"><span class="paramname"><em>geom</em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel override">override</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3044abd7d9c018af5f41ae32c77911b4" name="a3044abd7d9c018af5f41ae32c77911b4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3044abd7d9c018af5f41ae32c77911b4">&#9670;&#160;</a></span>post_advance_work()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void amr_wind::MetMastMarking::MetMastMarking::post_advance_work </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel inline">inline</span><span class="mlabel override">override</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="adec5d495e6488531f151a2ace5f680f0" name="adec5d495e6488531f151a2ace5f680f0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adec5d495e6488531f151a2ace5f680f0">&#9670;&#160;</a></span>post_init_actions()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void amr_wind::MetMastMarking::MetMastMarking::post_init_actions </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel inline">inline</span><span class="mlabel override">override</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0ae9978d203440dd964a63ed0284cbb1" name="a0ae9978d203440dd964a63ed0284cbb1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0ae9978d203440dd964a63ed0284cbb1">&#9670;&#160;</a></span>post_regrid_actions()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void amr_wind::MetMastMarking::MetMastMarking::post_regrid_actions </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel override">override</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a941970a4a7652019f588915eca2b04dc" name="a941970a4a7652019f588915eca2b04dc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a941970a4a7652019f588915eca2b04dc">&#9670;&#160;</a></span>pre_advance_work()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void amr_wind::MetMastMarking::MetMastMarking::pre_advance_work </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel inline">inline</span><span class="mlabel override">override</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a35ce50b8c14b595bbe1a0e878b300540" name="a35ce50b8c14b595bbe1a0e878b300540"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a35ce50b8c14b595bbe1a0e878b300540">&#9670;&#160;</a></span>pre_init_actions()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void amr_wind::MetMastMarking::MetMastMarking::pre_init_actions </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel inline">inline</span><span class="mlabel override">override</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a name="doc-variable-members" id="doc-variable-members"></a><h2 id="header-doc-variable-members" class="groupheader">Member Data Documentation</h2>
+<a id="ad4c0101788282a2cf5d41f0bbadadc15" name="ad4c0101788282a2cf5d41f0bbadadc15"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad4c0101788282a2cf5d41f0bbadadc15">&#9670;&#160;</a></span>m_mesh</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const amrex::AmrCore&amp; amr_wind::MetMastMarking::MetMastMarking::m_mesh</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="add1c30854d36fe72396889d19efe77f6" name="add1c30854d36fe72396889d19efe77f6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#add1c30854d36fe72396889d19efe77f6">&#9670;&#160;</a></span>m_metmast_blank</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classamr__wind_1_1_field.html">Field</a>&amp; amr_wind::MetMastMarking::MetMastMarking::m_metmast_blank</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Blanking field for met mast. </p>
+
+</div>
+</div>
+<a id="a22fcb257b4e2c74fbdb716b80604b7dc" name="a22fcb257b4e2c74fbdb716b80604b7dc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a22fcb257b4e2c74fbdb716b80604b7dc">&#9670;&#160;</a></span>m_metmast_file</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string amr_wind::MetMastMarking::MetMastMarking::m_metmast_file {&quot;metmast.amrwind&quot;}</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Met mast file. </p>
+
+</div>
+</div>
+<a id="ab3310caaaa1c2cc347493711f1c8ab14" name="ab3310caaaa1c2cc347493711f1c8ab14"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab3310caaaa1c2cc347493711f1c8ab14">&#9670;&#160;</a></span>m_metmast_horizontal_radius</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Vector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_horizontal_radius</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a84807634d08d15953bd8dc3244e15062" name="a84807634d08d15953bd8dc3244e15062"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a84807634d08d15953bd8dc3244e15062">&#9670;&#160;</a></span>m_metmast_horizontal_radius_d</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Gpu::DeviceVector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_horizontal_radius_d</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a69c93d226ba165afcac1be704d60b6fa" name="a69c93d226ba165afcac1be704d60b6fa"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a69c93d226ba165afcac1be704d60b6fa">&#9670;&#160;</a></span>m_metmast_vertical_radius</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Vector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_vertical_radius</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a49e11df68c91793879b4e92c63ba5066" name="a49e11df68c91793879b4e92c63ba5066"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a49e11df68c91793879b4e92c63ba5066">&#9670;&#160;</a></span>m_metmast_vertical_radius_d</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Gpu::DeviceVector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_vertical_radius_d</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a329bba66e257bc9d17e2a8a0d22ce87a" name="a329bba66e257bc9d17e2a8a0d22ce87a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a329bba66e257bc9d17e2a8a0d22ce87a">&#9670;&#160;</a></span>m_metmast_x</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Vector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_x</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac3c2460fcc60e31755677cdde9f373c0" name="ac3c2460fcc60e31755677cdde9f373c0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac3c2460fcc60e31755677cdde9f373c0">&#9670;&#160;</a></span>m_metmast_x_d</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Gpu::DeviceVector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_x_d</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a2b6c11a57f3159fde07ec9c9cc63b43e" name="a2b6c11a57f3159fde07ec9c9cc63b43e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2b6c11a57f3159fde07ec9c9cc63b43e">&#9670;&#160;</a></span>m_metmast_y</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Vector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_y</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab23204c350ad0967fa7169644ca1f5e5" name="ab23204c350ad0967fa7169644ca1f5e5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab23204c350ad0967fa7169644ca1f5e5">&#9670;&#160;</a></span>m_metmast_y_d</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Gpu::DeviceVector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_y_d</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a4e753aba3da262100173a71db0bb00a7" name="a4e753aba3da262100173a71db0bb00a7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4e753aba3da262100173a71db0bb00a7">&#9670;&#160;</a></span>m_metmast_z</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Vector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_z</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac1005fb620b744f82b3ab8ff9efecca1" name="ac1005fb620b744f82b3ab8ff9efecca1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac1005fb620b744f82b3ab8ff9efecca1">&#9670;&#160;</a></span>m_metmast_z_d</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">amrex::Gpu::DeviceVector&lt;amrex::Real&gt; amr_wind::MetMastMarking::MetMastMarking::m_metmast_z_d</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af25a16a88909d9871eb3486b063576a3" name="af25a16a88909d9871eb3486b063576a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af25a16a88909d9871eb3486b063576a3">&#9670;&#160;</a></span>m_repo</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="classamr__wind_1_1_field_repo.html">FieldRepo</a>&amp; amr_wind::MetMastMarking::MetMastMarking::m_repo</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a160ece59c6b9cffc13657b29c39736ab" name="a160ece59c6b9cffc13657b29c39736ab"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a160ece59c6b9cffc13657b29c39736ab">&#9670;&#160;</a></span>m_sim</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classamr__wind_1_1_c_f_d_sim.html">CFDSim</a>&amp; amr_wind::MetMastMarking::MetMastMarking::m_sim</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel private">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<hr/>The documentation for this class was generated from the following files:<ul>
+<li>/home/runner/work/amr-wind/amr-wind/amr-wind/physics/<a class="el" href="_met_mast_marking_8_h_source.html">MetMastMarking.H</a></li>
+<li>/home/runner/work/amr-wind/amr-wind/amr-wind/physics/<a class="el" href="_met_mast_marking_8cpp.html">MetMastMarking.cpp</a></li>
+</ul>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.14.0
+</small></address>
+</div><!-- doc-content -->
+</body>
+</html>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p></p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

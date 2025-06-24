@@ -1,0 +1,14 @@
+.. meta::93efc3e2e120f5878c7c95586e891dbc6f8f953b5d1ac9673e3002d3c2f19b2d954812a7a656d701ddeb4dd0e03204a4fd2d0f158c7cf0974f17084cafdec5e4
+
+:orphan:
+
+.. title:: AMR-Wind API: amr_wind::MetMastMarking::MetMastMarking Class Reference
+
+MetMastMarking Class Reference
+==============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classamr__wind_1_1_met_mast_marking_1_1_met_mast_marking.html
