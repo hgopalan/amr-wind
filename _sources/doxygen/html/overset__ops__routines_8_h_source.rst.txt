@@ -1,0 +1,14 @@
+.. meta::139d1a340761af686957b4267b8b93450db2d9b1667ac3ac87a64e213dc50a1c45ec792b23714560296f5cb2993dc94089531322e2cf0f0a077f8cab29bcab5e
+
+:orphan:
+
+.. title:: AMR-Wind API: /home/runner/work/amr-wind/amr-wind/amr-wind/overset/overset_ops_routines.H Source File
+
+/home/runner/work/amr-wind/amr-wind/amr-wind/overset/overset\_ops\_routines.H Source File
+=========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: overset__ops__routines_8_h_source.html

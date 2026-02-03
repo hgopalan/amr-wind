@@ -1,0 +1,14 @@
+.. meta::064e2f46e8f9b3e571ee10e009e820aa0bc839245712706f1c746ee62c155861e81d8e28159a1ef4ac19eb90171aadc8a71e124e1ec08965f3112e114da21a64
+
+:orphan:
+
+.. title:: AMR-Wind API: amr_wind::pde::PostSolveOp&lt; SDR &gt; Struct Reference
+
+PostSolveOp&lt; SDR &gt; Struct Reference
+=========================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structamr__wind_1_1pde_1_1_post_solve_op_3_01_s_d_r_01_4.html

@@ -1,0 +1,14 @@
+.. meta::4996f0339f013ecc4c524af6a460a4aa9c8489acefaf3f29c7197406f13dab828da6e27450e23008b3562ae475716f0dbc641d90ca2c6477d14533c20824ef89
+
+:orphan:
+
+.. title:: AMR-Wind API: /home/runner/work/amr-wind/amr-wind/amr-wind/physics/EkmanSpiral.H Source File
+
+/home/runner/work/amr-wind/amr-wind/amr-wind/physics/EkmanSpiral.H Source File
+==============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _ekman_spiral_8_h_source.html
