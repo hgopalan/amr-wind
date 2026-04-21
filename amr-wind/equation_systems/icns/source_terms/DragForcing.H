@@ -40,6 +40,7 @@ private:
     const Field& m_velocity;
     const Field* m_target_vel{nullptr};
     const Field* m_target_levelset{nullptr};
+    const Field* m_temperature{nullptr};
     std::string m_1d_rans;
     amrex::Vector<amrex::Real> m_wind_heights;
     amrex::Vector<amrex::Real> m_u_values;
@@ -71,6 +72,9 @@ private:
     amrex::Real m_kappa{0.41_rt};
     amrex::Real m_gamma_m{5.0_rt};
     amrex::Real m_beta_m{16.0_rt};
+    amrex::Real m_surface_heat_flux{0.0_rt}; ///< Kinematic heat flux w'theta' (K m/s)
+    std::string m_mol_mode{"mol_length"}; ///< "mol_length" (default) or "heat_flux"
+    amrex::Vector<amrex::Real> m_gravity{0.0_rt, 0.0_rt, -9.81_rt};
 };
 
 } // namespace amr_wind::pde::icns
