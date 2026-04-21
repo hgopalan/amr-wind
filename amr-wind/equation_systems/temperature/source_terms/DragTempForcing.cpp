@@ -24,6 +24,10 @@ DragTempForcing::DragTempForcing(const CFDSim& sim)
     amrex::ParmParse pp_abl("ABL");
     pp_abl.query("wall_het_model", m_wall_het_model);
     pp_abl.query("monin_obukhov_length", m_monin_obukhov_length);
+    pp_abl.query("surface_heat_flux", m_surface_heat_flux);
+    if (pp_abl.contains("surface_heat_flux")) {
+        m_mol_mode = "heat_flux";
+    }
     pp_abl.query("kappa", m_kappa);
     pp_abl.query("mo_gamma_m", m_gamma_m);
     pp_abl.query("mo_beta_m", m_beta_m);
@@ -88,6 +92,13 @@ void DragTempForcing::operator()(
     const amrex::Real cd_max = 10.0_rt;
     const amrex::Real T0 = m_soil_temperature;
     const amrex::Real time_factor = m_forcing_time_factor;
+    const bool use_heat_flux = (m_mol_mode == "heat_flux");
+    const amrex::Real surface_heat_flux = m_surface_heat_flux;
+    const amrex::Real beta_m = m_beta_m;
+    const amrex::Real beta_h = m_beta_h;
+    const amrex::Real gamma_m = m_gamma_m;
+    const amrex::Real gamma_h = m_gamma_h;
+    const amrex::Real large_num = constants::LARGE_NUM;
     amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
         const amrex::Real z0 =
             amrex::max<amrex::Real>(terrainz0(i, j, k), z0_min);
@@ -97,20 +108,78 @@ void DragTempForcing::operator()(
         const amrex::Real theta = temperature(i, j, k, 0);
         const amrex::Real theta2 = temperature(i, j, k + 1, 0);
         const amrex::Real wspd = std::sqrt((ux1 * ux1) + (uy1 * uy1));
-        const amrex::Real ustar =
-            wspd * kappa / (std::log(1.5_rt * dx[2] / z0) - psi_m);
-        //! We do not know the actual temperature so use cell above
-        const amrex::Real thetastar =
-            theta * ustar * ustar /
-            (kappa * gravity_mod * monin_obukhov_length);
-        const amrex::Real surf_temp =
-            theta2 - (thetastar / kappa *
-                      (std::log(1.5_rt * dx[2] / z0) - psi_h_neighbour));
-        const amrex::Real tTarget =
-            surf_temp +
-            (thetastar / kappa * (std::log(0.5_rt * dx[2] / z0) - psi_h_cell));
-        const amrex::Real bc_forcing_t =
-            -(tTarget - theta) / (time_factor * dt);
+        amrex::Real bc_forcing_t = 0.0_rt;
+        if (!use_heat_flux) {
+            // mol_length mode: use pre-computed psi values from global L
+            const amrex::Real ustar =
+                wspd * kappa / (std::log(1.5_rt * dx[2] / z0) - psi_m);
+            //! We do not know the actual temperature so use cell above
+            const amrex::Real thetastar =
+                theta * ustar * ustar /
+                (kappa * gravity_mod * monin_obukhov_length);
+            const amrex::Real surf_temp =
+                theta2 - (thetastar / kappa *
+                          (std::log(1.5_rt * dx[2] / z0) - psi_h_neighbour));
+            const amrex::Real tTarget =
+                surf_temp + (thetastar / kappa *
+                             (std::log(0.5_rt * dx[2] / z0) - psi_h_cell));
+            bc_forcing_t = -(tTarget - theta) / (time_factor * dt);
+        } else {
+            // heat_flux mode: iterate to converge ustar and L
+            amrex::Real L = large_num;
+            amrex::Real ustar = wspd * kappa / std::log(1.5_rt * dx[2] / z0);
+            for (int iter = 0; iter < 25; ++iter) {
+                // psi_m inline: Dyer (1974) formulation
+                amrex::Real psi_m_iter = 0.0_rt;
+                const amrex::Real zeta_m = 1.5_rt * dx[2] / L;
+                if (zeta_m > 0.0_rt) {
+                    psi_m_iter = -gamma_m * zeta_m;
+                } else {
+                    const amrex::Real x =
+                        std::sqrt(std::sqrt(1.0_rt - beta_m * zeta_m));
+                    psi_m_iter =
+                        2.0_rt * std::log(0.5_rt * (1.0_rt + x)) +
+                        std::log(0.5_rt * (1.0_rt + x * x)) -
+                        2.0_rt * std::atan(x) + utils::half_pi();
+                }
+                ustar = wspd * kappa /
+                        (std::log(1.5_rt * dx[2] / z0) - psi_m_iter);
+                if (std::abs(surface_heat_flux) > tiny) {
+                    L = -(ustar * ustar * ustar) * theta /
+                        (kappa * gravity_mod * surface_heat_flux);
+                } else {
+                    L = large_num;
+                }
+            }
+            const amrex::Real thetastar = -surface_heat_flux / ustar;
+            // psi_h at neighbour cell (z = 1.5*dz)
+            amrex::Real psi_h_n = 0.0_rt;
+            const amrex::Real zeta_n = 1.5_rt * dx[2] / L;
+            if (zeta_n > 0.0_rt) {
+                psi_h_n = -gamma_h * zeta_n;
+            } else {
+                const amrex::Real xn =
+                    std::sqrt(1.0_rt - beta_h * zeta_n);
+                psi_h_n = 2.0_rt * std::log(0.5_rt * (1.0_rt + xn));
+            }
+            // psi_h at current cell (z = 0.5*dz)
+            amrex::Real psi_h_c = 0.0_rt;
+            const amrex::Real zeta_c = 0.5_rt * dx[2] / L;
+            if (zeta_c > 0.0_rt) {
+                psi_h_c = -gamma_h * zeta_c;
+            } else {
+                const amrex::Real xc =
+                    std::sqrt(1.0_rt - beta_h * zeta_c);
+                psi_h_c = 2.0_rt * std::log(0.5_rt * (1.0_rt + xc));
+            }
+            const amrex::Real surf_temp =
+                theta2 - (thetastar / kappa *
+                          (std::log(1.5_rt * dx[2] / z0) - psi_h_n));
+            const amrex::Real tTarget =
+                surf_temp + (thetastar / kappa *
+                             (std::log(0.5_rt * dx[2] / z0) - psi_h_c));
+            bc_forcing_t = -(tTarget - theta) / (time_factor * dt);
+        }
         const amrex::Real m =
             std::sqrt((ux1 * ux1) + (uy1 * uy1) + (uz1 * uz1));
         const amrex::Real Cd = amrex::min<amrex::Real>(
