@@ -175,9 +175,18 @@ DragForcing::DragForcing(const CFDSim& sim)
     }
     pp_abl.query("wall_het_model", m_wall_het_model);
     pp_abl.query("monin_obukhov_length", m_monin_obukhov_length);
+    pp_abl.query("surface_heat_flux", m_surface_heat_flux);
+    if (pp_abl.contains("surface_heat_flux")) {
+        m_mol_mode = "heat_flux";
+    }
     pp_abl.query("kappa", m_kappa);
     pp_abl.query("mo_gamma_m", m_gamma_m);
     pp_abl.query("mo_beta_m", m_beta_m);
+    amrex::ParmParse pp_incflo("incflo");
+    pp_incflo.queryarr("gravity", m_gravity);
+    if (m_mol_mode == "heat_flux") {
+        m_temperature = &sim.repo().get_field("temperature");
+    }
 }
 
 DragForcing::~DragForcing() = default;
@@ -265,6 +274,15 @@ void DragForcing::operator()(
     const amrex::Real* uu = m_prof_u_d.data();
     const amrex::Real* vv = m_prof_v_d.data();
     const amrex::Real* ww = m_prof_w_d.data();
+    const bool use_heat_flux = (m_mol_mode == "heat_flux");
+    const amrex::Real surface_heat_flux = m_surface_heat_flux;
+    const amrex::Real gravity_mod = std::abs(m_gravity[2]);
+    const amrex::Real large_num = constants::LARGE_NUM;
+    const amrex::Real beta_m_val = m_beta_m;
+    const amrex::Real gamma_m_val = m_gamma_m;
+    const amrex::Array4<amrex::Real const> temperature_arr =
+        use_heat_flux ? (*m_temperature)(lev).const_array(mfi)
+                      : amrex::Array4<amrex::Real const>();
     amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
         const amrex::Real x = prob_lo[0] + ((i + 0.5_rt) * dx[0]);
         const amrex::Real y = prob_lo[1] + ((j + 0.5_rt) * dx[1]);
@@ -337,16 +355,75 @@ void DragForcing::operator()(
             const amrex::Real uy2r = vel(i, j, k + 1, 1) - wall_v;
             const amrex::Real z0 =
                 amrex::max<amrex::Real>(terrainz0(i, j, k), z0_min);
+            // Determine psi_m values (global or per-cell based on mode)
+            amrex::Real psi_m_n = non_neutral_neighbour;
+            amrex::Real psi_m_c = non_neutral_cell;
+            if (use_heat_flux) {
+                // heat_flux mode: iterate to converge ustar and L
+                // 25 iterations is consistent with MOData::update_fluxes
+                const amrex::Real wspd =
+                    std::sqrt((ux2r * ux2r) + (uy2r * uy2r));
+                const amrex::Real theta_loc = temperature_arr(i, j, k, 0);
+                amrex::Real L = large_num;
+                for (int iter_i = 0; iter_i < 25; ++iter_i) {
+                    const amrex::Real zeta_n = 1.5_rt * dx[2] / L;
+                    amrex::Real pm_n = 0.0_rt;
+                    if (zeta_n > 0.0_rt) {
+                        pm_n = -gamma_m_val * zeta_n;
+                    } else {
+                        const amrex::Real x = std::sqrt(
+                            std::sqrt(1.0_rt - beta_m_val * zeta_n));
+                        pm_n =
+                            2.0_rt * std::log(0.5_rt * (1.0_rt + x)) +
+                            std::log(0.5_rt * (1.0_rt + x * x)) -
+                            2.0_rt * std::atan(x) + utils::half_pi();
+                    }
+                    const amrex::Real ustar_iter =
+                        wspd * kappa /
+                        (std::log(1.5_rt * dx[2] / z0) - pm_n);
+                    if (std::abs(surface_heat_flux) >
+                        amr_wind::constants::EPS) {
+                        L = -(ustar_iter * ustar_iter * ustar_iter) *
+                            theta_loc /
+                            (kappa * gravity_mod * surface_heat_flux);
+                    } else {
+                        L = large_num;
+                    }
+                }
+                // Compute final psi_m at neighbour (1.5*dz) and cell (0.5*dz)
+                const amrex::Real zeta_n = 1.5_rt * dx[2] / L;
+                if (zeta_n > 0.0_rt) {
+                    psi_m_n = -gamma_m_val * zeta_n;
+                } else {
+                    const amrex::Real x =
+                        std::sqrt(std::sqrt(1.0_rt - beta_m_val * zeta_n));
+                    psi_m_n =
+                        2.0_rt * std::log(0.5_rt * (1.0_rt + x)) +
+                        std::log(0.5_rt * (1.0_rt + x * x)) -
+                        2.0_rt * std::atan(x) + utils::half_pi();
+                }
+                const amrex::Real zeta_c = 0.5_rt * dx[2] / L;
+                if (zeta_c > 0.0_rt) {
+                    psi_m_c = -gamma_m_val * zeta_c;
+                } else {
+                    const amrex::Real xc =
+                        std::sqrt(std::sqrt(1.0_rt - beta_m_val * zeta_c));
+                    psi_m_c =
+                        2.0_rt * std::log(0.5_rt * (1.0_rt + xc)) +
+                        std::log(0.5_rt * (1.0_rt + xc * xc)) -
+                        2.0_rt * std::atan(xc) + utils::half_pi();
+                }
+            }
             const amrex::Real ustar = viscous_drag_calculations(
                 Dxz, Dyz, ux1r, uy1r, ux2r, uy2r, z0, dx[2], kappa,
-                non_neutral_neighbour);
+                psi_m_n);
             if (model_form_drag) {
                 form_drag_calculations(
                     Dxz, Dyz, i, j, k, target_lvs_arr, dx, ux1r, uy1r);
             }
             const amrex::Real uTarget =
                 ustar / kappa *
-                (std::log(0.5_rt * dx[2] / z0) - non_neutral_cell);
+                (std::log(0.5_rt * dx[2] / z0) - psi_m_c);
             const amrex::Real uxTarget =
                 uTarget * ux2r /
                 (amr_wind::constants::EPS +
