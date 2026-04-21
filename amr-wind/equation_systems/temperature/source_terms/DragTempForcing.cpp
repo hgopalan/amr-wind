@@ -126,6 +126,7 @@ void DragTempForcing::operator()(
             bc_forcing_t = -(tTarget - theta) / (time_factor * dt);
         } else {
             // heat_flux mode: iterate to converge ustar and L
+            // 25 iterations is consistent with MOData::update_fluxes (max_iters=25)
             amrex::Real L = large_num;
             amrex::Real ustar = wspd * kappa / std::log(1.5_rt * dx[2] / z0);
             for (int iter = 0; iter < 25; ++iter) {
