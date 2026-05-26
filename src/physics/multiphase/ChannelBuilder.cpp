@@ -241,6 +241,9 @@ ChannelBuilder::ChannelBuilder(CFDSim& sim)
                 pp1.get("top_width", dim0_s);
                 pp1.get("bottom_width", dim1_s);
                 pp1.get("height", dim2_s);
+                dim0_e = dim0_s;
+                dim1_e = dim1_s;
+                dim2_e = dim2_s;
             } else {
                 pp1.get("top_width_start", dim0_s);
                 pp1.get("bottom_width_start", dim1_s);
@@ -367,12 +370,18 @@ void ChannelBuilder::initialize_fields(int level, const amrex::Geometry& geom)
     const amrex::Real land_level = m_land_level;
     const amrex::Real water_level = m_water_level;
 
+    amrex::MultiFab* levelset_lev{nullptr};
     // Set all velocity to 0 for the sake of blanked cells
     velocity.setVal(0.0_rt);
     // Set density in single-phase case
     if (!multiphase) {
         m_repo.get_field("density").setVal(m_rho_init);
+    } else {
+        levelset_lev = &(m_repo.get_field("levelset")(level));
     }
+
+    const auto& phi_arrs =
+        multiphase ? levelset_lev->arrays() : amrex::MultiArray4<amrex::Real>();
 
     amrex::ParallelFor(
         blank_mfab, m_terrain_blank.num_grow(),
@@ -518,9 +527,11 @@ void ChannelBuilder::initialize_fields(int level, const amrex::Geometry& geom)
             }
 
             // Do adjustments for multiphase case
-            if (multiphase && z > land_level) {
+            if (multiphase) {
+                // Set levelset field so vof can be initialized
+                phi_arrs[nbx](i, j, k) = water_level - z;
                 // Above land level means unblanked
-                outside_channel = false;
+                outside_channel = (z > land_level) ? false : outside_channel;
             }
 
             blank_arrs[nbx](i, j, k) = static_cast<int>(outside_channel);
