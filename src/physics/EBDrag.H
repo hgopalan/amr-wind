@@ -44,8 +44,6 @@ private:
 
     //! Blanking field for terrain or buildings
     Field& m_eb_blank;
-    //! Terrain drag force term
-    Field& m_eb_drag;
 };
 } // namespace kynema_sgf::ebdrag
 

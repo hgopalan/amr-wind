@@ -27,13 +27,10 @@ EBDrag::EBDrag(CFDSim& sim)
     , m_repo(sim.repo())
     , m_mesh(sim.mesh())
     , m_eb_blank(sim.repo().declare_field("eb_blank", 1, 1, 1))
-    , m_eb_drag(sim.repo().declare_field("eb_drag", 1, 1, 1))
 {
     amrex::ParmParse pp("ebdrag");
-    m_sim.io_manager().register_output_var("eb_drag");
     m_sim.io_manager().register_output_var("eb_blank");
     m_eb_blank.setVal(0.0);
-    m_eb_drag.setVal(0.0);
     amrex::ParmParse pp_eb("eb2");
     std::string geom;
     pp_eb.query("geom_type", geom);
@@ -45,18 +42,13 @@ void EBDrag::initialize_fields(int /*level*/, const amrex::Geometry& /*geom*/)
 {}
 
 void EBDrag::initialize_eb_fields(
-    int level, const amrex::Geometry& geom, const amrex::MultiFab& vfrac_mf)
+    int level, const amrex::Geometry& /*geom*/, const amrex::MultiFab& vfrac_mf)
 {
 
     BL_PROFILE("kynema-sgf::" + this->identifier() + "::initialize_fields");
-    // const auto& dx = geom.CellSizeArray();
-    // const auto& prob_lo = geom.ProbLoArray();
-    // const auto& prob_hi = geom.ProbHiArray();
     auto& blanking = m_eb_blank(level);
-    auto& drag = m_eb_drag(level);
     const auto vfrac = vfrac_mf.arrays();
     auto levelBlanking = blanking.arrays();
-    // auto levelDrag = drag.arrays();
 
     amrex::ParallelFor(
         blanking, m_eb_blank.num_grow(),
