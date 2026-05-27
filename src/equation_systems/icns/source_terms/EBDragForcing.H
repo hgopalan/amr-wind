@@ -37,6 +37,7 @@ private:
     amrex::Real m_bc_forcing_time_factor{5.0_rt};
     amrex::Real m_drag_coefficient{10.0_rt};
     amrex::Real m_min_z{0.1_rt};
+    int m_drag_forcing{0};
     std::string m_wall_het_model{"none"};
     amrex::Real m_monin_obukhov_length{constants::LARGE_NUM};
     amrex::Real m_kappa{0.41_rt};

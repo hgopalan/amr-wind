@@ -80,6 +80,7 @@ void EBDragForcing::operator()(
     const amrex::Real kappa = m_kappa;
     const amrex::Real cd_max = 1000.0_rt;
     const amrex::Real z0 = 0.1_rt;
+    const int drag_forcing = m_drag_forcing;
 
     amrex::ParallelFor(
         src_term, amrex::IntVect(0), AMREX_SPACEDIM,
@@ -161,13 +162,13 @@ void EBDragForcing::operator()(
                 std::min(Cd / (m + kynema_sgf::constants::EPS), cd_max / dx[2]);
             src_arrs[nbx](i, j, k, 0) -=
                 (CdM * m * (ux1 - target_u) * blank[nbx](i, j, k) +
-                 bc_forcing_x * (1 - blank[nbx](i, j, k)));
+                 drag_forcing * bc_forcing_x * (1 - blank[nbx](i, j, k)));
             src_arrs[nbx](i, j, k, 1) -=
                 (CdM * m * (uy1 - target_v) * blank[nbx](i, j, k) +
-                 bc_forcing_y * (1 - blank[nbx](i, j, k)));
+                 drag_forcing * bc_forcing_y * (1 - blank[nbx](i, j, k)));
             src_arrs[nbx](i, j, k, 2) -=
                 (CdM * m * (uz1 - target_w) * blank[nbx](i, j, k) +
-                 bc_forcing_z * (1 - blank[nbx](i, j, k)));
+                 drag_forcing * bc_forcing_z * (1 - blank[nbx](i, j, k)));
         });
 }
 
