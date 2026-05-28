@@ -49,6 +49,13 @@ private:
     amrex::Gpu::DeviceVector<amrex::Real> m_idw_z;
     amrex::Gpu::DeviceVector<amrex::Real> m_idw_temp;
     int m_idw_num_points{0};
+
+    // Heat flux based soil temperature model parameters
+    bool m_use_heatflux_model{false};
+    amrex::Real m_surface_heatflux{0.0_rt}; // W/m^2
+    amrex::Real m_thermal_conductivity{
+        0.026_rt}; // W/(m·K) - typical for air at surface
+    amrex::Real m_boundary_layer_height{1.0_rt}; // meters
 };
 
 } // namespace kynema_sgf::pde::temperature
