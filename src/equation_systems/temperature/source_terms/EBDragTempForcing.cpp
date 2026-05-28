@@ -32,6 +32,43 @@ EBDragTempForcing::EBDragTempForcing(const CFDSim& sim)
 
     amrex::ParmParse pp_incflo("incflo");
     pp_incflo.queryarr("gravity", m_gravity);
+
+    // Parse IDW soil temperature model parameters
+    pp.query("use_idw_soil_temp_model", m_use_idw_model);
+    if (m_use_idw_model) {
+        amrex::Vector<amrex::Real> idw_x_host, idw_y_host, idw_z_host, idw_temp_host;
+        pp.getarr("idw_x", idw_x_host);
+        pp.getarr("idw_y", idw_y_host);
+        pp.getarr("idw_z", idw_z_host);
+        pp.getarr("idw_temp", idw_temp_host);
+
+        m_idw_num_points = static_cast<int>(idw_x_host.size());
+        
+        // Validate that all arrays have the same size
+        if ((idw_y_host.size() != m_idw_num_points) ||
+            (idw_z_host.size() != m_idw_num_points) ||
+            (idw_temp_host.size() != m_idw_num_points)) {
+            amrex::Abort("EBDragTempForcing: idw_x, idw_y, idw_z, and idw_temp must have the same length");
+        }
+
+        // Copy to device vectors
+        m_idw_x.resize(m_idw_num_points);
+        m_idw_y.resize(m_idw_num_points);
+        m_idw_z.resize(m_idw_num_points);
+        m_idw_temp.resize(m_idw_num_points);
+
+        amrex::Gpu::copy(amrex::Gpu::hostToDevice, idw_x_host.begin(), 
+                         idw_x_host.end(), m_idw_x.begin());
+        amrex::Gpu::copy(amrex::Gpu::hostToDevice, idw_y_host.begin(), 
+                         idw_y_host.end(), m_idw_y.begin());
+        amrex::Gpu::copy(amrex::Gpu::hostToDevice, idw_z_host.begin(), 
+                         idw_z_host.end(), m_idw_z.begin());
+        amrex::Gpu::copy(amrex::Gpu::hostToDevice, idw_temp_host.begin(), 
+                         idw_temp_host.end(), m_idw_temp.begin());
+
+        amrex::Print() << "EBDragTempForcing: Using IDW soil temperature model with " 
+                       << m_idw_num_points << " points\n";
+    }
 }
 
 EBDragTempForcing::~EBDragTempForcing() = default;
@@ -52,6 +89,7 @@ void EBDragTempForcing::operator()(
         this->m_sim.repo().get_field("eb_blank")(lev).const_arrays();
 
     const auto& geom = m_mesh.Geom(lev);
+    const auto& problo = geom.ProbLoArray();
     const auto& dx = geom.CellSizeArray();
     const amrex::Real drag_coefficient = m_drag_coefficient;
     const auto& dt = m_time.delta_t();
@@ -59,23 +97,74 @@ void EBDragTempForcing::operator()(
     const amrex::Real Cd = drag_coefficient / dx[2];
     const amrex::Real kappa = m_kappa;
     const amrex::Real cd_max = 10.0_rt;
-    const amrex::Real T0 = m_soil_temperature;
+    const amrex::Real T0_const = m_soil_temperature;
     const amrex::Real z0 = 0.1_rt;
 
-    amrex::ParallelFor(
-        src_term, amrex::IntVect(0), AMREX_SPACEDIM,
-        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int /*n*/) {
-            const amrex::Real ux1 = vel[nbx](i, j, k, 0);
-            const amrex::Real uy1 = vel[nbx](i, j, k, 1);
-            const amrex::Real uz1 = vel[nbx](i, j, k, 2);
-            const amrex::Real theta = temperature[nbx](i, j, k, 0);
-            const amrex::Real m =
-                std::sqrt((ux1 * ux1) + (uy1 * uy1) + (uz1 * uz1));
-            const amrex::Real CdM =
-                std::min(Cd / (m + kynema_sgf::constants::EPS), cd_max / dx[2]);
-            src_arrs[nbx](i, j, k, 0) -=
-                (CdM * (theta - T0) * blank[nbx](i, j, k, 0));
-        });
+    // Use IDW model if enabled
+    if (m_use_idw_model) {
+        const amrex::Real* idw_x_ptr = m_idw_x.data();
+        const amrex::Real* idw_y_ptr = m_idw_y.data();
+        const amrex::Real* idw_z_ptr = m_idw_z.data();
+        const amrex::Real* idw_temp_ptr = m_idw_temp.data();
+        const int num_points = m_idw_num_points;
+
+        amrex::ParallelFor(
+            src_term, amrex::IntVect(0), AMREX_SPACEDIM,
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int /*n*/) {
+                const amrex::Real ux1 = vel[nbx](i, j, k, 0);
+                const amrex::Real uy1 = vel[nbx](i, j, k, 1);
+                const amrex::Real uz1 = vel[nbx](i, j, k, 2);
+                const amrex::Real theta = temperature[nbx](i, j, k, 0);
+                const amrex::Real m =
+                    std::sqrt((ux1 * ux1) + (uy1 * uy1) + (uz1 * uz1));
+                const amrex::Real CdM =
+                    std::min(Cd / (m + kynema_sgf::constants::EPS), cd_max / dx[2]);
+
+                // Compute cell center coordinates
+                const amrex::Real x = problo[0] + (i + 0.5_rt) * dx[0];
+                const amrex::Real y = problo[1] + (j + 0.5_rt) * dx[1];
+                const amrex::Real z = problo[2] + (k + 0.5_rt) * dx[2];
+
+                // Compute T0 using inverse distance weighting
+                amrex::Real sum_weights = 0.0_rt;
+                amrex::Real weighted_temp = 0.0_rt;
+
+                for (int ip = 0; ip < num_points; ++ip) {
+                    const amrex::Real dist_x = x - idw_x_ptr[ip];
+                    const amrex::Real dist_y = y - idw_y_ptr[ip];
+                    const amrex::Real dist_z = z - idw_z_ptr[ip];
+                    const amrex::Real dist = std::sqrt(dist_x * dist_x + 
+                                                       dist_y * dist_y + 
+                                                       dist_z * dist_z);
+                    
+                    // Avoid division by zero for points very close to IDW points
+                    const amrex::Real weight = 1.0_rt / (dist + kynema_sgf::constants::EPS);
+                    sum_weights += weight;
+                    weighted_temp += weight * idw_temp_ptr[ip];
+                }
+
+                const amrex::Real T0 = weighted_temp / sum_weights;
+
+                src_arrs[nbx](i, j, k, 0) -=
+                    (CdM * (theta - T0) * blank[nbx](i, j, k, 0));
+            });
+    } else {
+        // Use constant soil temperature model
+        amrex::ParallelFor(
+            src_term, amrex::IntVect(0), AMREX_SPACEDIM,
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int /*n*/) {
+                const amrex::Real ux1 = vel[nbx](i, j, k, 0);
+                const amrex::Real uy1 = vel[nbx](i, j, k, 1);
+                const amrex::Real uz1 = vel[nbx](i, j, k, 2);
+                const amrex::Real theta = temperature[nbx](i, j, k, 0);
+                const amrex::Real m =
+                    std::sqrt((ux1 * ux1) + (uy1 * uy1) + (uz1 * uz1));
+                const amrex::Real CdM =
+                    std::min(Cd / (m + kynema_sgf::constants::EPS), cd_max / dx[2]);
+                src_arrs[nbx](i, j, k, 0) -=
+                    (CdM * (theta - T0_const) * blank[nbx](i, j, k, 0));
+            });
+    }
 }
 
 } // namespace kynema_sgf::pde::temperature

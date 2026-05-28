@@ -41,6 +41,14 @@ private:
     amrex::Real m_soil_temperature{300};
     amrex::Real m_forcing_time_factor{5.0_rt};
     amrex::Vector<amrex::Real> m_gravity{0.0_rt, 0.0_rt, -9.81_rt};
+
+    // IDW soil temperature model parameters
+    bool m_use_idw_model{false};
+    amrex::Gpu::DeviceVector<amrex::Real> m_idw_x;
+    amrex::Gpu::DeviceVector<amrex::Real> m_idw_y;
+    amrex::Gpu::DeviceVector<amrex::Real> m_idw_z;
+    amrex::Gpu::DeviceVector<amrex::Real> m_idw_temp;
+    int m_idw_num_points{0};
 };
 
 } // namespace kynema_sgf::pde::temperature
