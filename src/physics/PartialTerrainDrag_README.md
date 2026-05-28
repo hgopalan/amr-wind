@@ -45,6 +45,15 @@ Use `PartialTerrainDrag` prefix in your input file:
 PartialTerrainDrag.terrain_file = "terrain.amrwind"
 PartialTerrainDrag.roughness_file = "terrain.roughness"
 
+# Blanking method selection
+# Options: "volume_fraction" (default) or "distance_function"
+PartialTerrainDrag.blanking_method = "volume_fraction"
+
+# Smoothing length for distance function approach (in grid cells)
+# Only used when blanking_method = "distance_function"
+# Controls the transition width at terrain boundary
+PartialTerrainDrag.smoothing_length = 1.0
+
 # Lateral damping parameters
 PartialTerrainDrag.damp_east_slope = 100.0
 PartialTerrainDrag.damp_east_full = 50.0
@@ -72,7 +81,15 @@ incflo.physics = ... PartialTerrainDrag ...
 
 ## Implementation Details
 
-### Volume Fraction Calculation
+### Blanking Methods
+
+The module supports two methods for calculating partial blanking:
+
+#### 1. Volume Fraction Method (Default)
+
+**Method**: `blanking_method = "volume_fraction"`
+
+This method calculates the geometric volume fraction of terrain within each cell.
 
 For each cell with center at height `z`:
 - Cell bottom: `z_bottom = z - dx[2]/2`
@@ -91,6 +108,37 @@ else {
     volume_fraction = 0.0;  // Fully above terrain
 }
 ```
+
+**Advantages:**
+- Geometrically accurate for coarse meshes
+- Sharp interface representation
+- No adjustable parameters
+
+#### 2. Distance Function Method
+
+**Method**: `blanking_method = "distance_function"`
+
+This method uses a smooth hyperbolic tangent function based on the distance from the cell center to the terrain surface.
+
+```cpp
+distance = z - terrainHt;
+volume_fraction = 0.5 * (1.0 - tanh(distance / smoothing_length));
+```
+
+**Parameters:**
+- `smoothing_length`: Controls transition width (in grid cells, default = 1.0)
+  - Smaller values → sharper transitions
+  - Larger values → smoother, wider transitions
+
+**Advantages:**
+- Smooth, continuous transitions
+- No grid alignment sensitivity
+- Adjustable transition width
+- Better for numerical stability in some solvers
+
+**When to use:**
+- **Volume Fraction**: When you need exact geometric representation, especially with coarse grids
+- **Distance Function**: When you prefer smooth transitions and better numerical properties
 
 ### Drag Calculation
 
@@ -116,8 +164,9 @@ else if (current_blanking > 0.0 && current_blanking < 1.0) {
 Possible improvements:
 1. Multi-point sampling within cells for better volume fraction estimates
 2. Sub-cell resolution averaging
-3. Distance function approach for smoother transitions
+3. ~~Distance function approach for smoother transitions~~ ✅ **Implemented as selectable option**
 4. Integration with immersed boundary forcing schemes
+5. Hybrid methods combining volume fraction and distance function approaches
 
 ## File Structure
 

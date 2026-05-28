@@ -55,6 +55,8 @@ PartialTerrainDrag::PartialTerrainDrag(CFDSim& sim)
     pp.query("horizontal_slope_end", m_horizontal_slope_end);
     pp.query("vertical_slope", m_vertical_slope);
     pp.query("vertical_full", m_vertical_full);
+    pp.query("blanking_method", m_blanking_method);
+    pp.query("smoothing_length", m_smoothing_length);
 }
 
 void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geom)
@@ -132,7 +134,11 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
     auto levelheight = terrain_height.arrays();
     auto levelDamping = damping.arrays();
 
-    // Calculate partial blanking using volume fraction approach
+    // Determine blanking method
+    const bool use_distance_function = (m_blanking_method == "distance_function");
+    const amrex::Real smooth_len = m_smoothing_length * dx[2];  // Convert to physical length
+    
+    // Calculate partial blanking using selected method
     amrex::ParallelFor(
         blanking, m_terrain_blank.num_grow(),
         [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
@@ -147,27 +153,40 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
             // Store terrain height for all cells
             levelheight[nbx](i, j, k, 0) = terrainHt;
             
-            // Calculate volume fraction based on cell position relative to terrain
-            // Cell boundaries
-            const amrex::Real z_bottom = prob_lo[2] + (k * dx[2]);
-            const amrex::Real z_top = prob_lo[2] + ((k + 1) * dx[2]);
-            
             amrex::Real volume_fraction = 0.0_rt;
             
-            // Fully below terrain
-            if (z_top <= terrainHt) {
-                volume_fraction = 1.0_rt;
-            }
-            // Partially intersecting terrain
-            else if (z_bottom < terrainHt && z_top > terrainHt) {
-                // Linear approximation: fraction of cell below terrain
-                volume_fraction = (terrainHt - z_bottom) / dx[2];
+            if (use_distance_function) {
+                // Distance function approach: smooth transition using tanh
+                // Distance from cell center to terrain surface
+                const amrex::Real dist = z - terrainHt;
+                
+                // Smooth blanking function: 0.5 * (1 - tanh(dist / smooth_len))
+                // Values: 1.0 below terrain, 0.5 at terrain, 0.0 above terrain
+                volume_fraction = 0.5_rt * (1.0_rt - std::tanh(dist / smooth_len));
+                
                 // Clamp to [0, 1]
                 volume_fraction = amrex::max(0.0_rt, amrex::min(1.0_rt, volume_fraction));
-            }
-            // Fully above terrain
-            else {
-                volume_fraction = 0.0_rt;
+            } else {
+                // Volume fraction approach: linear interpolation within cell
+                // Cell boundaries
+                const amrex::Real z_bottom = prob_lo[2] + (k * dx[2]);
+                const amrex::Real z_top = prob_lo[2] + ((k + 1) * dx[2]);
+                
+                // Fully below terrain
+                if (z_top <= terrainHt) {
+                    volume_fraction = 1.0_rt;
+                }
+                // Partially intersecting terrain
+                else if (z_bottom < terrainHt && z_top > terrainHt) {
+                    // Linear approximation: fraction of cell below terrain
+                    volume_fraction = (terrainHt - z_bottom) / dx[2];
+                    // Clamp to [0, 1]
+                    volume_fraction = amrex::max(0.0_rt, amrex::min(1.0_rt, volume_fraction));
+                }
+                // Fully above terrain
+                else {
+                    volume_fraction = 0.0_rt;
+                }
             }
             
             // Only blank cells above ground level
