@@ -65,19 +65,23 @@ void PartialDragForcing::operator()(
     auto const& vel =
         m_velocity.state(field_impl::dof_state(fstate))(lev).const_arrays();
 
-    const int is_partial = this->m_sim.repo().field_exists("partial_terrain_blank") ? 1 : 0;
+    const int is_partial =
+        this->m_sim.repo().field_exists("partial_terrain_blank") ? 1 : 0;
     if (is_partial == 0) {
-        amrex::Abort("Need partial terrain blanking variable to use this source term");
+        amrex::Abort(
+            "Need partial terrain blanking variable to use this source term");
     }
-    auto const& blank =
-        this->m_sim.repo().get_field("partial_terrain_blank")(lev).const_arrays();
+    auto const& blank = this->m_sim.repo()
+                            .get_field("partial_terrain_blank")(lev)
+                            .const_arrays();
 
     const int has_terrainz0 =
         this->m_sim.repo().field_exists("partial_terrainz0") ? 1 : 0;
-    auto const& terrainz0_arrs =
-        has_terrainz0 != 0
-            ? this->m_sim.repo().get_field("partial_terrainz0")(lev).const_arrays()
-            : amrex::MultiArray4<amrex::Real const>();
+    auto const& terrainz0_arrs = has_terrainz0 != 0
+                                     ? this->m_sim.repo()
+                                           .get_field("partial_terrainz0")(lev)
+                                           .const_arrays()
+                                     : amrex::MultiArray4<amrex::Real const>();
 
     const auto& geom = m_mesh.Geom(lev);
     const auto& dx = geom.CellSizeArray();
@@ -101,13 +105,15 @@ void PartialDragForcing::operator()(
             amrex::Real bc_forcing_y = 0.0_rt;
             amrex::Real bc_forcing_z = 0.0_rt;
 
-            auto fluid_frac = [=] (int ii, int jj, int kk) {
+            auto fluid_frac = [=](int ii, int jj, int kk) {
                 return 1.0_rt - blank[nbx](ii, jj, kk, 0);
             };
 
-            const amrex::Real z0 = has_terrainz0 != 0
-                                       ? amrex::max<amrex::Real>(terrainz0_arrs[nbx](i, j, k), 1.0e-4_rt)
-                                       : 0.1_rt;
+            const amrex::Real z0 =
+                has_terrainz0 != 0
+                    ? amrex::max<amrex::Real>(
+                          terrainz0_arrs[nbx](i, j, k), 1.0e-4_rt)
+                    : 0.1_rt;
 
             //! West
             amrex::GpuArray<amrex::Real, 2> tmp_wind_target =
