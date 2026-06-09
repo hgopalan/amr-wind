@@ -9,7 +9,6 @@ target_sources(${kynema_sgf_lib_name}
       io_utils.cpp
       IOManager.cpp
       FieldPlaneAveraging.cpp
-      FieldPlaneAveragingFine.cpp
       SecondMomentAveraging.cpp
       ThirdMomentAveraging.cpp
 
@@ -24,6 +23,7 @@ add_subdirectory(tagging)
 add_subdirectory(sampling)
 add_subdirectory(subvolume)
 add_subdirectory(averaging)
+add_subdirectory(output_quantities)
 
 if (KYNEMA_SGF_ENABLE_NETCDF)
   add_subdirectory(ncutils)
