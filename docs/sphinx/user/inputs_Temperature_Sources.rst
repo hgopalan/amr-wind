@@ -117,7 +117,7 @@ recommended for use with RANS models.
 
    **type:** Real, optional, default = 0.0
 
-   Specifies the surface heat flux in W/m\ :sup:`2`.
+   Specifies the surface heat flux in W/m\ :sup:`2` \.
 
 .. input_param:: EBDragTempForcing.thermal_conductivity
 
