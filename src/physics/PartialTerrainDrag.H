@@ -65,23 +65,23 @@ private:
     amrex::Real m_horizontal_slope_end{1e30};
     amrex::Real m_vertical_slope{0.0};
     amrex::Real m_vertical_full{1e30};
-    
+
     //! Lateral Damping - West (-X)
     amrex::Real m_damp_west_slope{0.0};
     amrex::Real m_damp_west_full{0.0};
-    
+
     //! Lateral Damping - South (-Y)
     amrex::Real m_damp_south_slope{0.0};
     amrex::Real m_damp_south_full{0.0};
-    
+
     //! Lateral Damping - North (Y)
     amrex::Real m_damp_north_slope{0.0};
     amrex::Real m_damp_north_full{0.0};
-    
+
     //! Blanking method selection
     //! Options: "volume_fraction" (default) or "distance_function"
     std::string m_blanking_method{"volume_fraction"};
-    
+
     //! Smoothing length for distance function approach (in grid cells)
     //! Controls the transition width at terrain boundary
     amrex::Real m_smoothing_length{1.0};

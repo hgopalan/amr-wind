@@ -19,11 +19,14 @@ PartialTerrainDrag::PartialTerrainDrag(CFDSim& sim)
     : m_sim(sim)
     , m_repo(sim.repo())
     , m_mesh(sim.mesh())
-    , m_terrain_blank(sim.repo().declare_field("partial_terrain_blank", 1, 1, 1))
+    , m_terrain_blank(
+          sim.repo().declare_field("partial_terrain_blank", 1, 1, 1))
     , m_terrain_drag(sim.repo().declare_field("partial_terrain_drag", 1, 1, 1))
     , m_terrainz0(sim.repo().declare_field("partial_terrainz0", 1, 1, 1))
-    , m_terrain_height(sim.repo().declare_field("partial_terrain_height", 1, 1, 1))
-    , m_terrain_damping(sim.repo().declare_field("partial_terrain_damping", 1, 1, 1))
+    , m_terrain_height(
+          sim.repo().declare_field("partial_terrain_height", 1, 1, 1))
+    , m_terrain_damping(
+          sim.repo().declare_field("partial_terrain_damping", 1, 1, 1))
 {
     amrex::ParmParse pp(identifier());
     pp.query("terrain_file", m_terrain_file);
@@ -41,7 +44,7 @@ PartialTerrainDrag::PartialTerrainDrag(CFDSim& sim)
     m_terrainz0.set_default_fillpatch_bc(m_sim.time());
     m_terrain_height.set_default_fillpatch_bc(m_sim.time());
     m_terrain_damping.set_default_fillpatch_bc(m_sim.time());
-    
+
     pp.query("damp_east_slope", m_damp_east_slope);
     pp.query("damp_east_full", m_damp_east_full);
     pp.query("damp_west_slope", m_damp_west_slope);
@@ -59,7 +62,8 @@ PartialTerrainDrag::PartialTerrainDrag(CFDSim& sim)
     pp.query("smoothing_length", m_smoothing_length);
 }
 
-void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geom)
+void PartialTerrainDrag::initialize_fields(
+    int level, const amrex::Geometry& geom)
 {
     BL_PROFILE("kynema-sgf::" + this->identifier() + "::initialize_fields");
 
@@ -87,11 +91,11 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
     auto& terrain_height = m_terrain_height(level);
     auto& drag = m_terrain_drag(level);
     auto& damping = m_terrain_damping(level);
-    
+
     const auto xterrain_size = xterrain.size();
     const auto yterrain_size = yterrain.size();
     const auto zterrain_size = zterrain.size();
-    
+
     amrex::Gpu::DeviceVector<amrex::Real> d_xterrain(xterrain_size);
     amrex::Gpu::DeviceVector<amrex::Real> d_yterrain(yterrain_size);
     amrex::Gpu::DeviceVector<amrex::Real> d_zterrain(zterrain_size);
@@ -107,7 +111,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
     const auto* xterrain_ptr = d_xterrain.data();
     const auto* yterrain_ptr = d_yterrain.data();
     const auto* zterrain_ptr = d_zterrain.data();
-    
+
     // Copy Roughness to gpu
     const auto xrough_size = xrough.size();
     const auto yrough_size = yrough.size();
@@ -127,7 +131,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
     const auto* xrough_ptr = d_xrough.data();
     const auto* yrough_ptr = d_yrough.data();
     const auto* z0rough_ptr = d_z0rough.data();
-    
+
     auto levelBlanking = blanking.arrays();
     auto levelDrag = drag.arrays();
     auto levelz0 = terrainz0.arrays();
@@ -135,9 +139,11 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
     auto levelDamping = damping.arrays();
 
     // Determine blanking method
-    const bool use_distance_function = (m_blanking_method == "distance_function");
-    const amrex::Real smooth_len = m_smoothing_length * dx[2];  // Convert to physical length
-    
+    const bool use_distance_function =
+        (m_blanking_method == "distance_function");
+    const amrex::Real smooth_len =
+        m_smoothing_length * dx[2]; // Convert to physical length
+
     // Calculate partial blanking using selected method
     amrex::ParallelFor(
         blanking, m_terrain_blank.num_grow(),
@@ -145,33 +151,35 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
             const amrex::Real x = prob_lo[0] + ((i + 0.5_rt) * dx[0]);
             const amrex::Real y = prob_lo[1] + ((j + 0.5_rt) * dx[1]);
             const amrex::Real z = prob_lo[2] + ((k + 0.5_rt) * dx[2]);
-            
+
             const amrex::Real terrainHt = interp::bilinear(
                 xterrain_ptr, xterrain_ptr + xterrain_size, yterrain_ptr,
                 yterrain_ptr + yterrain_size, zterrain_ptr, x, y);
-            
+
             // Store terrain height for all cells
             levelheight[nbx](i, j, k, 0) = terrainHt;
-            
+
             amrex::Real volume_fraction = 0.0_rt;
-            
+
             if (use_distance_function) {
                 // Distance function approach: smooth transition using tanh
                 // Distance from cell center to terrain surface
                 const amrex::Real dist = z - terrainHt;
-                
+
                 // Smooth blanking function: 0.5 * (1 - tanh(dist / smooth_len))
                 // Values: 1.0 below terrain, 0.5 at terrain, 0.0 above terrain
-                volume_fraction = 0.5_rt * (1.0_rt - std::tanh(dist / smooth_len));
-                
+                volume_fraction =
+                    0.5_rt * (1.0_rt - std::tanh(dist / smooth_len));
+
                 // Clamp to [0, 1]
-                volume_fraction = amrex::max(0.0_rt, amrex::min(1.0_rt, volume_fraction));
+                volume_fraction =
+                    amrex::max(0.0_rt, amrex::min(1.0_rt, volume_fraction));
             } else {
                 // Volume fraction approach: linear interpolation within cell
                 // Cell boundaries
                 const amrex::Real z_bottom = prob_lo[2] + (k * dx[2]);
                 const amrex::Real z_top = prob_lo[2] + ((k + 1) * dx[2]);
-                
+
                 // Fully below terrain
                 if (z_top <= terrainHt) {
                     volume_fraction = 1.0_rt;
@@ -181,14 +189,15 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
                     // Linear approximation: fraction of cell below terrain
                     volume_fraction = (terrainHt - z_bottom) / dx[2];
                     // Clamp to [0, 1]
-                    volume_fraction = amrex::max(0.0_rt, amrex::min(1.0_rt, volume_fraction));
+                    volume_fraction =
+                        amrex::max(0.0_rt, amrex::min(1.0_rt, volume_fraction));
                 }
                 // Fully above terrain
                 else {
                     volume_fraction = 0.0_rt;
                 }
             }
-            
+
             // Only blank cells above ground level
             if (z > prob_lo[2]) {
                 levelBlanking[nbx](i, j, k, 0) = volume_fraction;
@@ -206,17 +215,18 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
             levelz0[nbx](i, j, k, 0) = roughz0;
         });
     amrex::Gpu::streamSynchronize();
-    
+
     // Calculate drag field: cells just above blanked cells get drag force
     // For partial blanking, we use a smooth transition
     amrex::ParallelFor(
         blanking, [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
             const amrex::Real current_blank = levelBlanking[nbx](i, j, k, 0);
             amrex::Real drag_fraction = 0.0_rt;
-            
+
             // If current cell has low blanking and cell below has high blanking
             if (k > 0) {
-                const amrex::Real below_blank = levelBlanking[nbx](i, j, k - 1, 0);
+                const amrex::Real below_blank =
+                    levelBlanking[nbx](i, j, k - 1, 0);
                 // Transition zone: where blanking changes from high to low
                 if (current_blank < 0.5_rt && below_blank > 0.5_rt) {
                     // Full drag at interface
@@ -226,7 +236,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
                     drag_fraction = 1.0_rt - current_blank;
                 }
             }
-            
+
             levelDrag[nbx](i, j, k, 0) = drag_fraction;
         });
     amrex::Gpu::streamSynchronize();
@@ -252,7 +262,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
     const amrex::Real damping_south_start =
         prob_lo[1] + (m_damp_south_full + m_damp_south_slope);
     const amrex::Real damping_south_end = prob_lo[1] + m_damp_south_full;
-    
+
     amrex::ParallelFor(
         damping, [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept {
             amrex::Real horizontal_coeff_east = 0.0_rt;
@@ -263,7 +273,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
             const amrex::Real x = prob_lo[0] + (i + 0.5_rt) * dx[0];
             const amrex::Real y = prob_lo[1] + (j + 0.5_rt) * dx[1];
             const amrex::Real z = prob_lo[2] + (k + 0.5_rt) * dx[2];
-            
+
             // East damping
             if (x < damping_east_start) {
                 horizontal_coeff_east = 0.0_rt;
@@ -276,7 +286,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
                     (damping_east_end - damping_east_start));
                 horizontal_coeff_east = term * term;
             }
-            
+
             // West damping
             if (x > damping_west_start) {
                 horizontal_coeff_west = 0.0_rt;
@@ -289,7 +299,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
                     (damping_west_end - damping_west_start));
                 horizontal_coeff_west = term * term;
             }
-            
+
             // North damping
             if (y < damping_north_start) {
                 horizontal_coeff_north = 0.0_rt;
@@ -302,7 +312,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
                     (damping_north_end - damping_north_start));
                 horizontal_coeff_north = term * term;
             }
-            
+
             // South damping
             if (y > damping_south_start) {
                 horizontal_coeff_south = 0.0_rt;
@@ -315,7 +325,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
                     (damping_south_end - damping_south_start));
                 horizontal_coeff_south = term * term;
             }
-            
+
             // Horizontal vertical coefficient
             if (z <= horizontal_abl_height) {
                 vertical_coeff = 0.0_rt;
@@ -328,12 +338,12 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
                     (z_sloped - horizontal_abl_height));
                 vertical_coeff = term * term;
             }
-            
+
             levelDamping[nbx](i, j, k, 0) =
                 vertical_coeff *
                 (horizontal_coeff_east + horizontal_coeff_north +
                  horizontal_coeff_west + horizontal_coeff_south);
-            
+
             // Add the full vertical damping
             if (z <= vertical_slope) {
                 vertical_coeff = 0.0_rt;
@@ -346,7 +356,7 @@ void PartialTerrainDrag::initialize_fields(int level, const amrex::Geometry& geo
                     (vertical_full - vertical_slope + 1e-15_rt));
                 vertical_coeff = term * term;
             }
-            
+
             levelDamping[nbx](i, j, k, 0) =
                 amrex::min(
                     vertical_coeff + levelDamping[nbx](i, j, k, 0), 1.0_rt) /

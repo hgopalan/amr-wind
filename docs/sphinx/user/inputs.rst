@@ -56,6 +56,7 @@ Section                 Description
 ``time``                Simulation time controls
 ``io``                  Input/Output controls
 ``incflo``              CFD algorithm and physics controls
+``PartialTerrainDrag``  Partial terrain drag physics controls
 ``transport``           Transport equation controls
 ``turbulence``          Turbulence model controls
 ``ABL``                 Atmospheric boundary layer (ABL) controls
@@ -93,6 +94,7 @@ documentation provided here might not work with older releases.
    inputs_time.rst
    inputs_io.rst
    inputs_incflo.rst
+   inputs_PartialTerrainDrag.rst
    inputs_transport.rst
    inputs_turbulence.rst
    inputs_Momentum_Sources.rst
