@@ -81,7 +81,6 @@ void Kosovic<Transport>::update_turbulent_viscosity(
     const amrex::Real Cs_sqr = this->m_Cs * this->m_Cs;
     const amrex::Real monin_obukhov_length = m_monin_obukhov_length;
     const amrex::Real kappa = m_kappa;
-    const amrex::Real surface_roughness_z0 = m_surface_roughness_z0;
     const amrex::Real z0_min = 1.0e-4_rt;
     const amrex::Real dMdz_min = 0.01_rt;
     const amrex::Real locLESTurnOff = m_LESTurnOff;
