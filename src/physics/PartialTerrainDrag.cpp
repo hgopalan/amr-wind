@@ -138,6 +138,9 @@ void PartialTerrainDrag::initialize_fields(
     auto levelheight = terrain_height.arrays();
     auto levelDamping = damping.arrays();
 
+    const auto dlo = geom.Domain().smallEnd();
+    const auto dhi = geom.Domain().bigEnd();
+
     // Determine blanking method
     const bool use_distance_function =
         (m_blanking_method == "distance_function");
@@ -216,25 +219,40 @@ void PartialTerrainDrag::initialize_fields(
         });
     amrex::Gpu::streamSynchronize();
 
-    // Calculate drag field: cells just above blanked cells get drag force
+    // Calculate drag field: cells just above or adjacent to blanked cells get drag force
     // For partial blanking, we use a smooth transition
     amrex::ParallelFor(
         blanking, [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
             const amrex::Real current_blank = levelBlanking[nbx](i, j, k, 0);
             amrex::Real drag_fraction = 0.0_rt;
 
-            // If current cell has low blanking and cell below has high blanking
-            if (k > 0) {
-                const amrex::Real below_blank =
-                    levelBlanking[nbx](i, j, k - 1, 0);
-                // Transition zone: where blanking changes from high to low
-                if (current_blank < 0.5_rt && below_blank > 0.5_rt) {
-                    // Full drag at interface
-                    drag_fraction = 1.0_rt;
-                } else if (current_blank > 0.0_rt && current_blank < 1.0_rt) {
-                    // Partial drag for partially blanked cells
-                    drag_fraction = 1.0_rt - current_blank;
-                }
+            amrex::Real max_neighbor_blank = 0.0_rt;
+            if (k > dlo[2]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j, k - 1, 0));
+            }
+            if (k < dhi[2]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j, k + 1, 0));
+            }
+            if (i > dlo[0]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i - 1, j, k, 0));
+            }
+            if (i < dhi[0]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i + 1, j, k, 0));
+            }
+            if (j > dlo[1]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j - 1, k, 0));
+            }
+            if (j < dhi[1]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j + 1, k, 0));
+            }
+
+            // If current cell has low blanking and any neighbor has high blanking
+            if (current_blank < 0.5_rt && max_neighbor_blank > 0.5_rt) {
+                // Full drag at interface
+                drag_fraction = 1.0_rt;
+            } else if (current_blank > 0.0_rt && current_blank < 1.0_rt) {
+                // Partial drag for partially blanked cells
+                drag_fraction = 1.0_rt - current_blank;
             }
 
             levelDrag[nbx](i, j, k, 0) = drag_fraction;
