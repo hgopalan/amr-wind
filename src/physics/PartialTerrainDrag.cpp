@@ -138,6 +138,9 @@ void PartialTerrainDrag::initialize_fields(
     auto levelheight = terrain_height.arrays();
     auto levelDamping = damping.arrays();
 
+    const auto dlo = geom.Domain().smallEnd();
+    const auto dhi = geom.Domain().bigEnd();
+
     // Determine blanking method
     const bool use_distance_function =
         (m_blanking_method == "distance_function");
@@ -224,14 +227,24 @@ void PartialTerrainDrag::initialize_fields(
             amrex::Real drag_fraction = 0.0_rt;
 
             amrex::Real max_neighbor_blank = 0.0_rt;
-            if (k > 0) {
+            if (k > dlo[2]) {
                 max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j, k - 1, 0));
             }
-            max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j, k + 1, 0));
-            max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i - 1, j, k, 0));
-            max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i + 1, j, k, 0));
-            max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j - 1, k, 0));
-            max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j + 1, k, 0));
+            if (k < dhi[2]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j, k + 1, 0));
+            }
+            if (i > dlo[0]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i - 1, j, k, 0));
+            }
+            if (i < dhi[0]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i + 1, j, k, 0));
+            }
+            if (j > dlo[1]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j - 1, k, 0));
+            }
+            if (j < dhi[1]) {
+                max_neighbor_blank = amrex::max(max_neighbor_blank, levelBlanking[nbx](i, j + 1, k, 0));
+            }
 
             // If current cell has low blanking and any neighbor has high blanking
             if (current_blank < 0.5_rt && max_neighbor_blank > 0.5_rt) {

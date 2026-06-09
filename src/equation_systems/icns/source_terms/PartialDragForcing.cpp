@@ -112,7 +112,7 @@ void PartialDragForcing::operator()(
             //! West
             amrex::GpuArray<amrex::Real, 2> tmp_wind_target =
                 compute_target_wind(
-                    vel[nbx](i - 1, j, k, 2), vel[nbx](i - 1, j, k, 1), dx[0],
+                    vel[nbx](i + 1, j, k, 2), vel[nbx](i + 1, j, k, 1), dx[0],
                     z0, kappa);
             bc_forcing_z += -(tmp_wind_target[0] - uz1) / time_factor *
                             fluid_frac(i + 1, j, k);
@@ -120,7 +120,7 @@ void PartialDragForcing::operator()(
                             fluid_frac(i + 1, j, k);
             //! East
             tmp_wind_target = compute_target_wind(
-                vel[nbx](i + 1, j, k, 2), vel[nbx](i + 1, j, k, 1), dx[0], z0,
+                vel[nbx](i - 1, j, k, 2), vel[nbx](i - 1, j, k, 1), dx[0], z0,
                 kappa);
             bc_forcing_z += -(tmp_wind_target[0] - uz1) / time_factor *
                             fluid_frac(i - 1, j, k);
@@ -128,7 +128,7 @@ void PartialDragForcing::operator()(
                             fluid_frac(i - 1, j, k);
             //! South
             tmp_wind_target = compute_target_wind(
-                vel[nbx](i, j - 1, k, 2), vel[nbx](i, j - 1, k, 0), dx[1], z0,
+                vel[nbx](i, j + 1, k, 2), vel[nbx](i, j + 1, k, 0), dx[1], z0,
                 kappa);
             bc_forcing_z += -(tmp_wind_target[0] - uz1) / time_factor *
                             fluid_frac(i, j + 1, k);
@@ -136,7 +136,7 @@ void PartialDragForcing::operator()(
                             fluid_frac(i, j + 1, k);
             //! North
             tmp_wind_target = compute_target_wind(
-                vel[nbx](i, j + 1, k, 2), vel[nbx](i, j + 1, k, 0), dx[1], z0,
+                vel[nbx](i, j - 1, k, 2), vel[nbx](i, j - 1, k, 0), dx[1], z0,
                 kappa);
             bc_forcing_z += -(tmp_wind_target[0] - uz1) / time_factor *
                             fluid_frac(i, j - 1, k);
@@ -146,18 +146,18 @@ void PartialDragForcing::operator()(
             tmp_wind_target = compute_target_wind(
                 vel[nbx](i, j, k + 1, 0), vel[nbx](i, j, k + 1, 1), dx[2], z0,
                 kappa);
-            bc_forcing_x += -(tmp_wind_target[0] - uz1) / time_factor *
-                            fluid_frac(i, j, k - 1);
+            bc_forcing_x += -(tmp_wind_target[0] - ux1) / time_factor *
+                            fluid_frac(i, j, k + 1);
             bc_forcing_y += -(tmp_wind_target[1] - uy1) / time_factor *
-                            fluid_frac(i, j, k - 1);
+                            fluid_frac(i, j, k + 1);
             //! Bottom
             tmp_wind_target = compute_target_wind(
                 vel[nbx](i, j, k - 1, 0), vel[nbx](i, j, k - 1, 1), dx[2], z0,
                 kappa);
-            bc_forcing_x += -(tmp_wind_target[0] - uz1) / time_factor *
-                            fluid_frac(i, j, k + 1);
+            bc_forcing_x += -(tmp_wind_target[0] - ux1) / time_factor *
+                            fluid_frac(i, j, k - 1);
             bc_forcing_y += -(tmp_wind_target[1] - uy1) / time_factor *
-                            fluid_frac(i, j, k + 1);
+                            fluid_frac(i, j, k - 1);
 
             const amrex::Real sum_blank_x =
                 fluid_frac(i, j - 1, k) + fluid_frac(i, j + 1, k) +
