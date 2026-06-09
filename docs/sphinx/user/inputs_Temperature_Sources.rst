@@ -105,7 +105,7 @@ recommended for use with RANS models.
 
    **type:** List of Reals, mandatory if IDW model is enabled
 
-   The reference soil temperature values corresponding to each coordinates set.
+   The reference soil temperature values corresponding to each coordinate set.
 
 .. input_param:: EBDragTempForcing.use_heatflux_model
 
