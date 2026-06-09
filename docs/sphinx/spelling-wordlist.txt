@@ -24,9 +24,13 @@ Neumann
 Nicolson
 Obukhov
 Poiseuille
+PartialTerrainDrag
+partialterraindrag
 Raphson
 SGF
 Shubin
+TerrainDrag
+terraindrag
 viscosities
 Zalesak
 ABL
