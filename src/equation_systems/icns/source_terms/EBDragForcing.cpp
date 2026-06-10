@@ -23,8 +23,8 @@ compute_target_wind(
     const amrex::Real kappa)
 {
     const amrex::Real wspd = std::sqrt(ux * ux + uy * uy);
-    const amrex::Real ustar = wspd * kappa / std::log(1.5 * dx / z0);
-    const amrex::Real wspd_target = ustar / kappa * std::log(0.5 * dx / z0);
+    const amrex::Real ustar = wspd * kappa / std::log(1.5_rt * dx / z0);
+    const amrex::Real wspd_target = ustar / kappa * std::log(0.5_rt * dx / z0);
     const amrex::Real wspd_target_x =
         wspd_target * ux /
         (kynema_sgf::constants::EPS + std::sqrt(ux * ux + uy * uy));

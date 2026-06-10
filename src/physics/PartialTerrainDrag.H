@@ -58,25 +58,25 @@ private:
     Field& m_terrain_damping;
 
     //! Lateral Damping - X (East)
-    amrex::Real m_damp_east_slope{0.0};
-    amrex::Real m_damp_east_full{0.0};
-    amrex::Real m_horizontal_tau{20.0};
-    amrex::Real m_horizontal_abl_height{1e15};
-    amrex::Real m_horizontal_slope_end{1e30};
-    amrex::Real m_vertical_slope{0.0};
-    amrex::Real m_vertical_full{1e30};
+    amrex::Real m_damp_east_slope{0.0_rt};
+    amrex::Real m_damp_east_full{0.0_rt};
+    amrex::Real m_horizontal_tau{20.0_rt};
+    amrex::Real m_horizontal_abl_height{1e15_rt};
+    amrex::Real m_horizontal_slope_end{1e30_rt};
+    amrex::Real m_vertical_slope{0.0_rt};
+    amrex::Real m_vertical_full{1e30_rt};
 
     //! Lateral Damping - West (-X)
-    amrex::Real m_damp_west_slope{0.0};
-    amrex::Real m_damp_west_full{0.0};
+    amrex::Real m_damp_west_slope{0.0_rt};
+    amrex::Real m_damp_west_full{0.0_rt};
 
     //! Lateral Damping - South (-Y)
-    amrex::Real m_damp_south_slope{0.0};
-    amrex::Real m_damp_south_full{0.0};
+    amrex::Real m_damp_south_slope{0.0_rt};
+    amrex::Real m_damp_south_full{0.0_rt};
 
     //! Lateral Damping - North (Y)
-    amrex::Real m_damp_north_slope{0.0};
-    amrex::Real m_damp_north_full{0.0};
+    amrex::Real m_damp_north_slope{0.0_rt};
+    amrex::Real m_damp_north_full{0.0_rt};
 
     //! Blanking method selection
     //! Options: "volume_fraction" (default) or "distance_function"
@@ -84,7 +84,7 @@ private:
 
     //! Smoothing length for distance function approach (in grid cells)
     //! Controls the transition width at terrain boundary
-    amrex::Real m_smoothing_length{1.0};
+    amrex::Real m_smoothing_length{1.0_rt};
 };
 
 } // namespace kynema_sgf::partialterraindrag
