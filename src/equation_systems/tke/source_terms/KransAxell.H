@@ -28,6 +28,29 @@ public:
     void operator()(
         int lev, FieldState fstate, amrex::MultiFab& src_term) const override;
 
+    /** Cap the shear production where the pressure-gradient sensor of
+     *  KLAxellSeparation fires
+     *
+     *  Removes g max(0, P - C_P eps) from the source, with the ramp gate g of
+     *  the sensor and C_P the production cap ratio of the model.
+     *
+     *  \param lev AMR level
+     *  \param src_term Source term to modify
+     */
+    void production_cap(int lev, amrex::MultiFab& src_term) const;
+
+    /** Cap the shear production with the time-relaxed gate of
+     *  KLAxellSeparation
+     *
+     *  Same cap as production_cap, with the gate taken from the field
+     *  separation_gate, used when KLAxellSeparation_coeffs.gate_relaxation_time
+     *  is positive.
+     *
+     *  \param lev AMR level
+     *  \param src_term Source term to modify
+     */
+    void production_cap_relaxed(int lev, amrex::MultiFab& src_term) const;
+
 private:
     Field& m_turb_lscale;
     Field& m_shear_prod;
@@ -70,6 +93,12 @@ private:
     amrex::Real m_monin_obukhov_length{constants::LARGE_NUM};
     amrex::Real m_gamma_m{5.0_rt};
     amrex::Real m_beta_m{16.0_rt};
+
+    //! Cap the shear production where the sensor of KLAxellSeparation fires
+    bool m_production_cap{false};
+
+    //! KLAxellSeparation stores a time-relaxed gate (separation_gate)
+    bool m_relaxed_gate{false};
 };
 
 } // namespace kynema_sgf::pde::tke

@@ -179,6 +179,9 @@ protected:
     //! Strength c_s of the realizable Cmu limiter
     amrex::Real m_realizable_cmu_strength{1.0_rt};
 
+    //! Ratio C_P of the production cap applied by the TKE source
+    amrex::Real m_production_cap_ratio{10.0_rt};
+
     //! Strain rate magnitude, kept for the realizable Cmu limiter
     std::unique_ptr<ScratchField> m_strain;
 

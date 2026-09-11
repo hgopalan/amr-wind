@@ -108,6 +108,28 @@ This section is for setting turbulence model parameters
    a smooth hill; 10 s removed them with the same effect on the separation
    (30 s gave the same result), so a value of about 10 s is suggested.
 
+.. input_param:: KLAxellSeparation.production_cap
+
+   **type:** Boolean, optional, default = false
+
+   Caps the shear production :math:`P` of turbulent kinetic energy in the
+   "KLAxellSeparation" model where the pressure-gradient sensor fires. The
+   production above :math:`C_P \varepsilon` is removed with the same gate
+   :math:`g` as ``KLAxellSeparation.realizable_cmu``, so the shear production
+   in the source becomes :math:`P - g \max(0, P - C_P \varepsilon)`. This limits
+   the build-up of turbulent kinetic energy at stagnation points, such as the
+   windward foot of a hill. Elsewhere the source is unchanged. With a positive
+   ``KLAxellSeparation_coeffs.gate_relaxation_time`` the cap uses the stored,
+   time-relaxed gate, the same one as the realizable :math:`C_\mu` limiter.
+   Requires ``KLAxellSeparation.pressure_gradient_sensor = true``.
+
+.. input_param:: KLAxellSeparation_coeffs.production_cap_ratio
+
+   **type:** Real, optional, default = 10.0
+
+   Ratio :math:`C_P` of the production cap of the "KLAxellSeparation" model;
+   must be positive.
+
    
 .. input_param:: Smagorinsky_coeffs.Cs
 

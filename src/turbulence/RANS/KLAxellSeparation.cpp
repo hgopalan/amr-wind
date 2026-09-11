@@ -30,6 +30,14 @@ KLAxellSeparation<Transport>::KLAxellSeparation(CFDSim& sim)
             "KLAxellSeparation.realizable_cmu requires "
             "KLAxellSeparation.pressure_gradient_sensor = true");
     }
+    // The production cap is applied by the TKE source (KransAxell)
+    bool use_production_cap = false;
+    pp.query("production_cap", use_production_cap);
+    if (use_production_cap && !m_use_pressure_gradient_sensor) {
+        amrex::Abort(
+            "KLAxellSeparation.production_cap requires "
+            "KLAxellSeparation.pressure_gradient_sensor = true");
+    }
     if (m_use_pressure_gradient_sensor) {
         m_pressure_gradient_sensor =
             &sim.repo().declare_field("pressure_gradient_sensor", 1);
@@ -69,9 +77,14 @@ void KLAxellSeparation<Transport>::parse_model_coeffs()
     pp.query("sensor_velocity_weight", m_sensor_velocity_weight);
     pp.query("sensor_threshold", m_sensor_threshold);
     pp.query("realizable_cmu_strength", m_realizable_cmu_strength);
+    pp.query("production_cap_ratio", m_production_cap_ratio);
     if (m_sensor_threshold <= 0.0_rt) {
         amrex::Abort(
             "KLAxellSeparation_coeffs.sensor_threshold must be positive");
+    }
+    if (m_production_cap_ratio <= 0.0_rt) {
+        amrex::Abort(
+            "KLAxellSeparation_coeffs.production_cap_ratio must be positive");
     }
 }
 
@@ -84,6 +97,7 @@ KLAxellSeparation<Transport>::model_coeffs() const
     coeffs["sensor_threshold"] = m_sensor_threshold;
     coeffs["realizable_cmu_strength"] = m_realizable_cmu_strength;
     coeffs["gate_relaxation_time"] = m_gate_relaxation_time;
+    coeffs["production_cap_ratio"] = m_production_cap_ratio;
     return coeffs;
 }
 
