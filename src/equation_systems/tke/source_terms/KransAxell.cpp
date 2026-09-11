@@ -23,7 +23,9 @@ KransAxell::KransAxell(const CFDSim& sim)
     , m_velocity(sim.repo().get_field("velocity"))
     , m_transport(sim.transport_model())
 {
-    AMREX_ALWAYS_ASSERT(sim.turbulence_model().model_name() == "KLAxell");
+    const std::string model_name = sim.turbulence_model().model_name();
+    AMREX_ALWAYS_ASSERT(
+        model_name == "KLAxell" || model_name == "KLAxellSeparation");
     auto coeffs = sim.turbulence_model().model_coeffs();
     amrex::ParmParse pp("ABL");
     pp.query("Cmu", m_Cmu);

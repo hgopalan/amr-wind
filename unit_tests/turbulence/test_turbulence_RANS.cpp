@@ -1,3 +1,7 @@
+#include <cmath>
+#include <limits>
+#include <string>
+
 #include "gtest/gtest.h"
 #include "ks_test_utils/MeshTest.H"
 #include "src/turbulence/TurbulenceModel.H"
@@ -84,23 +88,40 @@ protected:
             pp.addarr("prob_hi", probhi);
         }
     }
+
+    /** Set up a neutral ABL and create a KLAxell-type turbulence model
+     *
+     *  \param model Name of the turbulence model
+     */
+    void create_klaxell_model(const std::string& model);
+
+    /** Check the eddy viscosity of a KLAxell-type model on a uniform strain
+     *  field
+     *
+     *  \param model Name of the turbulence model
+     */
+    void check_klaxell_viscosity(const std::string& model);
+
+    //! Density of the test case
+    const amrex::Real m_rho0{1.2_rt};
+
+    //! Reference temperature of the test case
+    const amrex::Real m_tref{265.0_rt};
 };
 
-TEST_F(TurbRANSTest, test_1eqKrans_setup_calc)
+void TurbRANSTest::create_klaxell_model(const std::string& model)
 {
     // Parser inputs for turbulence model
-    const amrex::Real Tref = 265.0_rt;
     const amrex::Real gravz = 10.0_rt;
-    const amrex::Real rho0 = 1.2_rt;
     {
         amrex::ParmParse pp("turbulence");
-        pp.add("model", (std::string) "KLAxell");
+        pp.add("model", model);
     }
     {
         amrex::ParmParse pp("incflo");
         amrex::Vector<std::string> physics{"ABL"};
         pp.addarr("physics", physics);
-        pp.add("density", rho0);
+        pp.add("density", m_rho0);
         amrex::Vector<amrex::Real> vvec{8.0_rt, 0.0_rt, 0.0_rt};
         pp.addarr("velocity", vvec);
         amrex::Vector<amrex::Real> gvec{0.0_rt, 0.0_rt, -gravz};
@@ -113,7 +134,7 @@ TEST_F(TurbRANSTest, test_1eqKrans_setup_calc)
         amrex::Vector<amrex::Real> t_hts{0.0_rt, 100.0_rt, 4000.0_rt};
         pp.addarr("temperature_heights", t_hts);
         pp.addarr("wind_heights", t_hts);
-        amrex::Vector<amrex::Real> t_vals{265.0_rt, 265.0_rt, 265.0_rt};
+        amrex::Vector<amrex::Real> t_vals{m_tref, m_tref, m_tref};
         pp.addarr("temperature_values", t_vals);
         amrex::Vector<amrex::Real> u_vals{8.0_rt, 8.0_rt, 8.0_rt};
         pp.addarr("u_values", u_vals);
@@ -126,7 +147,7 @@ TEST_F(TurbRANSTest, test_1eqKrans_setup_calc)
     // Transport
     {
         amrex::ParmParse pp("transport");
-        pp.add("reference_temperature", Tref);
+        pp.add("reference_temperature", m_tref);
     }
 
     // Initialize necessary parts of solver
@@ -139,7 +160,11 @@ TEST_F(TurbRANSTest, test_1eqKrans_setup_calc)
     // Create turbulence model
     sim().create_turbulence_model();
     sim().turbulence_model().post_init_actions();
-    // Get turbulence model
+}
+
+void TurbRANSTest::check_klaxell_viscosity(const std::string& model)
+{
+    create_klaxell_model(model);
     auto& tmodel = sim().turbulence_model();
 
     // Get coefficients
@@ -151,7 +176,8 @@ TEST_F(TurbRANSTest, test_1eqKrans_setup_calc)
     const amrex::Real lambda = 30.0_rt;
     const amrex::Real kappa = 0.41_rt;
     const amrex::Real x3 = 1016.0_rt;
-    const amrex::Real lscale_s = (lambda * kappa * x3) / (lambda + kappa * x3);
+    const amrex::Real lscale_s =
+        (lambda * kappa * x3) / (lambda + (kappa * x3));
     const amrex::Real tlscale_val = lscale_s;
     const amrex::Real tke_val = 0.1_rt;
     // Set up velocity field with constant strainrate
@@ -159,7 +185,7 @@ TEST_F(TurbRANSTest, test_1eqKrans_setup_calc)
     init_strain_field(vel, srate);
     // Set up uniform unity density field
     auto& dens = sim().repo().get_field("density");
-    dens.setVal(rho0);
+    dens.setVal(m_rho0);
     // Set up temperature field with constant gradient in z
     auto& temp = sim().repo().get_field("temperature");
     init_temperature_field(temp, Tgz);
@@ -183,13 +209,104 @@ TEST_F(TurbRANSTest, test_1eqKrans_setup_calc)
     const amrex::Real stratification = 0.0_rt;
     const amrex::Real Rt =
         kynema_sgf::utils::powi(tke_val / epsilon, 2) * stratification;
-    const amrex::Real Cmu_Rt =
-        (0.556_rt + 0.108_rt * Rt) /
-        (1.0_rt + 0.308_rt * Rt + 0.00837_rt * kynema_sgf::utils::powi(Rt, 2));
+    const amrex::Real Cmu_Rt = (0.556_rt + (0.108_rt * Rt)) /
+                               (1.0_rt + (0.308_rt * Rt) +
+                                (0.00837_rt * kynema_sgf::utils::powi(Rt, 2)));
     const amrex::Real tol = 0.12_rt;
     const amrex::Real nut_max =
-        rho0 * Cmu_Rt * tlscale_val * std::sqrt(tke_val);
+        m_rho0 * Cmu_Rt * tlscale_val * std::sqrt(tke_val);
     EXPECT_NEAR(max_val, nut_max, tol);
+}
+
+TEST_F(TurbRANSTest, test_1eqKrans_setup_calc)
+{
+    check_klaxell_viscosity("KLAxell");
+}
+
+TEST_F(TurbRANSTest, test_1eqKrans_separation_setup_calc)
+{
+    check_klaxell_viscosity("KLAxellSeparation");
+}
+
+TEST_F(TurbRANSTest, test_1eqKrans_separation_pressure_gradient_sensor)
+{
+    {
+        amrex::ParmParse pp("KLAxellSeparation");
+        pp.add("pressure_gradient_sensor", true);
+    }
+    create_klaxell_model("KLAxellSeparation");
+    auto& tmodel = sim().turbulence_model();
+    auto& repo = sim().repo();
+
+    const amrex::Real tke_val = 0.1_rt;
+    const amrex::Real gp_val = 0.3_rt;
+    auto& vel = repo.get_field("velocity");
+    auto& temp = repo.get_field("temperature");
+    auto& gp = repo.get_field("gp");
+    const auto& sensor = repo.get_field("pressure_gradient_sensor");
+    repo.get_field("density").setVal(m_rho0);
+    repo.get_field("tke").setVal(tke_val);
+    repo.get_field("turb_lscale").setVal(1.0_rt);
+    temp.setVal(amrex::Vector<amrex::Real>{m_tref}, temp.num_grow()[0]);
+
+    const auto update = [&](const amrex::Vector<amrex::Real>& uvec,
+                            const amrex::Vector<amrex::Real>& gpvec) {
+        vel.setVal(uvec, vel.num_grow()[0]);
+        gp.setVal(gpvec);
+        tmodel.update_turbulent_viscosity(
+            kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    };
+
+    // The sensor is (u / |u|) . grad(p) L / (rho (k + c_u |u|^2)). In a
+    // neutral flow the length scale is lambda kappa z / (lambda + kappa z);
+    // the lowest and highest cell centers are at 8 m and 1016 m.
+    const amrex::Real c_u = tmodel.model_coeffs().at("sensor_velocity_weight");
+    EXPECT_EQ(c_u, 0.05_rt);
+    const amrex::Real lambda = 30.0_rt;
+    const amrex::Real kappa = 0.41_rt;
+    const auto lscale = [=](const amrex::Real z) {
+        return (lambda * kappa * z) / (lambda + (kappa * z));
+    };
+    const amrex::Real lscale_bottom = lscale(8.0_rt);
+    const amrex::Real lscale_top = lscale(1016.0_rt);
+    const amrex::Real rtol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+    // Check the sensor range for a sensor per unit length scale
+    const auto check_range = [&](const amrex::Real per_length) {
+        EXPECT_NEAR(
+            utils::field_min(sensor), per_length * lscale_bottom,
+            rtol * per_length * lscale_bottom);
+        EXPECT_NEAR(
+            utils::field_max(sensor), per_length * lscale_top,
+            rtol * per_length * lscale_top);
+    };
+
+    // Pressure gradient along the flow
+    update({8.0_rt, 0.0_rt, 0.0_rt}, {gp_val, 0.0_rt, 0.0_rt});
+    check_range(gp_val / (m_rho0 * (tke_val + (c_u * 64.0_rt))));
+
+    // Pressure gradient normal to the flow: no signal
+    update({8.0_rt, 0.0_rt, 0.0_rt}, {0.0_rt, gp_val, 0.0_rt});
+    EXPECT_EQ(utils::field_min(sensor), 0.0_rt);
+    EXPECT_EQ(utils::field_max(sensor), 0.0_rt);
+
+    // Vertical pressure gradient with a vertical velocity: the sensor keeps
+    // the vertical term
+    update({8.0_rt, 0.0_rt, 4.0_rt}, {0.0_rt, 0.0_rt, gp_val});
+    check_range(
+        4.0_rt / std::sqrt(80.0_rt) * gp_val /
+        (m_rho0 * (tke_val + (c_u * 80.0_rt))));
+
+    // Still air: the sensor stays finite and is zero
+    update({0.0_rt, 0.0_rt, 0.0_rt}, {gp_val, 0.0_rt, 0.0_rt});
+    EXPECT_EQ(utils::field_min(sensor), 0.0_rt);
+    EXPECT_EQ(utils::field_max(sensor), 0.0_rt);
+
+    // Nearly vanishing TKE: the velocity term keeps the sensor bounded
+    const amrex::Real tke_small = 1.0e-6_rt;
+    repo.get_field("tke").setVal(tke_small);
+    update({8.0_rt, 0.0_rt, 0.0_rt}, {gp_val, 0.0_rt, 0.0_rt});
+    check_range(gp_val / (m_rho0 * (tke_small + (c_u * 64.0_rt))));
 }
 
 } // namespace kynema_sgf_tests

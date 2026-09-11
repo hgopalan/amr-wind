@@ -114,6 +114,35 @@ function(add_test_red TEST_NAME TEST_DEPENDENCY)
     set_tests_properties(${TEST_DEPENDENCY} PROPERTIES FIXTURES_SETUP fixture_${TEST_DEPENDENCY})
 endfunction(add_test_red)
 
+# Run the input of SOURCE_TEST with KLAxell and with KLAxellSeparation and
+# compare the two plot files with each other (no gold files). Any further
+# arguments are runtime options for the KLAxellSeparation run.
+function(add_test_klaxell_pair TEST_NAME SOURCE_TEST)
+    set(PAIR_NAME ${TEST_NAME})
+    set(TEST_NAME ${SOURCE_TEST})
+    setup_test()
+    set(PAIR_DIR ${CMAKE_CURRENT_BINARY_DIR}/test_files/${PAIR_NAME})
+    list(JOIN ARGN " " SEPARATION_OPTIONS)
+    unset(PAIR_COMMAND)
+    foreach(MODEL IN ITEMS KLAxell KLAxellSeparation)
+      file(MAKE_DIRECTORY ${PAIR_DIR}/${MODEL})
+      file(COPY ${TEST_FILES} DESTINATION "${PAIR_DIR}/${MODEL}/")
+      set(MODEL_OPTIONS "turbulence.model=${MODEL}")
+      if("${MODEL}" STREQUAL "KLAxellSeparation")
+        string(APPEND MODEL_OPTIONS " ${SEPARATION_OPTIONS}")
+      endif()
+      string(APPEND PAIR_COMMAND "cd ${PAIR_DIR}/${MODEL} && ${MPI_COMMANDS} ${CMAKE_BINARY_DIR}/${kynema_sgf_exe_name} ${MPIEXEC_POSTFLAGS} ${PAIR_DIR}/${MODEL}/${SOURCE_TEST}.inp ${RUNTIME_OPTIONS} ${MODEL_OPTIONS} 2>&1 | tee ${PAIR_NAME}_${MODEL}.log && ")
+    endforeach()
+    string(APPEND PAIR_COMMAND "CUDA_LAUNCH_BLOCKING=1 ${MPI_COMMANDS} ${FCOMPARE_EXE} ${MPIEXEC_POSTFLAGS} ${FCOMPARE_TOLERANCE} ${PAIR_DIR}/KLAxell/plt00006 ${PAIR_DIR}/KLAxellSeparation/plt00006")
+    add_test(${PAIR_NAME} bash -c "set -o pipefail && ${PAIR_COMMAND}")
+    set_tests_properties(${PAIR_NAME} PROPERTIES
+                         TIMEOUT 14400
+                         PROCESSORS ${TEST_NP}
+                         WORKING_DIRECTORY "${PAIR_DIR}/"
+                         LABELS "regression"
+                         ATTACHED_FILES "${PAIR_DIR}/KLAxellSeparation/${PAIR_NAME}_KLAxellSeparation.log")
+endfunction(add_test_klaxell_pair)
+
 # Verification test using multiple resolutions
 function(add_test_v TEST_NAME LIST_OF_GRID_SIZES)
     setup_test()
@@ -230,6 +259,14 @@ add_test_r(abl_ksgsm84_godunov)
 add_test_r(abl_multiphase_laminar_2planes)
 add_test_r(abl_specifiedmol_stable)
 add_test_r(abl_specifiedmol_unstable)
+if(KYNEMA_SGF_TEST_WITH_FCOMPARE)
+  add_test_klaxell_pair(klaxellseparation_neutral abl_specifiedmol_neutral)
+  add_test_klaxell_pair(klaxellseparation_stable abl_specifiedmol_stable)
+  add_test_klaxell_pair(klaxellseparation_unstable abl_specifiedmol_unstable)
+  add_test_klaxell_pair(klaxellseparation_hill abl_klaxell_hill)
+  add_test_klaxell_pair(klaxellseparation_stable_sensor abl_specifiedmol_stable KLAxellSeparation.pressure_gradient_sensor=true)
+  add_test_klaxell_pair(klaxellseparation_hill_sensor abl_klaxell_hill KLAxellSeparation.pressure_gradient_sensor=true)
+endif()
 add_test_r(abl_stable)
 add_test_r(abl_stable_different_roughness)
 add_test_r(abl_subvolume)
