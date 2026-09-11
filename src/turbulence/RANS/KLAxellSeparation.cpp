@@ -1,3 +1,4 @@
+#include <cmath>
 #include <limits>
 
 #include "src/turbulence/RANS/KLAxellSeparation.H"
@@ -46,6 +47,14 @@ KLAxellSeparation<Transport>::KLAxellSeparation(CFDSim& sim)
             "KLAxellSeparation.destruction_boost requires "
             "KLAxellSeparation.pressure_gradient_sensor = true");
     }
+    pp.query("curvature_correction", m_use_curvature_correction);
+    pp.query("curvature_model", m_curvature_model);
+    if (m_curvature_model != "rotation_function" &&
+        m_curvature_model != "richardson") {
+        amrex::Abort(
+            "KLAxellSeparation.curvature_model must be rotation_function or "
+            "richardson");
+    }
     if (m_use_pressure_gradient_sensor) {
         m_pressure_gradient_sensor =
             &sim.repo().declare_field("pressure_gradient_sensor", 1);
@@ -87,6 +96,15 @@ void KLAxellSeparation<Transport>::parse_model_coeffs()
     pp.query("realizable_cmu_strength", m_realizable_cmu_strength);
     pp.query("production_cap_ratio", m_production_cap_ratio);
     pp.query("destruction_boost_factor", m_destruction_boost_factor);
+    pp.query("curvature_coefficient", m_curvature_coefficient);
+    pp.query("curvature_cr1", m_curvature_cr1);
+    pp.query("curvature_cr2", m_curvature_cr2);
+    pp.query("curvature_cr3", m_curvature_cr3);
+    if (m_curvature_coefficient < 0.0_rt) {
+        amrex::Abort(
+            "KLAxellSeparation_coeffs.curvature_coefficient must not be "
+            "negative");
+    }
     if (m_sensor_threshold <= 0.0_rt) {
         amrex::Abort(
             "KLAxellSeparation_coeffs.sensor_threshold must be positive");
@@ -113,6 +131,10 @@ KLAxellSeparation<Transport>::model_coeffs() const
     coeffs["gate_relaxation_time"] = m_gate_relaxation_time;
     coeffs["production_cap_ratio"] = m_production_cap_ratio;
     coeffs["destruction_boost_factor"] = m_destruction_boost_factor;
+    coeffs["curvature_coefficient"] = m_curvature_coefficient;
+    coeffs["curvature_cr1"] = m_curvature_cr1;
+    coeffs["curvature_cr2"] = m_curvature_cr2;
+    coeffs["curvature_cr3"] = m_curvature_cr3;
     return coeffs;
 }
 
@@ -122,6 +144,11 @@ void KLAxellSeparation<Transport>::post_init_actions()
     KLAxell<Transport>::post_init_actions();
     m_geometry = this->m_sim.repo().create_scratch_field(
         klaxell_separation::geom_ncomp, 1);
+    // The curvature Rt is read by update_alphaeff before the first viscosity
+    // update
+    for (int lev = 0; lev < this->m_sim.repo().num_active_levels(); ++lev) {
+        (*m_geometry)(lev).setVal(0.0_rt);
+    }
     if (m_use_pressure_gradient_sensor) {
         m_pressure_gradient_sensor->setVal(0.0_rt);
     }
@@ -145,6 +172,11 @@ void KLAxellSeparation<Transport>::post_regrid_actions()
     KLAxell<Transport>::post_regrid_actions();
     m_geometry = this->m_sim.repo().create_scratch_field(
         klaxell_separation::geom_ncomp, 1);
+    // The curvature Rt is read by update_alphaeff before the first viscosity
+    // update
+    for (int lev = 0; lev < this->m_sim.repo().num_active_levels(); ++lev) {
+        (*m_geometry)(lev).setVal(0.0_rt);
+    }
     if (m_use_pressure_gradient_sensor) {
         m_pressure_gradient_sensor->setVal(0.0_rt);
     }
@@ -198,6 +230,11 @@ void KLAxellSeparation<Transport>::update_turbulent_viscosity(
             velocity_sensor(lev, fstate);
         } else if (m_use_pressure_gradient_sensor) {
             pressure_gradient_sensor(lev, fstate);
+        }
+        if (m_use_curvature_correction && (m_curvature_model == "richardson")) {
+            curvature_richardson(lev, fstate);
+        } else if (m_use_curvature_correction) {
+            curvature_rotation_function(lev, fstate);
         }
         if (m_use_realizable_cmu && (m_separation_gate != nullptr)) {
             realizable_cmu_relaxed(lev);
@@ -277,7 +314,7 @@ void KLAxellSeparation<Transport>::closure(
     const auto& buoy_prod_arrs = (this->m_buoy_prod)(lev).arrays();
     const auto& shear_prod_arrs = (this->m_shear_prod)(lev).arrays();
     const auto& beta_arrs = beta(lev).const_arrays();
-    const auto& geom_arrs = (*m_geometry)(lev).const_arrays();
+    const auto& geom_arrs = (*m_geometry)(lev).arrays();
 
     // Same operations, in the same order, as the KLAxell kernels so that the
     // model reproduces KLAxell when no treatment is enabled
@@ -330,6 +367,7 @@ void KLAxellSeparation<Transport>::closure(
             Rt = (std::abs(surf_flux) < 1.0e-5_rt && z <= lengthscale_switch)
                      ? 0.0_rt
                      : Rt;
+            geom_arrs[nbx](i, j, k, klaxell_separation::geom_rt) = Rt;
             const amrex::Real Cmu_Rt =
                 (Cmu + (0.108_rt * Rt)) /
                 (1.0_rt + (0.308_rt * Rt) + (0.00837_rt * utils::powi(Rt, 2)));
@@ -554,6 +592,334 @@ void KLAxellSeparation<Transport>::relax_gate(const int lev)
             gate_arrs[nbx](i, j, k) =
                 target + ((gate_arrs[nbx](i, j, k) - target) * decay);
         });
+}
+
+template <typename Transport>
+void KLAxellSeparation<Transport>::curvature_richardson(
+    const int lev, const FieldState fstate)
+{
+    const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
+    const amrex::Real Cmu = this->m_Cmu;
+    const amrex::Real Cmu6 = utils::powi(Cmu, 6);
+    const amrex::Real coeff = m_curvature_coefficient;
+    const amrex::Real tolerance = klaxell_separation::curvature_tolerance;
+    const amrex::Real Rtc = -1.0_rt;
+    const amrex::Real Rtmin = -3.0_rt;
+    const auto& geom = this->m_sim.repo().mesh().Geom(lev);
+    const auto idx = geom.InvCellSizeArray();
+
+    // Ghost cells of the fluid weight, as in velocity_sensor
+    auto& geom_mf = (*m_geometry)(lev);
+    geom_mf.setBndry(1.0_rt);
+    geom_mf.FillBoundary(geom.periodicity());
+
+    const auto& vel_arrs = this->m_vel.state(fstate)(lev).const_arrays();
+    const auto& tke_arrs = (*this->m_tke)(lev).const_arrays();
+    const auto& tlscale_arrs = (this->m_turb_lscale)(lev).const_arrays();
+    const auto& mu_arrs = this->mu_turb()(lev).arrays();
+    const auto& buoy_prod_arrs = (this->m_buoy_prod)(lev).arrays();
+    const auto& shear_prod_arrs = (this->m_shear_prod)(lev).arrays();
+    const auto& geom_arrs = geom_mf.arrays();
+
+    // N2_c = 2 (|a_n|^2 - a_n . grad(|u|^2 / 2)) / |u|^2 with a = (u . grad) u
+    // and a_n = a - (a . u / |u|^2) u, from central differences. Below the
+    // tolerance (relative to the squared strain rate) the cell is unchanged.
+    amrex::ParallelFor(
+        this->mu_turb()(lev),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const auto& vel = vel_arrs[nbx];
+            const auto& geo = geom_arrs[nbx];
+            // grad[n][m] = d(u_n) / d(x_m)
+            amrex::Real grad[AMREX_SPACEDIM][AMREX_SPACEDIM];
+            for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+                grad[n][0] = 0.5_rt *
+                             (vel(i + 1, j, k, n) - vel(i - 1, j, k, n)) *
+                             idx[0];
+                grad[n][1] = 0.5_rt *
+                             (vel(i, j + 1, k, n) - vel(i, j - 1, k, n)) *
+                             idx[1];
+                grad[n][2] = 0.5_rt *
+                             (vel(i, j, k + 1, n) - vel(i, j, k - 1, n)) *
+                             idx[2];
+            }
+            amrex::Real umag_sqr = 0.0_rt;
+            amrex::Real strain_sqr = 0.0_rt;
+            amrex::Real accel[AMREX_SPACEDIM];
+            amrex::Real grad_q[AMREX_SPACEDIM];
+            for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+                umag_sqr += vel(i, j, k, n) * vel(i, j, k, n);
+                accel[n] = 0.0_rt;
+                grad_q[n] = 0.0_rt;
+            }
+            for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+                for (int m = 0; m < AMREX_SPACEDIM; ++m) {
+                    accel[n] += vel(i, j, k, m) * grad[n][m];
+                    grad_q[m] += vel(i, j, k, n) * grad[n][m];
+                    const amrex::Real s = 0.5_rt * (grad[n][m] + grad[m][n]);
+                    strain_sqr += 2.0_rt * s * s;
+                }
+            }
+            const amrex::Real inv_umag_sqr =
+                1.0_rt / amrex::max<amrex::Real>(umag_sqr, tiny);
+            amrex::Real a_dot_u = 0.0_rt;
+            for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+                a_dot_u += accel[n] * vel(i, j, k, n);
+            }
+            amrex::Real a_n_sqr = 0.0_rt;
+            amrex::Real a_n_dot_grad_q = 0.0_rt;
+            for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+                const amrex::Real a_n =
+                    accel[n] - (a_dot_u * inv_umag_sqr * vel(i, j, k, n));
+                a_n_sqr += a_n * a_n;
+                a_n_dot_grad_q += a_n * grad_q[n];
+            }
+            const amrex::Real n2_curv =
+                2.0_rt * (a_n_sqr - a_n_dot_grad_q) * inv_umag_sqr;
+
+            const int w = klaxell_separation::geom_fluid_weight;
+            const amrex::Real weight =
+                geo(i, j, k, w) * amrex::min(
+                                      geo(i - 1, j, k, w), geo(i + 1, j, k, w),
+                                      geo(i, j - 1, k, w), geo(i, j + 1, k, w),
+                                      geo(i, j, k - 1, w), geo(i, j, k + 1, w));
+            const bool active =
+                (weight > 0.0_rt) &&
+                (std::abs(n2_curv) >
+                 tolerance * amrex::max<amrex::Real>(strain_sqr, tiny));
+            const amrex::Real lscale = tlscale_arrs[nbx](i, j, k);
+            const amrex::Real rt_curv =
+                active ? coeff * weight * lscale * lscale * n2_curv /
+                             (Cmu6 * amrex::max<amrex::Real>(
+                                         tke_arrs[nbx](i, j, k), tiny))
+                       : 0.0_rt;
+
+            const amrex::Real rt = geo(i, j, k, klaxell_separation::geom_rt);
+            amrex::Real rt_tot = rt + rt_curv;
+            rt_tot =
+                (rt_tot > Rtc)
+                    ? rt_tot
+                    : amrex::max<amrex::Real>(
+                          rt_tot, rt_tot - (utils::powi(rt_tot - Rtc, 2) /
+                                            (rt_tot + Rtmin - (2.0_rt * Rtc))));
+            const amrex::Real cmu_rt =
+                (Cmu + (0.108_rt * rt)) /
+                (1.0_rt + (0.308_rt * rt) + (0.00837_rt * rt * rt));
+            const amrex::Real cmu_rt_tot =
+                (Cmu + (0.108_rt * rt_tot)) /
+                (1.0_rt + (0.308_rt * rt_tot) + (0.00837_rt * rt_tot * rt_tot));
+            const amrex::Real mu_factor = active ? cmu_rt_tot / cmu_rt : 1.0_rt;
+            const amrex::Real prime_factor =
+                active ? (1.0_rt + (0.277_rt * rt)) /
+                             (1.0_rt + (0.277_rt * rt_tot))
+                       : 1.0_rt;
+            mu_arrs[nbx](i, j, k) *= mu_factor;
+            shear_prod_arrs[nbx](i, j, k) *= mu_factor;
+            buoy_prod_arrs[nbx](i, j, k) *= prime_factor;
+            geo(i, j, k, klaxell_separation::geom_rt_curvature) = rt_curv;
+        });
+}
+
+template <typename Transport>
+void KLAxellSeparation<Transport>::curvature_rotation_function(
+    const int lev, const FieldState fstate)
+{
+    const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
+    const amrex::Real cr1 = m_curvature_cr1;
+    const amrex::Real cr2 = m_curvature_cr2;
+    const amrex::Real cr3 = m_curvature_cr3;
+    const amrex::Real tolerance =
+        klaxell_separation::rotation_function_tolerance;
+    const auto& geom = this->m_sim.repo().mesh().Geom(lev);
+    const auto idx = geom.InvCellSizeArray();
+
+    // Ghost cells of the fluid weight, as in velocity_sensor
+    auto& geom_mf = (*m_geometry)(lev);
+    geom_mf.setBndry(1.0_rt);
+    geom_mf.FillBoundary(geom.periodicity());
+
+    const auto& vel_arrs = this->m_vel.state(fstate)(lev).const_arrays();
+    const auto& mu_arrs = this->mu_turb()(lev).arrays();
+    const auto& buoy_prod_arrs = (this->m_buoy_prod)(lev).arrays();
+    const auto& shear_prod_arrs = (this->m_shear_prod)(lev).arrays();
+    const auto& geom_arrs = geom_mf.const_arrays();
+
+    // First and second velocity derivatives by central differences; the
+    // cell is unchanged where the flow has no strain or rotation or where f
+    // stays within the tolerance of 1
+    amrex::ParallelFor(
+        this->mu_turb()(lev),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const auto& vel = vel_arrs[nbx];
+            const auto& geo = geom_arrs[nbx];
+            // grad[n][a] = d(u_n)/d(x_a), hess[n][a][b] = d2(u_n)/d(x_a)d(x_b)
+            amrex::Real grad[AMREX_SPACEDIM][AMREX_SPACEDIM];
+            amrex::Real hess[AMREX_SPACEDIM][AMREX_SPACEDIM][AMREX_SPACEDIM];
+            for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+                for (int a = 0; a < AMREX_SPACEDIM; ++a) {
+                    const int ai = static_cast<int>(a == 0);
+                    const int aj = static_cast<int>(a == 1);
+                    const int ak = static_cast<int>(a == 2);
+                    grad[n][a] = 0.5_rt *
+                                 (vel(i + ai, j + aj, k + ak, n) -
+                                  vel(i - ai, j - aj, k - ak, n)) *
+                                 idx[a];
+                    for (int b = 0; b < AMREX_SPACEDIM; ++b) {
+                        const int bi = static_cast<int>(b == 0);
+                        const int bj = static_cast<int>(b == 1);
+                        const int bk = static_cast<int>(b == 2);
+                        hess[n][a][b] = (a == b)
+                                            ? (vel(i + ai, j + aj, k + ak, n) -
+                                               (2.0_rt * vel(i, j, k, n)) +
+                                               vel(i - ai, j - aj, k - ak, n)) *
+                                                  idx[a] * idx[a]
+                                            : 0.25_rt *
+                                                  (vel(i + ai + bi, j + aj + bj,
+                                                       k + ak + bk, n) -
+                                                   vel(i + ai - bi, j + aj - bj,
+                                                       k + ak - bk, n) -
+                                                   vel(i - ai + bi, j - aj + bj,
+                                                       k - ak + bk, n) +
+                                                   vel(i - ai - bi, j - aj - bj,
+                                                       k - ak - bk, n)) *
+                                                  idx[a] * idx[b];
+                    }
+                }
+            }
+            // Strain and rotation tensors, their magnitudes and the material
+            // derivative of the strain, u_c d(S_pq)/d(x_c)
+            amrex::Real strain[AMREX_SPACEDIM][AMREX_SPACEDIM];
+            amrex::Real rotation[AMREX_SPACEDIM][AMREX_SPACEDIM];
+            amrex::Real dstrain[AMREX_SPACEDIM][AMREX_SPACEDIM];
+            amrex::Real strain_sqr = 0.0_rt;
+            amrex::Real rotation_sqr = 0.0_rt;
+            for (int p = 0; p < AMREX_SPACEDIM; ++p) {
+                for (int q = 0; q < AMREX_SPACEDIM; ++q) {
+                    strain[p][q] = 0.5_rt * (grad[p][q] + grad[q][p]);
+                    rotation[p][q] = 0.5_rt * (grad[p][q] - grad[q][p]);
+                    strain_sqr += 2.0_rt * strain[p][q] * strain[p][q];
+                    rotation_sqr += 2.0_rt * rotation[p][q] * rotation[p][q];
+                    dstrain[p][q] = 0.0_rt;
+                    for (int c = 0; c < AMREX_SPACEDIM; ++c) {
+                        dstrain[p][q] += 0.5_rt * vel(i, j, k, c) *
+                                         (hess[p][q][c] + hess[q][p][c]);
+                    }
+                }
+            }
+            const amrex::Real d_sqr = 0.5_rt * (strain_sqr + rotation_sqr);
+            amrex::Real r_tilde_num = 0.0_rt;
+            for (int p = 0; p < AMREX_SPACEDIM; ++p) {
+                for (int q = 0; q < AMREX_SPACEDIM; ++q) {
+                    for (int c = 0; c < AMREX_SPACEDIM; ++c) {
+                        r_tilde_num += 2.0_rt * rotation[p][c] * strain[q][c] *
+                                       dstrain[p][q];
+                    }
+                }
+            }
+            const amrex::Real r_star =
+                std::sqrt(strain_sqr) /
+                amrex::max<amrex::Real>(std::sqrt(rotation_sqr), tiny);
+            const amrex::Real r_tilde =
+                r_tilde_num / amrex::max<amrex::Real>(d_sqr * d_sqr, tiny);
+            const amrex::Real f_rot = amrex::min<amrex::Real>(
+                amrex::max<amrex::Real>(
+                    ((1.0_rt + cr1) * (2.0_rt * r_star / (1.0_rt + r_star)) *
+                     (1.0_rt - (cr3 * std::atan(cr2 * r_tilde)))) -
+                        cr1,
+                    0.0_rt),
+                1.25_rt);
+
+            const int w = klaxell_separation::geom_fluid_weight;
+            const amrex::Real weight =
+                geo(i, j, k, w) * amrex::min(
+                                      geo(i - 1, j, k, w), geo(i + 1, j, k, w),
+                                      geo(i, j - 1, k, w), geo(i, j + 1, k, w),
+                                      geo(i, j, k - 1, w), geo(i, j, k + 1, w));
+            // Deviations of f from 1 below the tolerance are ignored; above it
+            // they ramp in linearly to the full deviation at twice the
+            // tolerance
+            const amrex::Real deviation = f_rot - 1.0_rt;
+            const amrex::Real ramp = amrex::min<amrex::Real>(
+                amrex::max<amrex::Real>(
+                    (std::abs(deviation) - tolerance) / tolerance, 0.0_rt),
+                1.0_rt);
+            const bool active =
+                (weight > 0.0_rt) && (d_sqr > tiny) && (ramp > 0.0_rt);
+            const amrex::Real factor =
+                active ? 1.0_rt + (weight * ramp * deviation) : 1.0_rt;
+            mu_arrs[nbx](i, j, k) *= factor;
+            shear_prod_arrs[nbx](i, j, k) *= factor;
+            buoy_prod_arrs[nbx](i, j, k) *= factor;
+        });
+}
+
+template <typename Transport>
+void KLAxellSeparation<Transport>::update_alphaeff(Field& alphaeff)
+{
+    if (m_use_curvature_correction && (m_curvature_model == "richardson")) {
+        update_alphaeff_curvature(alphaeff);
+    } else {
+        KLAxell<Transport>::update_alphaeff(alphaeff);
+    }
+}
+
+template <typename Transport>
+void KLAxellSeparation<Transport>::update_alphaeff_curvature(Field& alphaeff)
+{
+    BL_PROFILE(
+        "kynema-sgf::" + this->identifier() + "::update_alphaeff_curvature");
+    auto lam_alpha = (this->m_transport).alpha();
+    auto& mu_turb = this->mu_turb();
+    auto& repo = mu_turb.repo();
+
+    fvm::gradient(*this->m_gradT, this->m_temperature);
+    auto& gradT = *this->m_gradT;
+    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> gravity{
+        this->m_gravity[0], this->m_gravity[1], this->m_gravity[2]};
+    const auto beta = (this->m_transport).beta();
+    const amrex::Real Cmu = this->m_Cmu;
+    const int nlevels = repo.num_active_levels();
+    for (int lev = 0; lev < nlevels; ++lev) {
+        const auto& muturb_arrs = mu_turb(lev).arrays();
+        const auto& alphaeff_arrs = alphaeff(lev).arrays();
+        const auto& lam_diff_arrs = (*lam_alpha)(lev).arrays();
+        const auto& tke_arrs = (*this->m_tke)(lev).arrays();
+        const auto& gradT_arrs = gradT(lev).const_arrays();
+        const auto& tlscale_arrs = (this->m_turb_lscale)(lev).arrays();
+        const auto& beta_arrs = (*beta)(lev).const_arrays();
+        const auto& geom_arrs = (*m_geometry)(lev).const_arrays();
+        const amrex::Real Rtc = -1.0_rt;
+        const amrex::Real Rtmin = -3.0_rt;
+        // Same operations as KLAxell::update_alphaeff, with the stored
+        // curvature contribution added to Rt before it is limited
+        amrex::ParallelFor(
+            mu_turb(lev), [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                amrex::Real stratification =
+                    -((gradT_arrs[nbx](i, j, k, 0) * gravity[0]) +
+                      (gradT_arrs[nbx](i, j, k, 1) * gravity[1]) +
+                      (gradT_arrs[nbx](i, j, k, 2) * gravity[2])) *
+                    beta_arrs[nbx](i, j, k);
+                amrex::Real epsilon = utils::powi(Cmu, 3) *
+                                      std::pow(tke_arrs[nbx](i, j, k), 1.5_rt) /
+                                      tlscale_arrs[nbx](i, j, k);
+                amrex::Real Rt =
+                    utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
+                    stratification;
+                Rt += geom_arrs[nbx](
+                    i, j, k, klaxell_separation::geom_rt_curvature);
+                Rt = (Rt > Rtc) ? Rt
+                                : amrex::max<amrex::Real>(
+                                      Rt, Rt - (utils::powi(Rt - Rtc, 2) /
+                                                (Rt + Rtmin - 2.0_rt * Rtc)));
+                const amrex::Real prandtlRt =
+                    (1.0_rt + 0.193_rt * Rt) / (1.0_rt + 0.0302_rt * Rt);
+                alphaeff_arrs[nbx](i, j, k) =
+                    lam_diff_arrs[nbx](i, j, k) +
+                    (muturb_arrs[nbx](i, j, k) / prandtlRt);
+            });
+    }
+    amrex::Gpu::streamSynchronize();
+
+    alphaeff.fillpatch(this->m_sim.time().current_time());
 }
 
 } // namespace turbulence

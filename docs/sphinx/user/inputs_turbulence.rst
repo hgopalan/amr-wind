@@ -152,6 +152,77 @@ This section is for setting turbulence model parameters
    "KLAxellSeparation" model acts; 1 leaves the source unchanged. Must not be
    below 1.
 
+.. input_param:: KLAxellSeparation.curvature_correction
+
+   **type:** Boolean, optional, default = false
+
+   Corrects the "KLAxellSeparation" model for streamline curvature, with the
+   model chosen by ``KLAxellSeparation.curvature_model``. Unlike the
+   pressure-gradient treatments it is not gated by the sensor. Where the
+   streamlines are straight, including a horizontally uniform flow over flat
+   terrain, it does nothing: the ``richardson`` model below a curvature
+   frequency of :math:`10^{-8} S^2`, the ``rotation_function`` model where
+   the rotation function differs from 1 by less than :math:`10^{-3}` (with a
+   linear ramp to the full deviation at :math:`2 \times 10^{-3}`, because its
+   strain-derivative term amplifies small departures from a uniform flow
+   where the shear is weak). The correction is weighted by the smallest fluid
+   weight of the six face neighbors, so cells next to the terrain are not
+   corrected.
+
+.. input_param:: KLAxellSeparation.curvature_model
+
+   **type:** String, optional, default = ``rotation_function``
+
+   Curvature correction of the "KLAxellSeparation" model.
+
+   - ``richardson``: the curvature frequency
+     :math:`N_c^2 = (2/|\mathbf{u}|^2)(|\mathbf{a}_n|^2 - |\mathbf{u}|\,
+     \mathbf{a}_n \cdot \nabla |\mathbf{u}|)`, with
+     :math:`\mathbf{a} = (\mathbf{u} \cdot \nabla) \mathbf{u}` and
+     :math:`\mathbf{a}_n` its part normal to the flow, is the Rayleigh-Bradshaw
+     analogue of the buoyancy frequency (:math:`4 \Omega^2` for solid
+     rotation). :math:`R_{t,c} = c_c L^2 N_c^2 / (C_\mu^6 k)` is added to the
+     :math:`R_t` of the closure after its neutral override, so it also acts in
+     a neutral boundary layer. The eddy viscosity and the shear production are
+     scaled by :math:`C_\mu(R_t + R_{t,c}) / C_\mu(R_t)`, the buoyancy
+     production by the same ratio of :math:`C_\mu'`, and the turbulent Prandtl
+     number uses :math:`R_t + R_{t,c}`. The length scale is unchanged.
+   - ``rotation_function``: the Spalart-Shur rotation function
+     :math:`f = (1 + c_{r1}) \frac{2 r^*}{1 + r^*} (1 - c_{r3} \arctan(c_{r2}
+     \tilde{r})) - c_{r1}`, limited to :math:`[0, 1.25]`, multiplies the eddy
+     viscosity and the shear and buoyancy production, with
+     :math:`r^* = S / \Omega` and
+     :math:`\tilde{r} = 2 \Omega_{ik} S_{jk} (D S_{ij}/Dt) / D^4`,
+     :math:`D^2 = (S^2 + \Omega^2)/2`. The material derivative of the strain
+     rate is taken as :math:`\mathbf{u} \cdot \nabla S_{ij}` and the frame
+     rotation is neglected. :math:`f = 1` in a simple shear and 0 in solid
+     rotation.
+
+.. input_param:: KLAxellSeparation_coeffs.curvature_coefficient
+
+   **type:** Real, optional, default = 1.0
+
+   Coefficient :math:`c_c` on :math:`R_{t,c}` of the ``richardson`` curvature
+   model of the "KLAxellSeparation" model; must not be negative.
+
+.. input_param:: KLAxellSeparation_coeffs.curvature_cr1
+
+   **type:** Real, optional, default = 1.0
+
+   Constant :math:`c_{r1}` of the ``rotation_function`` curvature model.
+
+.. input_param:: KLAxellSeparation_coeffs.curvature_cr2
+
+   **type:** Real, optional, default = 12.0
+
+   Constant :math:`c_{r2}` of the ``rotation_function`` curvature model.
+
+.. input_param:: KLAxellSeparation_coeffs.curvature_cr3
+
+   **type:** Real, optional, default = 1.0
+
+   Constant :math:`c_{r3}` of the ``rotation_function`` curvature model.
+
    
 .. input_param:: Smagorinsky_coeffs.Cs
 

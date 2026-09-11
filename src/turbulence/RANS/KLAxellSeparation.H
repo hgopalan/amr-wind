@@ -12,8 +12,20 @@ namespace klaxell_separation {
 inline constexpr int geom_height = 0;
 //! Geometry component: fluid weight of the cell (0 inside the terrain)
 inline constexpr int geom_fluid_weight = 1;
+//! Geometry component: Rt of the closure, after the neutral override
+inline constexpr int geom_rt = 2;
+//! Geometry component: curvature contribution to Rt (richardson model)
+inline constexpr int geom_rt_curvature = 3;
 //! Number of geometry components
-inline constexpr int geom_ncomp = 2;
+inline constexpr int geom_ncomp = 4;
+//! Dimensionless size below which the curvature correction does nothing,
+//! so that round-off curvature in a straight flow leaves the model unchanged
+inline constexpr amrex::Real curvature_tolerance = 1.0e-8;
+//! Deviation of the rotation function from 1 below which it does nothing; it
+//! ramps in to the full deviation at twice this value. The strain-derivative
+//! term is divided by D^4 and amplifies small departures from a horizontally
+//! uniform flow where the shear is weak.
+inline constexpr amrex::Real rotation_function_tolerance = 1.0e-3;
 } // namespace klaxell_separation
 
 /** KLAxell one-equation RANS model with treatments for separating flow
@@ -27,8 +39,9 @@ inline constexpr int geom_ncomp = 2;
  *
  *  Each treatment is switched on from the KLAxellSeparation input section.
  *  The pressure-gradient sensor is a diagnostic stored in the field
- *  pressure_gradient_sensor; the treatments that change the solution act
- *  only where the sensor exceeds its threshold.
+ *  pressure_gradient_sensor; the pressure-gradient treatments act only where
+ *  the sensor exceeds its threshold. The curvature correction is not gated
+ *  by the sensor and does nothing where the streamlines are straight.
  */
 template <typename Transport>
 class KLAxellSeparation : public KLAxell<Transport>
@@ -61,6 +74,9 @@ public:
     //! Relax the stored gate toward the latest sensor once per time step
     void post_advance_work() override;
 
+    //! Update the effective thermal diffusivity field
+    void update_alphaeff(Field& alphaeff) override;
+
     //! Parse turbulence model coefficients
     void parse_model_coeffs() override;
 
@@ -80,6 +96,9 @@ public:
     void terrain_drag_geometry(int lev);
 
     /** Evaluate the closure on one level from the geometry fields
+     *
+     *  Also stores the Rt of the closure, after the neutral override, in the
+     *  geometry field for the curvature correction.
      *
      *  \param lev AMR level
      *  \param fstate Field state
@@ -115,6 +134,49 @@ public:
      */
     void velocity_sensor(int lev, FieldState fstate);
 
+    /** Curvature correction through Rt on one level (richardson model)
+     *
+     *  The streamline curvature gives the Rayleigh / Bradshaw frequency
+     *  N2_c = (2 / |u|^2) (|a_n|^2 - |u| a_n . grad|u|), with a = (u . grad) u
+     *  and a_n its part normal to u; N2_c = 4 Omega^2 for solid rotation and
+     *  0 for straight streamlines. Its contribution
+     *  Rt_c = c_c L^2 N2_c / (Cmu^6 k) is added to the Rt of the closure, after
+     *  its neutral override, and the eddy viscosity and the shear production
+     *  are scaled by Cmu(Rt + Rt_c) / Cmu(Rt), the buoyancy production by
+     *  Cmu'(Rt + Rt_c) / Cmu'(Rt). The length scale is unchanged. Rt_c is
+     *  stored for the thermal diffusivity.
+     *
+     *  \param lev AMR level
+     *  \param fstate Field state
+     */
+    void curvature_richardson(int lev, FieldState fstate);
+
+    /** Curvature correction by the rotation function on one level
+     *
+     *  Spalart-Shur rotation function
+     *  f = (1 + c_r1) (2 r* / (1 + r*)) (1 - c_r3 atan(c_r2 r~)) - c_r1,
+     *  limited to [0, 1.25], with r* = S / Omega and
+     *  r~ = 2 Omega_ik S_jk (DS_ij/Dt) / D^4, D^2 = (S^2 + Omega^2) / 2. The
+     *  material derivative of the strain rate is taken as u . grad(S)
+     *  (steady flow) and the frame rotation is neglected. The eddy viscosity
+     *  and the shear and buoyancy production are multiplied by f; f = 1 in a
+     *  simple shear and 0 in solid rotation.
+     *
+     *  \param lev AMR level
+     *  \param fstate Field state
+     */
+    void curvature_rotation_function(int lev, FieldState fstate);
+
+    /** Effective thermal diffusivity with the curvature contribution to Rt
+     *
+     *  Same as KLAxell::update_alphaeff, with the stored Rt_c of the
+     *  richardson curvature model added to Rt for the turbulent Prandtl
+     *  number.
+     *
+     *  \param alphaeff Effective thermal diffusivity
+     */
+    void update_alphaeff_curvature(Field& alphaeff);
+
     /** Apply the realizable Cmu limiter on one level
      *
      *  The eddy viscosity and the shear and buoyancy production are divided
@@ -149,8 +211,8 @@ public:
     void relax_gate(int lev);
 
 protected:
-    //! Height above the surface and fluid weight of each cell, with one ghost
-    //! cell for the neighbor weights of the velocity sensor
+    //! Height above the surface, fluid weight, Rt of the closure and
+    //! curvature Rt of each cell, with one ghost cell for the neighbor weights
     std::unique_ptr<ScratchField> m_geometry;
 
     //! Compute the pressure-gradient sensor
@@ -185,6 +247,20 @@ protected:
     //! Factor c_d on the dissipation of the destruction boost applied by the
     //! TKE source
     amrex::Real m_destruction_boost_factor{1.2_rt};
+
+    //! Apply the curvature correction
+    bool m_use_curvature_correction{false};
+
+    //! Curvature model: "rotation_function" or "richardson"
+    std::string m_curvature_model{"rotation_function"};
+
+    //! Coefficient c_c on the curvature Rt of the richardson model
+    amrex::Real m_curvature_coefficient{1.0_rt};
+
+    //! Constants c_r1, c_r2 and c_r3 of the rotation function
+    amrex::Real m_curvature_cr1{1.0_rt};
+    amrex::Real m_curvature_cr2{12.0_rt};
+    amrex::Real m_curvature_cr3{1.0_rt};
 
     //! Strain rate magnitude, kept for the realizable Cmu limiter
     std::unique_ptr<ScratchField> m_strain;

@@ -565,4 +565,182 @@ TEST_F(TurbRANSTest, test_1eqKrans_separation_gate_relaxation)
     check_gate(g2 * decay);
 }
 
+TEST_F(TurbRANSTest, test_1eqKrans_separation_curvature_richardson)
+{
+    {
+        amrex::ParmParse pp("KLAxellSeparation");
+        pp.add("curvature_correction", true);
+        pp.add("curvature_model", std::string("richardson"));
+    }
+    create_klaxell_model("KLAxellSeparation");
+    auto& tmodel = sim().turbulence_model();
+    auto& repo = sim().repo();
+    EXPECT_EQ(tmodel.model_coeffs().at("curvature_coefficient"), 1.0_rt);
+
+    const amrex::Real rho0 = m_rho0;
+    const amrex::Real tke_val = 0.1_rt;
+    auto& vel = repo.get_field("velocity");
+    auto& temp = repo.get_field("temperature");
+    const auto& muturb = repo.get_field("mu_turb");
+    repo.get_field("density").setVal(rho0);
+    repo.get_field("tke").setVal(tke_val);
+    repo.get_field("turb_lscale").setVal(1.0_rt);
+    temp.setVal(amrex::Vector<amrex::Real>{m_tref}, temp.num_grow()[0]);
+
+    const auto& geom = repo.mesh().Geom(0);
+    const auto problo = geom.ProbLoArray();
+    const auto dx = geom.CellSizeArray();
+    const amrex::Real Cmu = 0.556_rt;
+    const amrex::Real lambda = 30.0_rt;
+    const amrex::Real kappa = 0.41_rt;
+    const amrex::Real rtol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+
+    // Simple shear u = (S z, 0, 0): straight streamlines keep the KLAxell
+    // eddy viscosity rho Cmu L sqrt(k), largest at the top
+    {
+        const amrex::Real srate = 0.01_rt;
+        const auto& varrs = vel(0).arrays();
+        amrex::ParallelFor(
+            vel(0), vel.num_grow(),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                varrs[nbx](i, j, k, 0) =
+                    srate * (problo[2] + ((k + 0.5_rt) * dx[2]));
+                varrs[nbx](i, j, k, 1) = 0.0_rt;
+                varrs[nbx](i, j, k, 2) = 0.0_rt;
+            });
+        amrex::Gpu::streamSynchronize();
+    }
+    tmodel.update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    const amrex::Real z_top = 1016.0_rt;
+    const amrex::Real lscale_top =
+        (lambda * kappa * z_top) / (lambda + (kappa * z_top));
+    const amrex::Real mu_top = rho0 * Cmu * lscale_top * std::sqrt(tke_val);
+    EXPECT_NEAR(utils::field_max(muturb), mu_top, rtol * mu_top);
+
+    // Solid rotation about a vertical axis: N2_c = 4 Omega^2, so
+    // Rt_c = 4 Omega^2 L^2 / (Cmu^6 k) and mu = rho Cmu(Rt_c) L sqrt(k). The
+    // axis lies between cell centers, so |u| > 0 everywhere.
+    const amrex::Real omega = 1.0e-3_rt;
+    const amrex::Real xc = 512.0_rt;
+    const amrex::Real yc = 512.0_rt;
+    {
+        const auto& varrs = vel(0).arrays();
+        amrex::ParallelFor(
+            vel(0), vel.num_grow(),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                const amrex::Real x = problo[0] + ((i + 0.5_rt) * dx[0]);
+                const amrex::Real y = problo[1] + ((j + 0.5_rt) * dx[1]);
+                varrs[nbx](i, j, k, 0) = -omega * (y - yc);
+                varrs[nbx](i, j, k, 1) = omega * (x - xc);
+                varrs[nbx](i, j, k, 2) = 0.0_rt;
+            });
+        amrex::Gpu::streamSynchronize();
+    }
+    tmodel.update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    const amrex::Real Cmu6 = kynema_sgf::utils::powi(Cmu, 6);
+    const auto& mu_arrs = muturb(0).const_arrays();
+    auto ratio = amrex::ParReduce(
+        amrex::TypeList<amrex::ReduceOpMin, amrex::ReduceOpMax>{},
+        amrex::TypeList<amrex::Real, amrex::Real>{}, muturb(0),
+        amrex::IntVect(0),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept
+            -> amrex::GpuTuple<amrex::Real, amrex::Real> {
+            const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
+            const amrex::Real lscale =
+                (lambda * kappa * z) / (lambda + (kappa * z));
+            const amrex::Real rt =
+                4.0_rt * omega * omega * lscale * lscale / (Cmu6 * tke_val);
+            const amrex::Real cmu_rt =
+                (Cmu + (0.108_rt * rt)) /
+                (1.0_rt + (0.308_rt * rt) + (0.00837_rt * rt * rt));
+            const amrex::Real expected =
+                rho0 * cmu_rt * lscale * std::sqrt(tke_val);
+            const amrex::Real r = mu_arrs[nbx](i, j, k) / expected;
+            return amrex::makeTuple(r, r);
+        });
+    amrex::ParallelDescriptor::ReduceRealMin(amrex::get<0>(ratio));
+    amrex::ParallelDescriptor::ReduceRealMax(amrex::get<1>(ratio));
+    EXPECT_NEAR(amrex::get<0>(ratio), 1.0_rt, rtol);
+    EXPECT_NEAR(amrex::get<1>(ratio), 1.0_rt, rtol);
+}
+
+TEST_F(TurbRANSTest, test_1eqKrans_separation_curvature_rotation_function)
+{
+    {
+        amrex::ParmParse pp("KLAxellSeparation");
+        pp.add("curvature_correction", true);
+        pp.add("curvature_model", std::string("rotation_function"));
+    }
+    create_klaxell_model("KLAxellSeparation");
+    auto& tmodel = sim().turbulence_model();
+    auto& repo = sim().repo();
+
+    const amrex::Real tke_val = 0.1_rt;
+    auto& vel = repo.get_field("velocity");
+    auto& temp = repo.get_field("temperature");
+    const auto& muturb = repo.get_field("mu_turb");
+    repo.get_field("density").setVal(m_rho0);
+    repo.get_field("tke").setVal(tke_val);
+    repo.get_field("turb_lscale").setVal(1.0_rt);
+    temp.setVal(amrex::Vector<amrex::Real>{m_tref}, temp.num_grow()[0]);
+
+    const auto& geom = repo.mesh().Geom(0);
+    const auto problo = geom.ProbLoArray();
+    const auto dx = geom.CellSizeArray();
+    const amrex::Real Cmu = 0.556_rt;
+    const amrex::Real lambda = 30.0_rt;
+    const amrex::Real kappa = 0.41_rt;
+    const amrex::Real rtol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+
+    // Simple shear: S = Omega, so r* = 1, r~ = 0 and f = 1; the eddy
+    // viscosity keeps the KLAxell value
+    {
+        const amrex::Real srate = 0.01_rt;
+        const auto& varrs = vel(0).arrays();
+        amrex::ParallelFor(
+            vel(0), vel.num_grow(),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                varrs[nbx](i, j, k, 0) =
+                    srate * (problo[2] + ((k + 0.5_rt) * dx[2]));
+                varrs[nbx](i, j, k, 1) = 0.0_rt;
+                varrs[nbx](i, j, k, 2) = 0.0_rt;
+            });
+        amrex::Gpu::streamSynchronize();
+    }
+    tmodel.update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    const amrex::Real z_top = 1016.0_rt;
+    const amrex::Real lscale_top =
+        (lambda * kappa * z_top) / (lambda + (kappa * z_top));
+    const amrex::Real mu_top = m_rho0 * Cmu * lscale_top * std::sqrt(tke_val);
+    EXPECT_NEAR(utils::field_max(muturb), mu_top, rtol * mu_top);
+
+    // Solid rotation: S = 0, so r* = 0 and f = -c_r1, limited to 0; the eddy
+    // viscosity vanishes
+    const amrex::Real omega = 1.0e-3_rt;
+    const amrex::Real xc = 512.0_rt;
+    const amrex::Real yc = 512.0_rt;
+    {
+        const auto& varrs = vel(0).arrays();
+        amrex::ParallelFor(
+            vel(0), vel.num_grow(),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                const amrex::Real x = problo[0] + ((i + 0.5_rt) * dx[0]);
+                const amrex::Real y = problo[1] + ((j + 0.5_rt) * dx[1]);
+                varrs[nbx](i, j, k, 0) = -omega * (y - yc);
+                varrs[nbx](i, j, k, 1) = omega * (x - xc);
+                varrs[nbx](i, j, k, 2) = 0.0_rt;
+            });
+        amrex::Gpu::streamSynchronize();
+    }
+    tmodel.update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    EXPECT_EQ(utils::field_min(muturb), 0.0_rt);
+    EXPECT_EQ(utils::field_max(muturb), 0.0_rt);
+}
+
 } // namespace kynema_sgf_tests
