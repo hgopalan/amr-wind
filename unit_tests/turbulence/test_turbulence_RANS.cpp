@@ -309,4 +309,81 @@ TEST_F(TurbRANSTest, test_1eqKrans_separation_pressure_gradient_sensor)
     check_range(gp_val / (m_rho0 * (tke_small + (c_u * 64.0_rt))));
 }
 
+TEST_F(TurbRANSTest, test_1eqKrans_separation_realizable_cmu)
+{
+    {
+        amrex::ParmParse pp("KLAxellSeparation");
+        pp.add("pressure_gradient_sensor", true);
+        pp.add("realizable_cmu", true);
+    }
+    create_klaxell_model("KLAxellSeparation");
+    auto& tmodel = sim().turbulence_model();
+    auto& repo = sim().repo();
+    const auto coeffs = tmodel.model_coeffs();
+    EXPECT_EQ(coeffs.at("sensor_threshold"), 0.1_rt);
+    EXPECT_EQ(coeffs.at("realizable_cmu_strength"), 1.0_rt);
+
+    // Uniform strain rate S, uniform TKE and a stable temperature gradient.
+    // Below meso_sponge_start with no surface flux the neutral length scale
+    // applies, so Rt = 0 and Cmu(Rt) = Cmu.
+    const amrex::Real srate = 1.0_rt;
+    const amrex::Real tke_val = 0.1_rt;
+    const amrex::Real tgrad = 0.01_rt;
+    init_strain_field(repo.get_field("velocity"), srate);
+    init_temperature_field(repo.get_field("temperature"), tgrad);
+    repo.get_field("density").setVal(m_rho0);
+    repo.get_field("tke").setVal(tke_val);
+    repo.get_field("turb_lscale").setVal(1.0_rt);
+    auto& gp = repo.get_field("gp");
+    const auto& sensor = repo.get_field("pressure_gradient_sensor");
+    const auto& muturb = repo.get_field("mu_turb");
+    const auto& shear_prod = repo.get_field("shear_prod");
+    const auto& buoy_prod = repo.get_field("buoy_prod");
+    const auto update = [&](const amrex::Real gp_val) {
+        gp.setVal(amrex::Vector<amrex::Real>{gp_val, gp_val, gp_val});
+        tmodel.update_turbulent_viscosity(
+            kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    };
+    const amrex::Real Cmu = 0.556_rt;
+    const amrex::Real rtol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+
+    // No pressure gradient: the sensor stays below the threshold and the eddy
+    // viscosity keeps the KLAxell value rho Cmu L sqrt(k), largest at the top
+    update(0.0_rt);
+    const amrex::Real lambda = 30.0_rt;
+    const amrex::Real kappa = 0.41_rt;
+    const amrex::Real z_top = 1016.0_rt;
+    const amrex::Real lscale_top =
+        (lambda * kappa * z_top) / (lambda + (kappa * z_top));
+    const amrex::Real mu_top = m_rho0 * Cmu * lscale_top * std::sqrt(tke_val);
+    EXPECT_NEAR(utils::field_max(muturb), mu_top, rtol * mu_top);
+    // The buoyancy production is -mu N^2 with the same eddy viscosity
+    const amrex::Real nsqr =
+        -utils::field_min(buoy_prod) / utils::field_max(muturb);
+    EXPECT_GT(nsqr, 0.0_rt);
+
+    // Strong pressure gradient along the flow: the sensor fires everywhere,
+    // Sigma = L S / sqrt(k) exceeds Cmu in every cell, and with c_s = 1 the
+    // eddy viscosity becomes rho Cmu^2 k / S
+    update(1.0e4_rt);
+    EXPECT_GT(utils::field_min(sensor), coeffs.at("sensor_threshold"));
+    const amrex::Real mu_limited = m_rho0 * Cmu * Cmu * tke_val / srate;
+    EXPECT_NEAR(utils::field_min(muturb), mu_limited, rtol * mu_limited);
+    EXPECT_NEAR(utils::field_max(muturb), mu_limited, rtol * mu_limited);
+    // The shear and buoyancy production follow the limited eddy viscosity
+    const amrex::Real shear_limited = srate * srate * mu_limited;
+    EXPECT_NEAR(
+        utils::field_min(shear_prod), shear_limited, rtol * shear_limited);
+    EXPECT_NEAR(
+        utils::field_max(shear_prod), shear_limited, rtol * shear_limited);
+    const amrex::Real buoy_limited = -nsqr * mu_limited;
+    EXPECT_NEAR(
+        utils::field_min(buoy_prod), buoy_limited,
+        rtol * std::abs(buoy_limited));
+    EXPECT_NEAR(
+        utils::field_max(buoy_prod), buoy_limited,
+        rtol * std::abs(buoy_limited));
+}
+
 } // namespace kynema_sgf_tests

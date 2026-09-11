@@ -39,6 +39,39 @@ This section is for setting turbulence model parameters
    Weight :math:`c_u` of the velocity term in the scale of the
    pressure-gradient sensor of the "KLAxellSeparation" model.
 
+.. input_param:: KLAxellSeparation_coeffs.sensor_threshold
+
+   **type:** Real, optional, default = 0.1
+
+   Sensor value :math:`s_T` above which the treatments of the
+   "KLAxellSeparation" model start to act. Their weight ramps linearly from 0
+   at :math:`s_T` to 1 at :math:`2 s_T`, so the treatments switch on smoothly
+   instead of changing from one cell to the next. Must be positive. The
+   default is provisional until the treatments are calibrated.
+
+.. input_param:: KLAxellSeparation.realizable_cmu
+
+   **type:** Boolean, optional, default = false
+
+   Limits the eddy viscosity of the "KLAxellSeparation" model where the
+   pressure-gradient sensor :math:`s` exceeds
+   ``KLAxellSeparation_coeffs.sensor_threshold`` (:math:`s_T`). There, the eddy
+   viscosity and the shear and buoyancy production are divided by
+   :math:`1 + c_s \, g \, \max(0, \Sigma / C_\mu - 1)`, with the gate
+   :math:`g = \min(1, \max(0, (s - s_T) / s_T))` and
+   :math:`\Sigma = L S / \sqrt{k}`, which equals :math:`C_\mu` in an
+   equilibrium log layer. For large :math:`\Sigma` the eddy viscosity tends
+   to :math:`\rho \, C_\mu(R_t) \, C_\mu k / (c_s S)`. Elsewhere the model
+   is unchanged. Requires ``KLAxellSeparation.pressure_gradient_sensor =
+   true``.
+
+.. input_param:: KLAxellSeparation_coeffs.realizable_cmu_strength
+
+   **type:** Real, optional, default = 1.0
+
+   Strength :math:`c_s` of the realizable :math:`C_\mu` limiter of the
+   "KLAxellSeparation" model; 0 leaves the eddy viscosity unchanged.
+
    
 .. input_param:: Smagorinsky_coeffs.Cs
 
