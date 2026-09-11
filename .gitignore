@@ -25,3 +25,5 @@ build*
 __pycache__/
 docs/sphinx/doxygen
 docs/sphinx/references/auto
+# Local design notes, not part of the repository
+docs/notes/
