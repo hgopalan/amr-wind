@@ -32,6 +32,22 @@ This section is for setting turbulence model parameters
    diagnostic and does not change the solution; add
    ``pressure_gradient_sensor`` to ``io.outputs`` to write it.
 
+.. input_param:: KLAxellSeparation.sensor_source
+
+   **type:** String, optional, default = ``pressure``
+
+   How the pressure-gradient sensor of the "KLAxellSeparation" model is
+   evaluated. ``pressure`` uses the pressure gradient as described above.
+   ``velocity`` uses the Bernoulli estimate of the same quantity from the
+   velocity field, :math:`-\hat{u}_i \, \partial (|\mathbf{u}|^2 / 2) /
+   \partial x_i` divided by :math:`(k + c_u |\mathbf{u}|^2) / L`, and stores
+   it in the same field. The treatments gated by the sensor change the
+   pressure field more than the velocity field, so the velocity estimate
+   does not feed those changes back into the gate. It also responds to the
+   deceleration by turbulent stresses. With ``velocity`` the sensor is
+   multiplied by the smallest fluid weight of the six face neighbors, which
+   makes it zero in cells next to the terrain.
+
 .. input_param:: KLAxellSeparation_coeffs.sensor_velocity_weight
 
    **type:** Real, optional, default = 0.05

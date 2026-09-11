@@ -20,6 +20,11 @@ KLAxellSeparation<Transport>::KLAxellSeparation(CFDSim& sim)
     amrex::ParmParse pp("KLAxellSeparation");
     pp.query("pressure_gradient_sensor", m_use_pressure_gradient_sensor);
     pp.query("realizable_cmu", m_use_realizable_cmu);
+    pp.query("sensor_source", m_sensor_source);
+    if (m_sensor_source != "pressure" && m_sensor_source != "velocity") {
+        amrex::Abort(
+            "KLAxellSeparation.sensor_source must be pressure or velocity");
+    }
     if (m_use_realizable_cmu && !m_use_pressure_gradient_sensor) {
         amrex::Abort(
             "KLAxellSeparation.realizable_cmu requires "
@@ -65,12 +70,16 @@ void KLAxellSeparation<Transport>::post_init_actions()
 {
     KLAxell<Transport>::post_init_actions();
     m_geometry = this->m_sim.repo().create_scratch_field(
-        klaxell_separation::geom_ncomp, 0);
+        klaxell_separation::geom_ncomp, 1);
     if (m_use_pressure_gradient_sensor) {
         m_pressure_gradient_sensor->setVal(0.0_rt);
     }
     if (m_use_realizable_cmu) {
         m_strain = this->m_sim.repo().create_scratch_field(1, 0);
+    }
+    if (m_use_pressure_gradient_sensor && (m_sensor_source == "velocity")) {
+        m_grad_vel = this->m_sim.repo().create_scratch_field(
+            AMREX_SPACEDIM * AMREX_SPACEDIM, 0);
     }
 }
 
@@ -79,12 +88,16 @@ void KLAxellSeparation<Transport>::post_regrid_actions()
 {
     KLAxell<Transport>::post_regrid_actions();
     m_geometry = this->m_sim.repo().create_scratch_field(
-        klaxell_separation::geom_ncomp, 0);
+        klaxell_separation::geom_ncomp, 1);
     if (m_use_pressure_gradient_sensor) {
         m_pressure_gradient_sensor->setVal(0.0_rt);
     }
     if (m_use_realizable_cmu) {
         m_strain = this->m_sim.repo().create_scratch_field(1, 0);
+    }
+    if (m_use_pressure_gradient_sensor && (m_sensor_source == "velocity")) {
+        m_grad_vel = this->m_sim.repo().create_scratch_field(
+            AMREX_SPACEDIM * AMREX_SPACEDIM, 0);
     }
 }
 
@@ -99,6 +112,11 @@ void KLAxellSeparation<Transport>::update_turbulent_viscosity(
 
     const auto& vel = this->m_vel.state(fstate);
     fvm::strainrate(this->m_shear_prod, vel);
+    const bool use_velocity_sensor =
+        m_use_pressure_gradient_sensor && (m_sensor_source == "velocity");
+    if (use_velocity_sensor) {
+        fvm::gradient(*m_grad_vel, vel);
+    }
 
     const auto beta = (this->m_transport).beta();
     auto& mu_turb = this->mu_turb();
@@ -120,7 +138,9 @@ void KLAxellSeparation<Transport>::update_turbulent_viscosity(
             flat_geometry(lev);
         }
         closure(lev, fstate, *beta);
-        if (m_use_pressure_gradient_sensor) {
+        if (use_velocity_sensor) {
+            velocity_sensor(lev, fstate);
+        } else if (m_use_pressure_gradient_sensor) {
             pressure_gradient_sensor(lev, fstate);
         }
         if (m_use_realizable_cmu) {
@@ -308,6 +328,60 @@ void KLAxellSeparation<Transport>::pressure_gradient_sensor(
                                          (vel(i, j, k, 1) * gp(i, j, k, 1)) +
                                          (vel(i, j, k, 2) * gp(i, j, k, 2))) *
                                         scale;
+        });
+}
+
+template <typename Transport>
+void KLAxellSeparation<Transport>::velocity_sensor(
+    const int lev, const FieldState fstate)
+{
+    const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
+    const amrex::Real c_u = m_sensor_velocity_weight;
+
+    // Ghost cells of the fluid weight: copied from the neighboring boxes and
+    // across periodic boundaries, 1 (fluid) on the other domain boundaries
+    auto& geom_mf = (*m_geometry)(lev);
+    geom_mf.setBndry(1.0_rt);
+    geom_mf.FillBoundary(this->m_sim.repo().mesh().Geom(lev).periodicity());
+
+    const auto& vel_arrs = this->m_vel.state(fstate)(lev).const_arrays();
+    const auto& gradvel_arrs = (*m_grad_vel)(lev).const_arrays();
+    const auto& tke_arrs = (*this->m_tke)(lev).const_arrays();
+    const auto& tlscale_arrs = (this->m_turb_lscale)(lev).const_arrays();
+    const auto& geom_arrs = geom_mf.const_arrays();
+    const auto& sensor_arrs = (*m_pressure_gradient_sensor)(lev).arrays();
+
+    // -(u . grad)(|u|^2 / 2) / |u| = -u_m u_n d(u_n)/d(x_m) / |u|, divided by
+    // (k + c_u |u|^2) / L with the divisors floored as in the pressure sensor.
+    // The gradient field stores d(u_n)/d(x_m) in component n * 3 + m. The
+    // smallest fluid weight of the face neighbors zeroes the sensor next to
+    // the terrain.
+    amrex::ParallelFor(
+        (*m_pressure_gradient_sensor)(lev),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const auto& vel = vel_arrs[nbx];
+            const auto& gradvel = gradvel_arrs[nbx];
+            const auto& geo = geom_arrs[nbx];
+            amrex::Real advection = 0.0_rt;
+            for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+                for (int m = 0; m < AMREX_SPACEDIM; ++m) {
+                    advection += vel(i, j, k, m) * vel(i, j, k, n) *
+                                 gradvel(i, j, k, (n * AMREX_SPACEDIM) + m);
+                }
+            }
+            const amrex::Real umag_sqr = (vel(i, j, k, 0) * vel(i, j, k, 0)) +
+                                         (vel(i, j, k, 1) * vel(i, j, k, 1)) +
+                                         (vel(i, j, k, 2) * vel(i, j, k, 2));
+            const int w = klaxell_separation::geom_fluid_weight;
+            const amrex::Real neighbor_weight = amrex::min(
+                geo(i - 1, j, k, w), geo(i + 1, j, k, w), geo(i, j - 1, k, w),
+                geo(i, j + 1, k, w), geo(i, j, k - 1, w), geo(i, j, k + 1, w));
+            const amrex::Real scale =
+                geo(i, j, k, w) * neighbor_weight * tlscale_arrs[nbx](i, j, k) /
+                (amrex::max<amrex::Real>(std::sqrt(umag_sqr), tiny) *
+                 amrex::max<amrex::Real>(
+                     tke_arrs[nbx](i, j, k) + (c_u * umag_sqr), tiny));
+            sensor_arrs[nbx](i, j, k) = -advection * scale;
         });
 }
 

@@ -96,6 +96,22 @@ public:
      */
     void pressure_gradient_sensor(int lev, FieldState fstate);
 
+    /** Compute the pressure-gradient sensor on one level from the velocity
+     *
+     *  Along a streamline of steady inviscid flow the pressure gradient is
+     *  -rho (u . grad)(|u|^2 / 2) / |u| (Bernoulli), so the sensor becomes
+     *  -(u . grad)(|u|^2 / 2) / |u| divided by (k + c_u |u|^2) / L. The
+     *  treatments leave the velocity smooth where they change the pressure
+     *  field, so this estimate does not feed their changes back into the
+     *  gate. The sensor is multiplied by the smallest fluid weight of the six
+     *  face neighbors, which makes it zero in cells next to the terrain,
+     *  where the velocity gradient reaches into the terrain.
+     *
+     *  \param lev AMR level
+     *  \param fstate Field state
+     */
+    void velocity_sensor(int lev, FieldState fstate);
+
     /** Apply the realizable Cmu limiter on one level
      *
      *  The eddy viscosity and the shear and buoyancy production are divided
@@ -110,7 +126,8 @@ public:
     void realizable_cmu(int lev);
 
 protected:
-    //! Height above the surface and fluid weight of each cell
+    //! Height above the surface and fluid weight of each cell, with one ghost
+    //! cell for the neighbor weights of the velocity sensor
     std::unique_ptr<ScratchField> m_geometry;
 
     //! Compute the pressure-gradient sensor
@@ -125,6 +142,13 @@ protected:
 
     //! Pressure-gradient sensor, declared only when the sensor is enabled
     Field* m_pressure_gradient_sensor{nullptr};
+
+    //! Source of the sensor: "pressure" (the pressure gradient) or "velocity"
+    //! (the Bernoulli estimate from the velocity field)
+    std::string m_sensor_source{"pressure"};
+
+    //! Velocity gradient, allocated only for the velocity sensor
+    std::unique_ptr<ScratchField> m_grad_vel;
 
     //! Apply the realizable Cmu limiter
     bool m_use_realizable_cmu{false};
