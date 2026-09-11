@@ -115,27 +115,25 @@ function(add_test_red TEST_NAME TEST_DEPENDENCY)
 endfunction(add_test_red)
 
 # Run the input of SOURCE_TEST with KLAxell and with KLAxellSeparation and
-# compare the two plot files with each other (no gold files). Any further
-# arguments are runtime options for the KLAxellSeparation run. By default the
-# two plot files must agree; with the EXPECT_DIFFERENT argument the
-# KLAxellSeparation plot file must be free of NaNs and differ from KLAxell.
+# compare the two plot files with each other (no gold files). Further
+# arguments are runtime options for the KLAxellSeparation run; options after
+# COMMON_OPTIONS are given to both runs. By default the two plot files must
+# agree; with the EXPECT_DIFFERENT argument the KLAxellSeparation plot file
+# must be free of NaNs and differ from KLAxell.
 function(add_test_klaxell_pair TEST_NAME SOURCE_TEST)
     set(PAIR_NAME ${TEST_NAME})
     set(TEST_NAME ${SOURCE_TEST})
     setup_test()
     set(PAIR_DIR ${CMAKE_CURRENT_BINARY_DIR}/test_files/${PAIR_NAME})
-    set(SEPARATION_ARGS ${ARGN})
-    set(EXPECT_DIFFERENT OFF)
-    if("EXPECT_DIFFERENT" IN_LIST SEPARATION_ARGS)
-      set(EXPECT_DIFFERENT ON)
-      list(REMOVE_ITEM SEPARATION_ARGS EXPECT_DIFFERENT)
-    endif()
-    list(JOIN SEPARATION_ARGS " " SEPARATION_OPTIONS)
+    cmake_parse_arguments(PAIR "EXPECT_DIFFERENT" "" "COMMON_OPTIONS" ${ARGN})
+    set(EXPECT_DIFFERENT ${PAIR_EXPECT_DIFFERENT})
+    list(JOIN PAIR_UNPARSED_ARGUMENTS " " SEPARATION_OPTIONS)
+    list(JOIN PAIR_COMMON_OPTIONS " " COMMON_OPTIONS)
     unset(PAIR_COMMAND)
     foreach(MODEL IN ITEMS KLAxell KLAxellSeparation)
       file(MAKE_DIRECTORY ${PAIR_DIR}/${MODEL})
       file(COPY ${TEST_FILES} DESTINATION "${PAIR_DIR}/${MODEL}/")
-      set(MODEL_OPTIONS "turbulence.model=${MODEL}")
+      set(MODEL_OPTIONS "turbulence.model=${MODEL} ${COMMON_OPTIONS}")
       if("${MODEL}" STREQUAL "KLAxellSeparation")
         string(APPEND MODEL_OPTIONS " ${SEPARATION_OPTIONS}")
       endif()
