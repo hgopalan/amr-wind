@@ -475,4 +475,94 @@ TEST_F(TurbRANSTest, test_1eqKrans_separation_realizable_cmu)
         rtol * std::abs(buoy_limited));
 }
 
+TEST_F(TurbRANSTest, test_1eqKrans_separation_gate_relaxation)
+{
+    const amrex::Real tau = 10.0_rt;
+    {
+        amrex::ParmParse pp("KLAxellSeparation");
+        pp.add("pressure_gradient_sensor", true);
+        pp.add("realizable_cmu", true);
+    }
+    {
+        amrex::ParmParse pp("KLAxellSeparation_coeffs");
+        pp.add("gate_relaxation_time", tau);
+    }
+    create_klaxell_model("KLAxellSeparation");
+    auto& tmodel = sim().turbulence_model();
+    auto& repo = sim().repo();
+    EXPECT_EQ(tmodel.model_coeffs().at("gate_relaxation_time"), tau);
+
+    // Uniform strain rate and TKE with a neutral temperature field, so
+    // Cmu(Rt) = Cmu and Sigma = L S / sqrt(k) exceeds Cmu in every cell
+    const amrex::Real srate = 1.0_rt;
+    const amrex::Real tke_val = 0.1_rt;
+    init_strain_field(repo.get_field("velocity"), srate);
+    init_temperature_field(repo.get_field("temperature"), 0.0_rt);
+    repo.get_field("density").setVal(m_rho0);
+    repo.get_field("tke").setVal(tke_val);
+    repo.get_field("turb_lscale").setVal(1.0_rt);
+    auto& gp = repo.get_field("gp");
+    const auto& sensor = repo.get_field("pressure_gradient_sensor");
+    const auto& muturb = repo.get_field("mu_turb");
+    const auto& gate = repo.get_field("separation_gate");
+    const amrex::Real dt = 1.0_rt;
+    sim().time().delta_t() = dt;
+    // One time step: viscosity update with the stored gate, then relaxation
+    const auto step = [&](const amrex::Real gp_val) {
+        gp.setVal(amrex::Vector<amrex::Real>{gp_val, gp_val, gp_val});
+        tmodel.update_turbulent_viscosity(
+            kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+        tmodel.post_advance_work();
+    };
+    const amrex::Real Cmu = 0.556_rt;
+    const amrex::Real lambda = 30.0_rt;
+    const amrex::Real kappa = 0.41_rt;
+    const auto lscale = [=](const amrex::Real z) {
+        return (lambda * kappa * z) / (lambda + (kappa * z));
+    };
+    // Eddy viscosity for a gate g; it grows with L, so the extremes are in
+    // the lowest and highest cells (8 m and 1016 m)
+    const auto mu_gated = [=, this](const amrex::Real g, const amrex::Real z) {
+        const amrex::Real sigma = lscale(z) * srate / std::sqrt(tke_val);
+        return m_rho0 * Cmu * lscale(z) * std::sqrt(tke_val) /
+               (1.0_rt + (g * ((sigma / Cmu) - 1.0_rt)));
+    };
+    const amrex::Real rtol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+    const auto check_gate = [&](const amrex::Real g) {
+        EXPECT_NEAR(utils::field_min(gate), g, rtol);
+        EXPECT_NEAR(utils::field_max(gate), g, rtol);
+    };
+    EXPECT_EQ(utils::field_max(gate), 0.0_rt);
+
+    // First step with a sensor far above twice the threshold: the viscosity
+    // still uses the initial gate 0, and the gate relaxes toward 1
+    const amrex::Real gp_strong = 1.0e5_rt;
+    step(gp_strong);
+    EXPECT_GT(
+        utils::field_min(sensor),
+        2.0_rt * tmodel.model_coeffs().at("sensor_threshold"));
+    EXPECT_NEAR(
+        utils::field_max(muturb), mu_gated(0.0_rt, 1016.0_rt),
+        rtol * mu_gated(0.0_rt, 1016.0_rt));
+    const amrex::Real decay = std::exp(-dt / tau);
+    const amrex::Real g1 = 1.0_rt - decay;
+    check_gate(g1);
+
+    // Second step: the viscosity uses g1
+    step(gp_strong);
+    EXPECT_NEAR(
+        utils::field_min(muturb), mu_gated(g1, 8.0_rt),
+        rtol * mu_gated(g1, 8.0_rt));
+    EXPECT_NEAR(
+        utils::field_max(muturb), mu_gated(g1, 1016.0_rt),
+        rtol * mu_gated(g1, 1016.0_rt));
+    const amrex::Real g2 = 1.0_rt - (decay * decay);
+    check_gate(g2);
+
+    // No pressure gradient: the gate decays toward 0
+    step(0.0_rt);
+    check_gate(g2 * decay);
+}
+
 } // namespace kynema_sgf_tests

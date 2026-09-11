@@ -88,6 +88,26 @@ This section is for setting turbulence model parameters
    Strength :math:`c_s` of the realizable :math:`C_\mu` limiter of the
    "KLAxellSeparation" model; 0 leaves the eddy viscosity unchanged.
 
+.. input_param:: KLAxellSeparation_coeffs.gate_relaxation_time
+
+   **type:** Real, optional, default = 0
+
+   Relaxation time :math:`\tau` (s) of the gate of the "KLAxellSeparation"
+   treatments. With 0 the gate follows the sensor instantly. With a positive
+   value the gate is stored in the field ``separation_gate`` and, once per
+   time step, relaxes toward the ramp value
+   :math:`g^* = \min(1, \max(0, (s - s_T) / s_T))` of the latest sensor as
+   :math:`g \leftarrow g^* + (g - g^*) \exp(-\Delta t / \tau)`; the
+   treatments use the stored gate, which lags the flow by one step. This damps
+   a feedback in which the treatments change the flow faster than the sensor
+   settles. The gate starts at 0, is kept in checkpoint files and is
+   interpolated on regrid; where the sensor stays below :math:`s_T` it stays
+   exactly 0. Requires ``KLAxellSeparation.pressure_gradient_sensor = true``;
+   must not be negative. With the instantaneous gate the realizable
+   :math:`C_\mu` limiter produced grid-scale stripes in the eddy viscosity on
+   a smooth hill; 10 s removed them with the same effect on the separation
+   (30 s gave the same result), so a value of about 10 s is suggested.
+
    
 .. input_param:: Smagorinsky_coeffs.Cs
 

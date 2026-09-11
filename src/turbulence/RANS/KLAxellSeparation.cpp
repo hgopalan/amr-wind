@@ -34,6 +34,27 @@ KLAxellSeparation<Transport>::KLAxellSeparation(CFDSim& sim)
         m_pressure_gradient_sensor =
             &sim.repo().declare_field("pressure_gradient_sensor", 1);
     }
+
+    // The relaxation time decides whether the gate field exists, so it is
+    // read here rather than in parse_model_coeffs
+    amrex::ParmParse pp_coeffs("KLAxellSeparation_coeffs");
+    pp_coeffs.query("gate_relaxation_time", m_gate_relaxation_time);
+    if (m_gate_relaxation_time < 0.0_rt) {
+        amrex::Abort(
+            "KLAxellSeparation_coeffs.gate_relaxation_time must not be "
+            "negative");
+    }
+    if (m_gate_relaxation_time > 0.0_rt) {
+        if (!m_use_pressure_gradient_sensor) {
+            amrex::Abort(
+                "KLAxellSeparation_coeffs.gate_relaxation_time requires "
+                "KLAxellSeparation.pressure_gradient_sensor = true");
+        }
+        m_separation_gate = &sim.repo().declare_field("separation_gate", 1, 1);
+        m_separation_gate->set_default_fillpatch_bc(sim.time());
+        m_separation_gate->fillpatch_on_regrid() = true;
+        sim.io_manager().register_restart_var("separation_gate");
+    }
 }
 
 template <typename Transport>
@@ -62,6 +83,7 @@ KLAxellSeparation<Transport>::model_coeffs() const
     coeffs["sensor_velocity_weight"] = m_sensor_velocity_weight;
     coeffs["sensor_threshold"] = m_sensor_threshold;
     coeffs["realizable_cmu_strength"] = m_realizable_cmu_strength;
+    coeffs["gate_relaxation_time"] = m_gate_relaxation_time;
     return coeffs;
 }
 
@@ -80,6 +102,11 @@ void KLAxellSeparation<Transport>::post_init_actions()
     if (m_use_pressure_gradient_sensor && (m_sensor_source == "velocity")) {
         m_grad_vel = this->m_sim.repo().create_scratch_field(
             AMREX_SPACEDIM * AMREX_SPACEDIM, 0);
+    }
+    // A restart reads the gate from the checkpoint file before this point
+    if ((m_separation_gate != nullptr) &&
+        !this->m_sim.io_manager().is_restart()) {
+        m_separation_gate->setVal(0.0_rt);
     }
 }
 
@@ -143,7 +170,9 @@ void KLAxellSeparation<Transport>::update_turbulent_viscosity(
         } else if (m_use_pressure_gradient_sensor) {
             pressure_gradient_sensor(lev, fstate);
         }
-        if (m_use_realizable_cmu) {
+        if (m_use_realizable_cmu && (m_separation_gate != nullptr)) {
+            realizable_cmu_relaxed(lev);
+        } else if (m_use_realizable_cmu) {
             realizable_cmu(lev);
         }
     }
@@ -424,6 +453,77 @@ void KLAxellSeparation<Transport>::realizable_cmu(const int lev)
             mu_arrs[nbx](i, j, k) *= factor;
             buoy_prod_arrs[nbx](i, j, k) *= factor;
             shear_prod_arrs[nbx](i, j, k) *= factor;
+        });
+}
+
+template <typename Transport>
+void KLAxellSeparation<Transport>::realizable_cmu_relaxed(const int lev)
+{
+    const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
+    const amrex::Real Cmu = this->m_Cmu;
+    const amrex::Real strength = m_realizable_cmu_strength;
+
+    const auto& mu_arrs = this->mu_turb()(lev).arrays();
+    const auto& buoy_prod_arrs = (this->m_buoy_prod)(lev).arrays();
+    const auto& shear_prod_arrs = (this->m_shear_prod)(lev).arrays();
+    const auto& tke_arrs = (*this->m_tke)(lev).const_arrays();
+    const auto& tlscale_arrs = (this->m_turb_lscale)(lev).const_arrays();
+    const auto& strain_arrs = (*m_strain)(lev).const_arrays();
+    const auto& gate_arrs = (*m_separation_gate)(lev).const_arrays();
+
+    // Same factor as realizable_cmu with the stored gate
+    amrex::ParallelFor(
+        this->mu_turb()(lev),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const amrex::Real sigma =
+                tlscale_arrs[nbx](i, j, k) * strain_arrs[nbx](i, j, k) /
+                amrex::max<amrex::Real>(
+                    std::sqrt(tke_arrs[nbx](i, j, k)), tiny);
+            const amrex::Real factor =
+                1.0_rt / (1.0_rt + (strength * gate_arrs[nbx](i, j, k) *
+                                    amrex::max<amrex::Real>(
+                                        (sigma / Cmu) - 1.0_rt, 0.0_rt)));
+            mu_arrs[nbx](i, j, k) *= factor;
+            buoy_prod_arrs[nbx](i, j, k) *= factor;
+            shear_prod_arrs[nbx](i, j, k) *= factor;
+        });
+}
+
+template <typename Transport>
+void KLAxellSeparation<Transport>::post_advance_work()
+{
+    KLAxell<Transport>::post_advance_work();
+    if (m_separation_gate == nullptr) {
+        return;
+    }
+    const int nlevels = this->m_sim.repo().num_active_levels();
+    for (int lev = 0; lev < nlevels; ++lev) {
+        relax_gate(lev);
+    }
+    amrex::Gpu::streamSynchronize();
+}
+
+template <typename Transport>
+void KLAxellSeparation<Transport>::relax_gate(const int lev)
+{
+    const amrex::Real threshold = m_sensor_threshold;
+    const amrex::Real decay =
+        std::exp(-this->m_sim.time().delta_t() / m_gate_relaxation_time);
+
+    const auto& sensor_arrs = (*m_pressure_gradient_sensor)(lev).const_arrays();
+    const auto& gate_arrs = (*m_separation_gate)(lev).arrays();
+
+    // The sensor is the one of the last viscosity update of the step
+    amrex::ParallelFor(
+        (*m_separation_gate)(lev),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const amrex::Real target = amrex::min<amrex::Real>(
+                amrex::max<amrex::Real>(
+                    (sensor_arrs[nbx](i, j, k) - threshold) / threshold,
+                    0.0_rt),
+                1.0_rt);
+            gate_arrs[nbx](i, j, k) =
+                target + ((gate_arrs[nbx](i, j, k) - target) * decay);
         });
 }
 

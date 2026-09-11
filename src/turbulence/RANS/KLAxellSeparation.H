@@ -58,6 +58,9 @@ public:
     //! Actions to perform post regrid
     void post_regrid_actions() override;
 
+    //! Relax the stored gate toward the latest sensor once per time step
+    void post_advance_work() override;
+
     //! Parse turbulence model coefficients
     void parse_model_coeffs() override;
 
@@ -125,6 +128,26 @@ public:
      */
     void realizable_cmu(int lev);
 
+    /** Apply the realizable Cmu limiter on one level with the stored gate
+     *
+     *  Same limiter as realizable_cmu, with the gate taken from the field
+     *  separation_gate, which relax_gate updates once per time step.
+     *
+     *  \param lev AMR level
+     */
+    void realizable_cmu_relaxed(int lev);
+
+    /** Relax the stored gate on one level over the last time step
+     *
+     *  The gate relaxes toward the ramp value g* = clamp((s - s_T) / s_T, 0, 1)
+     *  of the latest sensor as g* + (g - g*) exp(-dt / tau), which is exact
+     *  for a constant g* and stable for any time step. A gate at 0 stays
+     *  exactly 0 while the sensor stays below s_T.
+     *
+     *  \param lev AMR level
+     */
+    void relax_gate(int lev);
+
 protected:
     //! Height above the surface and fluid weight of each cell, with one ghost
     //! cell for the neighbor weights of the velocity sensor
@@ -158,6 +181,13 @@ protected:
 
     //! Strain rate magnitude, kept for the realizable Cmu limiter
     std::unique_ptr<ScratchField> m_strain;
+
+    //! Relaxation time tau of the gate; 0 uses the instantaneous gate
+    amrex::Real m_gate_relaxation_time{0.0_rt};
+
+    //! Gate relaxed in time, declared only when the relaxation time is
+    //! positive; kept in checkpoint files and interpolated on regrid
+    Field* m_separation_gate{nullptr};
 };
 
 } // namespace kynema_sgf::turbulence
