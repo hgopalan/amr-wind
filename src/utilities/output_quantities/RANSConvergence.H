@@ -1,16 +1,15 @@
 #ifndef RANSCONVERGENCE_H
 #define RANSCONVERGENCE_H
 
-#include <deque>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "src/CFDSim.H"
 #include "src/utilities/PostProcessing.H"
 #include "src/utilities/sampling/SamplerBase.H"
 #include "src/utilities/sampling/SamplingContainer.H"
 #include "AMReX_REAL.H"
+#include "AMReX_Vector.H"
 
 using namespace amrex::literals;
 
@@ -103,8 +102,8 @@ public:
      *  \return Fit coefficients and the extrapolated time to the threshold
      */
     static EnvelopeFit fit_envelope_decay(
-        const std::vector<amrex::Real>& times,
-        const std::vector<amrex::Real>& spreads,
+        const amrex::Vector<amrex::Real>& times,
+        const amrex::Vector<amrex::Real>& spreads,
         amrex::Real threshold,
         int min_samples);
 
@@ -176,7 +175,7 @@ private:
     amrex::Vector<Field*> m_fields;
 
     //! Coordinates of the monitor points, gathered once at initialization
-    std::vector<amrex::Real> m_point_coords;
+    amrex::Vector<amrex::Real> m_point_coords;
 
     //! Number of monitor points
     int m_npts{0};
@@ -188,7 +187,7 @@ private:
     bool m_has_terrain{false};
 
     //! Buffer receiving the interpolated values, valid on the IO rank only
-    std::vector<amrex::Real> m_sample_buf;
+    amrex::Vector<amrex::Real> m_sample_buf;
 
     //! Simulation time at which monitoring begins
     amrex::Real m_start_time{-1.0_rt};
@@ -239,21 +238,21 @@ private:
     amrex::Real m_next_sample_time{0.0_rt};
 
     //! Sample times currently held in the window
-    std::deque<amrex::Real> m_times;
+    amrex::Vector<amrex::Real> m_times;
 
     //! Sampled values, three per point per entry: u, v and tke
-    std::deque<std::vector<amrex::Real>> m_samples;
+    amrex::Vector<amrex::Vector<amrex::Real>> m_samples;
 
     //! Times at which envelope spreads were recorded, for the exponential fit
-    std::deque<amrex::Real> m_eta_times;
+    amrex::Vector<amrex::Real> m_eta_times;
 
     //! History of the largest wind speed spread over all points, normalized
     //! by each point's own tolerance so that convergence is a spread of one
-    std::deque<amrex::Real> m_eta_vel_ratio;
+    amrex::Vector<amrex::Real> m_eta_vel_ratio;
 
     //! History of the largest tke spread over all points, normalized by each
     //! point's own tolerance so that convergence is a spread of one
-    std::deque<amrex::Real> m_eta_tke_ratio;
+    amrex::Vector<amrex::Real> m_eta_tke_ratio;
 
     //! True once every point has satisfied both tolerances
     bool m_converged{false};

@@ -52,6 +52,74 @@ TEST_F(SimTimeTest, request_stop_ends_the_run_before_max_step)
     EXPECT_FALSE(time.new_timestep());
 }
 
+namespace {
+
+//! Advance a SimTime through a number of fixed-size steps
+void advance_steps(kynema_sgf::SimTime& time, const int nsteps)
+{
+    for (int i = 0; i < nsteps; ++i) {
+        ASSERT_TRUE(time.new_timestep());
+        time.set_current_cfl(1.125_rt, 0.0_rt, 0.0_rt);
+        time.advance_time();
+    }
+}
+
+} // namespace
+
+TEST_F(SimTimeTest, requested_stop_forces_final_output_without_intervals)
+{
+    build_simtime_params();
+    {
+        // A run set up to stop on convergence and nothing else
+        amrex::ParmParse pp("time");
+        pp.add("fixed_dt", 0.1_rt);
+        pp.add("plot_interval", -1);
+        pp.add("checkpoint_interval", -1);
+    }
+    kynema_sgf::SimTime time;
+    time.parse_parameters();
+    advance_steps(time, 3);
+
+    // The existing end-of-run rule owes nothing when no interval was set
+    EXPECT_FALSE(time.write_final_plot_file());
+    EXPECT_FALSE(time.write_final_checkpoint());
+
+    // A requested stop must leave both behind regardless
+    time.request_stop("monitor converged");
+    EXPECT_TRUE(time.write_final_plot_file());
+    EXPECT_TRUE(time.write_final_checkpoint());
+}
+
+TEST_F(SimTimeTest, requested_stop_does_not_duplicate_interval_output)
+{
+    // With intervals configured, the final output must be exactly what the
+    // run would have written anyway: nothing on a step the interval already
+    // wrote, and a last file on a step it did not. The requested stop must
+    // not change that, or a stop landing on a plot step would write the
+    // plot file twice
+    for (int nsteps = 1; nsteps <= 6; ++nsteps) {
+        build_simtime_params();
+        {
+            amrex::ParmParse pp("time");
+            pp.add("fixed_dt", 0.1_rt);
+            pp.add("plot_interval", 2);
+            pp.add("checkpoint_interval", 3);
+        }
+        kynema_sgf::SimTime time;
+        time.parse_parameters();
+        advance_steps(time, nsteps);
+
+        const bool plt_owed = time.write_last_plot_file();
+        const bool chk_owed = time.write_last_checkpoint();
+        EXPECT_EQ(plt_owed, (nsteps % 2) != 0) << "step " << nsteps;
+        EXPECT_EQ(chk_owed, (nsteps % 3) != 0) << "step " << nsteps;
+
+        time.request_stop("monitor converged");
+        EXPECT_EQ(time.write_final_plot_file(), plt_owed) << "step " << nsteps;
+        EXPECT_EQ(time.write_final_checkpoint(), chk_owed) << "step " << nsteps;
+    }
+}
+
 TEST_F(SimTimeTest, init)
 {
     build_simtime_params();

@@ -298,7 +298,7 @@ void RANSConvergence::take_sample()
         return;
     }
 
-    std::vector<amrex::Real> entry(
+    amrex::Vector<amrex::Real> entry(
         static_cast<size_t>(nvals_per_point) * m_npts, 0.0_rt);
     const long np = m_npts;
     for (int i = 0; i < m_npts; ++i) {
@@ -312,15 +312,17 @@ void RANSConvergence::take_sample()
     m_times.push_back(cur_time);
     m_samples.push_back(std::move(entry));
 
+    // Drop the entries that have aged out of the window. The window holds a
+    // few dozen entries at most, so erasing from the front is cheap
     while (m_times.size() > 1 && (cur_time - m_times.front()) > m_window) {
-        m_times.pop_front();
-        m_samples.pop_front();
+        m_times.erase(m_times.begin());
+        m_samples.erase(m_samples.begin());
     }
 }
 
 EnvelopeFit RANSConvergence::fit_envelope_decay(
-    const std::vector<amrex::Real>& times,
-    const std::vector<amrex::Real>& spreads,
+    const amrex::Vector<amrex::Real>& times,
+    const amrex::Vector<amrex::Real>& spreads,
     const amrex::Real threshold,
     const int min_samples)
 {
@@ -481,9 +483,9 @@ void RANSConvergence::evaluate_convergence()
             m_eta_tke_ratio.push_back(worst_tke_ratio);
             while (m_eta_times.size() > 1 &&
                    (cur_time - m_eta_times.front()) > m_eta_fit_window) {
-                m_eta_times.pop_front();
-                m_eta_vel_ratio.pop_front();
-                m_eta_tke_ratio.pop_front();
+                m_eta_times.erase(m_eta_times.begin());
+                m_eta_vel_ratio.erase(m_eta_vel_ratio.begin());
+                m_eta_tke_ratio.erase(m_eta_tke_ratio.begin());
             }
         }
 
@@ -491,17 +493,10 @@ void RANSConvergence::evaluate_convergence()
         amrex::Real eta_rate = 0.0_rt;
         amrex::Real eta_rsq = 0.0_rt;
         if (m_report_eta && window_full) {
-            const std::vector<amrex::Real> ftimes(
-                m_eta_times.begin(), m_eta_times.end());
-            const std::vector<amrex::Real> fvel(
-                m_eta_vel_ratio.begin(), m_eta_vel_ratio.end());
-            const std::vector<amrex::Real> ftke(
-                m_eta_tke_ratio.begin(), m_eta_tke_ratio.end());
-
-            const auto vfit =
-                fit_envelope_decay(ftimes, fvel, 1.0_rt, m_eta_min_samples);
-            const auto kfit =
-                fit_envelope_decay(ftimes, ftke, 1.0_rt, m_eta_min_samples);
+            const auto vfit = fit_envelope_decay(
+                m_eta_times, m_eta_vel_ratio, 1.0_rt, m_eta_min_samples);
+            const auto kfit = fit_envelope_decay(
+                m_eta_times, m_eta_tke_ratio, 1.0_rt, m_eta_min_samples);
 
             // Both quantities must converge, so the later estimate governs
             if (vfit.valid && vfit.rsq >= m_eta_min_rsq) {

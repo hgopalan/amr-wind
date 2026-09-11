@@ -405,19 +405,12 @@ void incflo::Evolve()
                        << '\n';
     }
 
-    // Output at final time. A requested stop has to leave output behind even
-    // when the run was configured with no output interval at all, in which case
-    // the write_last_* checks would write nothing. Skip it only when this
-    // step's regular output has already written the same file.
-    const bool stop_requested = m_time.stop_requested();
-    const bool write_plt = stop_requested ? !m_time.write_plot_file()
-                                          : m_time.write_last_plot_file();
-    const bool write_chk = stop_requested ? !m_time.write_checkpoint()
-                                          : m_time.write_last_checkpoint();
-    if (write_plt) {
+    // Output at final time. A requested stop leaves output behind even when
+    // no output interval was configured; see SimTime::write_final_plot_file()
+    if (m_time.write_final_plot_file()) {
         m_sim.io_manager().write_plot_file();
     }
-    if (write_chk) {
+    if (m_time.write_final_checkpoint()) {
         m_sim.io_manager().write_checkpoint_file();
     }
     m_sim.post_manager().final_output();

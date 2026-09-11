@@ -203,6 +203,27 @@ public:
         return m_stop_reason;
     }
 
+    /** Whether a plot file must be written once the time loop has ended
+     *
+     *  Without a stop request this is write_last_plot_file(): a plot file is
+     *  owed only when a plot interval is configured and the final step did not
+     *  fall on it. A requested stop must leave output behind even for a run
+     *  configured with no plot interval at all, so it writes unconditionally,
+     *  except when the final step's regular output has already written the
+     *  same file.
+     */
+    [[nodiscard]] bool write_final_plot_file() const
+    {
+        return m_stop_requested ? !write_plot_file() : write_last_plot_file();
+    }
+
+    //! Whether a checkpoint must be written once the time loop has ended;
+    //! the same rule as write_final_plot_file()
+    [[nodiscard]] bool write_final_checkpoint() const
+    {
+        return m_stop_requested ? !write_checkpoint() : write_last_checkpoint();
+    }
+
     //! Set the wall clock start time (captures current wall time)
     void set_wall_start_time();
 

@@ -162,10 +162,11 @@ Restarts
 ````````
 
 The window is not carried across a restart. After a restart the monitor
-refills the window from scratch before it can declare convergence, which costs
-at most one window of extra runtime. This is deliberate: a restart may change
-resolution, forcing or terrain, and carrying stale samples across it would let
-a run stop on evidence gathered under different physics.
+refills the window from scratch and then serves the hold again before it can
+declare convergence, which costs one window plus the hold of extra runtime.
+This is deliberate: a restart may change resolution, forcing or terrain, and
+carrying stale samples across it would let a run stop on evidence gathered
+under different physics.
 
 Example run
 ```````````
@@ -224,7 +225,7 @@ Limitations
   strongly in direction than in speed, so a speed criterion can pass while
   the wind is still turning. Choose tolerances and the hold with that in mind.
 * One tolerance pair per quantity applies to every point.
-* The window is not checkpointed; see `Restarts`_.
+* The window is not saved in the checkpoint file; see `Restarts`_.
 
 Inputs
 ``````
