@@ -38,6 +38,14 @@ KLAxellSeparation<Transport>::KLAxellSeparation(CFDSim& sim)
             "KLAxellSeparation.production_cap requires "
             "KLAxellSeparation.pressure_gradient_sensor = true");
     }
+    // The destruction boost is applied by the TKE source (KransAxell)
+    bool use_destruction_boost = false;
+    pp.query("destruction_boost", use_destruction_boost);
+    if (use_destruction_boost && !m_use_pressure_gradient_sensor) {
+        amrex::Abort(
+            "KLAxellSeparation.destruction_boost requires "
+            "KLAxellSeparation.pressure_gradient_sensor = true");
+    }
     if (m_use_pressure_gradient_sensor) {
         m_pressure_gradient_sensor =
             &sim.repo().declare_field("pressure_gradient_sensor", 1);
@@ -78,6 +86,7 @@ void KLAxellSeparation<Transport>::parse_model_coeffs()
     pp.query("sensor_threshold", m_sensor_threshold);
     pp.query("realizable_cmu_strength", m_realizable_cmu_strength);
     pp.query("production_cap_ratio", m_production_cap_ratio);
+    pp.query("destruction_boost_factor", m_destruction_boost_factor);
     if (m_sensor_threshold <= 0.0_rt) {
         amrex::Abort(
             "KLAxellSeparation_coeffs.sensor_threshold must be positive");
@@ -85,6 +94,11 @@ void KLAxellSeparation<Transport>::parse_model_coeffs()
     if (m_production_cap_ratio <= 0.0_rt) {
         amrex::Abort(
             "KLAxellSeparation_coeffs.production_cap_ratio must be positive");
+    }
+    if (m_destruction_boost_factor < 1.0_rt) {
+        amrex::Abort(
+            "KLAxellSeparation_coeffs.destruction_boost_factor must not be "
+            "below 1");
     }
 }
 
@@ -98,6 +112,7 @@ KLAxellSeparation<Transport>::model_coeffs() const
     coeffs["realizable_cmu_strength"] = m_realizable_cmu_strength;
     coeffs["gate_relaxation_time"] = m_gate_relaxation_time;
     coeffs["production_cap_ratio"] = m_production_cap_ratio;
+    coeffs["destruction_boost_factor"] = m_destruction_boost_factor;
     return coeffs;
 }
 

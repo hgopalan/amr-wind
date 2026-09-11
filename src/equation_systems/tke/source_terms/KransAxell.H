@@ -51,6 +51,28 @@ public:
      */
     void production_cap_relaxed(int lev, amrex::MultiFab& src_term) const;
 
+    /** Increase the dissipation where the pressure-gradient sensor of
+     *  KLAxellSeparation fires
+     *
+     *  Removes g (c_d - 1) eps from the source, with the ramp gate g of the
+     *  sensor and c_d the destruction boost factor of the model.
+     *
+     *  \param lev AMR level
+     *  \param src_term Source term to modify
+     */
+    void destruction_boost(int lev, amrex::MultiFab& src_term) const;
+
+    /** Increase the dissipation with the time-relaxed gate of
+     *  KLAxellSeparation
+     *
+     *  Same boost as destruction_boost, with the gate taken from the field
+     *  separation_gate.
+     *
+     *  \param lev AMR level
+     *  \param src_term Source term to modify
+     */
+    void destruction_boost_relaxed(int lev, amrex::MultiFab& src_term) const;
+
 private:
     Field& m_turb_lscale;
     Field& m_shear_prod;
@@ -99,6 +121,9 @@ private:
 
     //! KLAxellSeparation stores a time-relaxed gate (separation_gate)
     bool m_relaxed_gate{false};
+
+    //! Increase the dissipation where the sensor of KLAxellSeparation fires
+    bool m_destruction_boost{false};
 };
 
 } // namespace kynema_sgf::pde::tke

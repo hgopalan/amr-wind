@@ -87,6 +87,7 @@ KransAxell::KransAxell(const CFDSim& sim)
     if (model_name == "KLAxellSeparation") {
         amrex::ParmParse pp_separation("KLAxellSeparation");
         pp_separation.query("production_cap", m_production_cap);
+        pp_separation.query("destruction_boost", m_destruction_boost);
         // The model declares the gate field when its relaxation time is
         // positive
         m_relaxed_gate = sim.repo().field_exists("separation_gate");
@@ -345,6 +346,11 @@ void KransAxell::operator()(
     } else if (m_production_cap) {
         production_cap(lev, src_term);
     }
+    if (m_destruction_boost && m_relaxed_gate) {
+        destruction_boost_relaxed(lev, src_term);
+    } else if (m_destruction_boost) {
+        destruction_boost(lev, src_term);
+    }
     amrex::Gpu::streamSynchronize();
 }
 
@@ -401,6 +407,54 @@ void KransAxell::production_cap_relaxed(
                     shear_prod_arrs[nbx](i, j, k) -
                         (ratio * dissip_arrs[nbx](i, j, k)),
                     0.0_rt);
+        });
+}
+
+void KransAxell::destruction_boost(
+    const int lev, amrex::MultiFab& src_term) const
+{
+    const auto coeffs = m_sim.turbulence_model().model_coeffs();
+    const amrex::Real extra = coeffs.at("destruction_boost_factor") - 1.0_rt;
+    const amrex::Real threshold = coeffs.at("sensor_threshold");
+
+    auto const& src_arrs = src_term.arrays();
+    auto const& dissip_arrs = m_dissip(lev).const_arrays();
+    auto const& sensor_arrs =
+        m_sim.repo().get_field("pressure_gradient_sensor")(lev).const_arrays();
+
+    // Remove (c_d - 1) eps where the sensor fires, with the ramp gate of the
+    // realizable Cmu limiter. The gate is exactly 0 below the threshold, so
+    // those cells keep the KLAxell source.
+    amrex::ParallelFor(
+        src_term, amrex::IntVect(0), 1,
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int) {
+            const amrex::Real gate = amrex::min<amrex::Real>(
+                amrex::max<amrex::Real>(
+                    (sensor_arrs[nbx](i, j, k) - threshold) / threshold,
+                    0.0_rt),
+                1.0_rt);
+            src_arrs[nbx](i, j, k) -= gate * extra * dissip_arrs[nbx](i, j, k);
+        });
+}
+
+void KransAxell::destruction_boost_relaxed(
+    const int lev, amrex::MultiFab& src_term) const
+{
+    const amrex::Real extra =
+        m_sim.turbulence_model().model_coeffs().at("destruction_boost_factor") -
+        1.0_rt;
+
+    auto const& src_arrs = src_term.arrays();
+    auto const& dissip_arrs = m_dissip(lev).const_arrays();
+    auto const& gate_arrs =
+        m_sim.repo().get_field("separation_gate")(lev).const_arrays();
+
+    // Same boost as destruction_boost with the stored, time-relaxed gate
+    amrex::ParallelFor(
+        src_term, amrex::IntVect(0), 1,
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int) {
+            src_arrs[nbx](i, j, k) -=
+                gate_arrs[nbx](i, j, k) * extra * dissip_arrs[nbx](i, j, k);
         });
 }
 

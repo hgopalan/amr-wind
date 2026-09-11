@@ -130,6 +130,28 @@ This section is for setting turbulence model parameters
    Ratio :math:`C_P` of the production cap of the "KLAxellSeparation" model;
    must be positive.
 
+.. input_param:: KLAxellSeparation.destruction_boost
+
+   **type:** Boolean, optional, default = false
+
+   Increases the dissipation of turbulent kinetic energy in the
+   "KLAxellSeparation" model where the pressure-gradient sensor fires: the
+   source loses an additional :math:`g (c_d - 1) \varepsilon`, with the same
+   gate :math:`g` as ``KLAxellSeparation.realizable_cmu`` (the stored,
+   time-relaxed gate when ``KLAxellSeparation_coeffs.gate_relaxation_time`` is
+   positive). Only the source of the turbulent kinetic energy changes; the
+   length scale, the eddy viscosity and the dissipation used in :math:`R_t`
+   are unchanged. Elsewhere the source is unchanged. Requires
+   ``KLAxellSeparation.pressure_gradient_sensor = true``.
+
+.. input_param:: KLAxellSeparation_coeffs.destruction_boost_factor
+
+   **type:** Real, optional, default = 1.2
+
+   Factor :math:`c_d` on the dissipation where the destruction boost of the
+   "KLAxellSeparation" model acts; 1 leaves the source unchanged. Must not be
+   below 1.
+
    
 .. input_param:: Smagorinsky_coeffs.Cs
 

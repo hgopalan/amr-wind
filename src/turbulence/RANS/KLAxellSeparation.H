@@ -182,6 +182,10 @@ protected:
     //! Ratio C_P of the production cap applied by the TKE source
     amrex::Real m_production_cap_ratio{10.0_rt};
 
+    //! Factor c_d on the dissipation of the destruction boost applied by the
+    //! TKE source
+    amrex::Real m_destruction_boost_factor{1.2_rt};
+
     //! Strain rate magnitude, kept for the realizable Cmu limiter
     std::unique_ptr<ScratchField> m_strain;
 
