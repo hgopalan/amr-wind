@@ -20,12 +20,12 @@ inline constexpr int geom_rt_curvature = 3;
 inline constexpr int geom_ncomp = 4;
 //! Dimensionless size below which the curvature correction does nothing,
 //! so that round-off curvature in a straight flow leaves the model unchanged
-inline constexpr amrex::Real curvature_tolerance = 1.0e-8;
+inline constexpr amrex::Real curvature_tolerance = 1.0e-8_rt;
 //! Deviation of the rotation function from 1 below which it does nothing; it
 //! ramps in to the full deviation at twice this value. The strain-derivative
 //! term is divided by D^4 and amplifies small departures from a horizontally
 //! uniform flow where the shear is weak.
-inline constexpr amrex::Real rotation_function_tolerance = 1.0e-3;
+inline constexpr amrex::Real rotation_function_tolerance = 1.0e-3_rt;
 } // namespace klaxell_separation
 
 /** KLAxell one-equation RANS model with treatments for separating flow
