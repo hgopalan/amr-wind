@@ -8,14 +8,20 @@ namespace kynema_sgf::pde::tke {
 /** Source terms for SDR equation
  *   \ingroup turb_model
  *
- *  Works for all SDR equations with source term
+ *  Works for all SDR equations with source term.
+ *
+ *  For FieldState::Old (the Godunov forcing) the source is the full explicit
+ *  balance. For the other states it also adds back the part of the
+ *  destruction that the turbulence model linearized onto the diagonal of the
+ *  linear system (`sdr_lhs_src_term`), so that a converged solution satisfies
+ *  the full balance independent of the diffusion type and time step.
  */
 class SDRSrc : public SDRSource::Register<SDRSrc>
 {
 public:
     static std::string identifier() { return "SDRSrc"; }
 
-    explicit SDRSrc(const CFDSim& /*sim*/);
+    explicit SDRSrc(const CFDSim& sim);
 
     ~SDRSrc() override;
 
@@ -23,8 +29,12 @@ public:
         int lev, FieldState fstate, amrex::MultiFab& src_term) const override;
 
 private:
+    const SimTime& m_time;
     Field& m_sdr_src;
     Field& m_sdr_diss;
+    Field& m_sdr;
+    Field& m_lhs;
+    Field& m_density;
 };
 
 } // namespace kynema_sgf::pde::tke
