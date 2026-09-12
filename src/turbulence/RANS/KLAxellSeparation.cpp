@@ -630,7 +630,9 @@ void KLAxellSeparation<Transport>::curvature_richardson(
             const auto& vel = vel_arrs[nbx];
             const auto& geo = geom_arrs[nbx];
             // grad[n][m] = d(u_n) / d(x_m)
-            amrex::Real grad[AMREX_SPACEDIM][AMREX_SPACEDIM];
+            amrex::GpuArray<
+                amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>, AMREX_SPACEDIM>
+                grad{};
             for (int n = 0; n < AMREX_SPACEDIM; ++n) {
                 grad[n][0] = 0.5_rt *
                              (vel(i + 1, j, k, n) - vel(i - 1, j, k, n)) *
@@ -644,8 +646,8 @@ void KLAxellSeparation<Transport>::curvature_richardson(
             }
             amrex::Real umag_sqr = 0.0_rt;
             amrex::Real strain_sqr = 0.0_rt;
-            amrex::Real accel[AMREX_SPACEDIM];
-            amrex::Real grad_q[AMREX_SPACEDIM];
+            amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> accel{};
+            amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> grad_q{};
             for (int n = 0; n < AMREX_SPACEDIM; ++n) {
                 umag_sqr += vel(i, j, k, n) * vel(i, j, k, n);
                 accel[n] = 0.0_rt;
@@ -752,8 +754,15 @@ void KLAxellSeparation<Transport>::curvature_rotation_function(
             const auto& vel = vel_arrs[nbx];
             const auto& geo = geom_arrs[nbx];
             // grad[n][a] = d(u_n)/d(x_a), hess[n][a][b] = d2(u_n)/d(x_a)d(x_b)
-            amrex::Real grad[AMREX_SPACEDIM][AMREX_SPACEDIM];
-            amrex::Real hess[AMREX_SPACEDIM][AMREX_SPACEDIM][AMREX_SPACEDIM];
+            amrex::GpuArray<
+                amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>, AMREX_SPACEDIM>
+                grad{};
+            amrex::GpuArray<
+                amrex::GpuArray<
+                    amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>,
+                    AMREX_SPACEDIM>,
+                AMREX_SPACEDIM>
+                hess{};
             for (int n = 0; n < AMREX_SPACEDIM; ++n) {
                 for (int a = 0; a < AMREX_SPACEDIM; ++a) {
                     const int ai = static_cast<int>(a == 0);
@@ -787,9 +796,15 @@ void KLAxellSeparation<Transport>::curvature_rotation_function(
             }
             // Strain and rotation tensors, their magnitudes and the material
             // derivative of the strain, u_c d(S_pq)/d(x_c)
-            amrex::Real strain[AMREX_SPACEDIM][AMREX_SPACEDIM];
-            amrex::Real rotation[AMREX_SPACEDIM][AMREX_SPACEDIM];
-            amrex::Real dstrain[AMREX_SPACEDIM][AMREX_SPACEDIM];
+            amrex::GpuArray<
+                amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>, AMREX_SPACEDIM>
+                strain{};
+            amrex::GpuArray<
+                amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>, AMREX_SPACEDIM>
+                rotation{};
+            amrex::GpuArray<
+                amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>, AMREX_SPACEDIM>
+                dstrain{};
             amrex::Real strain_sqr = 0.0_rt;
             amrex::Real rotation_sqr = 0.0_rt;
             for (int p = 0; p < AMREX_SPACEDIM; ++p) {
