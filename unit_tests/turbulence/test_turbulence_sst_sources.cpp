@@ -1,3 +1,5 @@
+#include <numbers>
+
 #include "gtest/gtest.h"
 #include "ks_test_utils/MeshTest.H"
 #include "src/equation_systems/PDEBase.H"
@@ -57,6 +59,130 @@ amrex::Real max_residual(
                 a_arrs[nbx](i, j, k) - b_arrs[nbx](i, j, k) -
                 c_arrs[nbx](i, j, k))};
         });
+}
+
+/** Largest |src - expected| and |rhs - diag - expected| over valid cells
+ *
+ *  \param src forcing source
+ *  \param rhs right-hand side source
+ *  \param diag diagonal term lhs_src_term * field / dt
+ *  \param expected analytical balance
+ */
+amrex::GpuTuple<amrex::Real, amrex::Real> balance_errors(
+    const amrex::MultiFab& src,
+    const amrex::MultiFab& rhs,
+    const amrex::MultiFab& diag,
+    const amrex::Real expected)
+{
+    const auto& src_arrs = src.const_arrays();
+    const auto& rhs_arrs = rhs.const_arrays();
+    const auto& diag_arrs = diag.const_arrays();
+    return amrex::ParReduce(
+        amrex::TypeList<amrex::ReduceOpMax, amrex::ReduceOpMax>{},
+        amrex::TypeList<amrex::Real, amrex::Real>{}, src, amrex::IntVect(0),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept
+            -> amrex::GpuTuple<amrex::Real, amrex::Real> {
+            return {
+                std::abs(src_arrs[nbx](i, j, k) - expected),
+                std::abs(
+                    rhs_arrs[nbx](i, j, k) - diag_arrs[nbx](i, j, k) -
+                    expected)};
+        });
+}
+
+//! out = lhs * phi / dt over valid cells
+void diagonal_kernel(
+    amrex::MultiFab& out,
+    const amrex::MultiFab& lhs,
+    const amrex::MultiFab& phi,
+    const amrex::Real dt)
+{
+    const auto& lhs_arrs = lhs.const_arrays();
+    const auto& phi_arrs = phi.const_arrays();
+    const auto& out_arrs = out.arrays();
+    amrex::ParallelFor(out, [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+        out_arrs[nbx](i, j, k) =
+            lhs_arrs[nbx](i, j, k) * phi_arrs[nbx](i, j, k) / dt;
+    });
+    amrex::Gpu::streamSynchronize();
+}
+
+//! tke0 (1 + amp sin(2 pi x) cos(2 pi y)) on the valid and ghost cells
+void init_tke(
+    amrex::MultiFab& mf,
+    const amrex::Geometry& geom,
+    const amrex::Real tke0,
+    const amrex::Real amp)
+{
+    const auto& dx = geom.CellSizeArray();
+    const auto& problo = geom.ProbLoArray();
+    const amrex::Real twopi = 2.0_rt * std::numbers::pi_v<amrex::Real>;
+    const auto& arrs = mf.arrays();
+    amrex::ParallelFor(
+        mf, mf.nGrowVect(), [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const amrex::Real x = problo[0] + ((i + 0.5_rt) * dx[0]);
+            const amrex::Real y = problo[1] + ((j + 0.5_rt) * dx[1]);
+            arrs[nbx](i, j, k) =
+                tke0 *
+                (1.0_rt + (amp * std::sin(twopi * x) * std::cos(twopi * y)));
+        });
+    amrex::Gpu::streamSynchronize();
+}
+
+//! sdr0 (1 + amp cos(2 pi x) sin(2 pi z)) on the valid and ghost cells
+void init_sdr(
+    amrex::MultiFab& mf,
+    const amrex::Geometry& geom,
+    const amrex::Real sdr0,
+    const amrex::Real amp)
+{
+    const auto& dx = geom.CellSizeArray();
+    const auto& problo = geom.ProbLoArray();
+    const amrex::Real twopi = 2.0_rt * std::numbers::pi_v<amrex::Real>;
+    const auto& arrs = mf.arrays();
+    amrex::ParallelFor(
+        mf, mf.nGrowVect(), [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const amrex::Real x = problo[0] + ((i + 0.5_rt) * dx[0]);
+            const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
+            arrs[nbx](i, j, k) =
+                sdr0 *
+                (1.0_rt + (amp * std::cos(twopi * x) * std::sin(twopi * z)));
+        });
+    amrex::Gpu::streamSynchronize();
+}
+
+//! Linear velocity with strain rate magnitude srate on the valid and ghost
+//! cells
+void init_strain_velocity(
+    amrex::MultiFab& mf, const amrex::Geometry& geom, const amrex::Real srate)
+{
+    const auto& dx = geom.CellSizeArray();
+    const auto& problo = geom.ProbLoArray();
+    const auto& arrs = mf.arrays();
+    amrex::ParallelFor(
+        mf, mf.nGrowVect(), [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const amrex::Real x = problo[0] + ((i + 0.5_rt) * dx[0]);
+            const amrex::Real y = problo[1] + ((j + 0.5_rt) * dx[1]);
+            const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
+            arrs[nbx](i, j, k, 0) = x / std::sqrt(6.0_rt) * srate;
+            arrs[nbx](i, j, k, 1) = y / std::sqrt(6.0_rt) * srate;
+            arrs[nbx](i, j, k, 2) = z / std::sqrt(6.0_rt) * srate;
+        });
+    amrex::Gpu::streamSynchronize();
+}
+
+//! Wall distance 0.5 + z on the valid and ghost cells
+void init_wall_dist(amrex::MultiFab& mf, const amrex::Geometry& geom)
+{
+    const auto& dx = geom.CellSizeArray();
+    const auto& problo = geom.ProbLoArray();
+    const auto& arrs = mf.arrays();
+    amrex::ParallelFor(
+        mf, mf.nGrowVect(), [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+            const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
+            arrs[nbx](i, j, k) = 0.5_rt + z;
+        });
+    amrex::Gpu::streamSynchronize();
 }
 
 } // namespace
@@ -130,49 +256,31 @@ protected:
         density.state(kynema_sgf::FieldState::Old).setVal(m_rho);
         density.state(kynema_sgf::FieldState::NPH).setVal(m_rho);
 
-        auto& walldist = repo.get_field("wall_dist");
         const auto& geom = sim().mesh().Geom(0);
-        const auto& dx = geom.CellSizeArray();
-        const auto& problo = geom.ProbLoArray();
-        const amrex::Real twopi = 2.0_rt * std::numbers::pi_v<amrex::Real>;
-        const amrex::Real srate = m_srate;
+        const amrex::Real amp = uniform ? 0.0_rt : 0.5_rt;
 
         // Old and New states differ so that a source evaluated on the wrong
         // state is detected
         for (const auto& [fstate, scale] :
              {std::pair{kynema_sgf::FieldState::Old, 1.0_rt},
               std::pair{kynema_sgf::FieldState::New, 1.5_rt}}) {
-            auto& tke = repo.get_field("tke").state(fstate)(0);
-            auto& sdr = repo.get_field("sdr").state(fstate)(0);
-            auto& vel = repo.get_field("velocity").state(fstate)(0);
-            const auto& tke_arrs = tke.arrays();
-            const auto& sdr_arrs = sdr.arrays();
-            const auto& vel_arrs = vel.arrays();
-            const auto& wd_arrs = walldist(0).arrays();
-            const amrex::Real tke0 = scale * m_tke0;
-            const amrex::Real sdr0 = scale * m_sdr0;
-            const amrex::Real amp = uniform ? 0.0_rt : 0.5_rt;
-            const amrex::Real wd_const = uniform ? 1.0e-5_rt : 0.0_rt;
-            amrex::ParallelFor(
-                tke, tke.nGrowVect(),
-                [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
-                    const amrex::Real x = problo[0] + ((i + 0.5_rt) * dx[0]);
-                    const amrex::Real y = problo[1] + ((j + 0.5_rt) * dx[1]);
-                    const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
-                    tke_arrs[nbx](i, j, k) =
-                        tke0 * (1.0_rt + (amp * std::sin(twopi * x) *
-                                          std::cos(twopi * y)));
-                    sdr_arrs[nbx](i, j, k) =
-                        sdr0 * (1.0_rt + (amp * std::cos(twopi * x) *
-                                          std::sin(twopi * z)));
-                    vel_arrs[nbx](i, j, k, 0) = x / std::sqrt(6.0_rt) * srate;
-                    vel_arrs[nbx](i, j, k, 1) = y / std::sqrt(6.0_rt) * srate;
-                    vel_arrs[nbx](i, j, k, 2) = z / std::sqrt(6.0_rt) * srate;
-                    wd_arrs[nbx](i, j, k) =
-                        (amp > 0.0_rt) ? (0.5_rt + z) : wd_const;
-                });
+            init_tke(
+                repo.get_field("tke").state(fstate)(0), geom, scale * m_tke0,
+                amp);
+            init_sdr(
+                repo.get_field("sdr").state(fstate)(0), geom, scale * m_sdr0,
+                amp);
+            init_strain_velocity(
+                repo.get_field("velocity").state(fstate)(0), geom, m_srate);
         }
-        amrex::Gpu::streamSynchronize();
+
+        // A tiny wall distance gives F1 = 1 exactly
+        auto& walldist = repo.get_field("wall_dist");
+        if (uniform) {
+            walldist.setVal(1.0e-5_rt);
+        } else {
+            init_wall_dist(walldist(0), geom);
+        }
     }
 
     kynema_sgf::pde::PDEBase& equation(const std::string& name)
@@ -202,19 +310,10 @@ protected:
     diagonal_term(const std::string& name, const kynema_sgf::FieldState fstate)
     {
         auto& repo = sim().repo();
-        const auto& lhs_arrs =
-            repo.get_field(name + "_lhs_src_term")(0).const_arrays();
-        const auto& phi_arrs =
-            repo.get_field(name).state(fstate)(0).const_arrays();
         auto out = repo.create_scratch_field(1, 0);
-        const auto& out_arrs = (*out)(0).arrays();
-        const amrex::Real dt = sim().time().delta_t();
-        amrex::ParallelFor(
-            (*out)(0), [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
-                out_arrs[nbx](i, j, k) =
-                    lhs_arrs[nbx](i, j, k) * phi_arrs[nbx](i, j, k) / dt;
-            });
-        amrex::Gpu::streamSynchronize();
+        diagonal_kernel(
+            (*out)(0), repo.get_field(name + "_lhs_src_term")(0),
+            repo.get_field(name).state(fstate)(0), sim().time().delta_t());
         return out;
     }
 
@@ -327,21 +426,8 @@ TEST_F(TurbSSTSourceTest, sst_explicit_balance_values)
                 const auto rhs = source(name, kynema_sgf::FieldState::NPH);
                 const auto diag =
                     diagonal_term(name, kynema_sgf::FieldState::Old);
-                const auto& src_arrs = (*forcing)(0).const_arrays();
-                const auto& rhs_arrs = (*rhs)(0).const_arrays();
-                const auto& diag_arrs = (*diag)(0).const_arrays();
-                const auto err = amrex::ParReduce(
-                    amrex::TypeList<amrex::ReduceOpMax, amrex::ReduceOpMax>{},
-                    amrex::TypeList<amrex::Real, amrex::Real>{}, (*forcing)(0),
-                    amrex::IntVect(0),
-                    [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept
-                        -> amrex::GpuTuple<amrex::Real, amrex::Real> {
-                        return {
-                            std::abs(src_arrs[nbx](i, j, k) - expected),
-                            std::abs(
-                                rhs_arrs[nbx](i, j, k) -
-                                diag_arrs[nbx](i, j, k) - expected)};
-                    });
+                const auto err = balance_errors(
+                    (*forcing)(0), (*rhs)(0), (*diag)(0), expected);
                 const amrex::Real scale = std::abs(expected);
                 EXPECT_LE(amrex::get<0>(err), tol * scale)
                     << name << " forcing, diffusion type "
