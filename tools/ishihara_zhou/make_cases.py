@@ -211,9 +211,11 @@ def write_case(out, kind, surface, model, model_keys, dx, dz):
         "zhi.tke": "0.0",
     }
     keys.update(model_keys)
+    # Absolute tolerances: 1e-6 for the diffusion solves; the projections keep
+    # 1e-4, since on the 8 m x 1 m grid the nodal projection stalls near 2e-5
     for solver in ("mac_proj", "nodal_proj", "diffusion", "temperature_diffusion", "tke_diffusion"):
         keys[f"{solver}.mg_rtol"] = "-1"
-        keys[f"{solver}.mg_atol"] = "1e-6"
+        keys[f"{solver}.mg_atol"] = "1e-4" if solver.endswith("_proj") else "1e-6"
     if dx != dz:
         for solver in ("mac_proj", "nodal_proj"):
             keys[f"{solver}.num_pre_smooth"] = f"{ANISOTROPIC_SMOOTHING}"
