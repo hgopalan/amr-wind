@@ -198,7 +198,7 @@ This section is for setting turbulence model parameters
      rotation is neglected. :math:`f = 1` in a simple shear and 0 in solid
      rotation. In a neutral boundary layer over a smooth two-dimensional hill
      this model drove the eddy viscosity to zero over most of the domain,
-     because the strain-derivative term saturates the arctangent where the
+     because the strain-derivative term saturates the arc tangent where the
      shear is weak, which is why ``richardson`` is the default.
 
 .. input_param:: KLAxellSeparation_coeffs.curvature_coefficient
@@ -231,14 +231,15 @@ This section is for setting turbulence model parameters
    **type:** Boolean, optional, default = false
 
    Treats the dissipation of turbulent kinetic energy of the
-   "KLAxellSeparation" model implicitly with the linearization
+   "KLAxellSeparation" model implicitly by writing
    :math:`\varepsilon = (C_\mu^3 \sqrt{k} / L) \, k`. The ``KransAxell``
    source moves the dissipation from the explicit source to the diagonal of
-   the TKE diffusion solve, as :math:`\rho \, \Delta t \, C_\mu^3 \sqrt{k} / L`: all
-   of it for ``incflo.diffusion_type = 2`` (implicit) and half of it for
+   the TKE diffusion solve, as
+   :math:`\rho \, \Delta t \, C_\mu^3 \sqrt{k} / L`: all of it for ``incflo.diffusion_type = 2`` (implicit) and half of it for
    ``incflo.diffusion_type = 1`` (Crank-Nicolson). Explicit diffusion
    (``incflo.diffusion_type = 0``) is rejected. With the Godunov scheme the
-   old-time source, which forces the face states, keeps the full dissipation. The dissipation then cannot
+   old-time source, which forces the face states, keeps the full dissipation.
+   The dissipation then cannot
    drive the turbulent kinetic energy negative, and overshoots at large time
    steps are damped. Steady states are unchanged, but individual steps
    differ from "KLAxell", also on flat terrain. The boundary, sponge and
