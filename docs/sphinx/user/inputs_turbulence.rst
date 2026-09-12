@@ -171,7 +171,7 @@ This section is for setting turbulence model parameters
 
 .. input_param:: KLAxellSeparation.curvature_model
 
-   **type:** String, optional, default = ``rotation_function``
+   **type:** String, optional, default = ``richardson``
 
    Curvature correction of the "KLAxellSeparation" model.
 
@@ -196,7 +196,10 @@ This section is for setting turbulence model parameters
      :math:`D^2 = (S^2 + \Omega^2)/2`. The material derivative of the strain
      rate is taken as :math:`\mathbf{u} \cdot \nabla S_{ij}` and the frame
      rotation is neglected. :math:`f = 1` in a simple shear and 0 in solid
-     rotation.
+     rotation. In a neutral boundary layer over a smooth two-dimensional hill
+     this model drove the eddy viscosity to zero over most of the domain,
+     because the strain-derivative term saturates the arctangent where the
+     shear is weak, which is why ``richardson`` is the default.
 
 .. input_param:: KLAxellSeparation_coeffs.curvature_coefficient
 

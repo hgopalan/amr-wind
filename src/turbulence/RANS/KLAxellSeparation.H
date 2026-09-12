@@ -251,8 +251,8 @@ protected:
     //! Apply the curvature correction
     bool m_use_curvature_correction{false};
 
-    //! Curvature model: "rotation_function" or "richardson"
-    std::string m_curvature_model{"rotation_function"};
+    //! Curvature model: "richardson" or "rotation_function"
+    std::string m_curvature_model{"richardson"};
 
     //! Coefficient c_c on the curvature Rt of the richardson model
     amrex::Real m_curvature_coefficient{1.0_rt};
