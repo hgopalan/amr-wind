@@ -89,11 +89,7 @@ protected:
             amrex::ParmParse pp("transport");
             pp.add("viscosity", 1.0e-5_rt);
         }
-        {
-            amrex::ParmParse pp("SDR");
-            amrex::Vector<std::string> src_terms{"SDRSrc"};
-            pp.addarr("source_terms", src_terms);
-        }
+        // No TKE.source_terms or SDR.source_terms: the model injects them
     }
 
     void setup_model(const std::string& model_name)
@@ -293,7 +289,6 @@ protected:
 TEST_F(TurbSSTSourceTest, sst_explicit_balance_values)
 {
     setup_model("KOmegaSST");
-    init_fields(true);
 
     auto& tmodel = sim().turbulence_model();
     auto coeffs = tmodel.model_coeffs();
@@ -301,49 +296,60 @@ TEST_F(TurbSSTSourceTest, sst_explicit_balance_values)
     const amrex::Real alpha1 = coeffs["alpha1"];
     const amrex::Real beta1 = coeffs["beta1"];
 
-    // Uniform tke and sdr with F1 = 1 (no cross diffusion) and a strain rate
-    // small enough that neither the viscosity limiter nor the production
-    // limiters are active
-    const amrex::Real rho = m_rho;
-    const amrex::Real prod_k = rho * (m_tke0 / m_sdr0) * m_srate * m_srate;
-    const amrex::Real expected_tke = prod_k -
-                                     (beta_star * rho * m_tke0 * m_sdr0) +
-                                     (beta_star * rho * m_sdr_amb * m_tke_amb);
-    const amrex::Real expected_sdr = (rho * alpha1 * m_srate * m_srate) -
-                                     (beta1 * rho * m_sdr0 * m_sdr0) +
-                                     (beta1 * rho * m_sdr_amb * m_sdr_amb);
-
+    // The equation source (after multiplication by density) must be density
+    // weighted once, for unit and non-unit density
     for (const auto dtype :
          {DiffusionType::Explicit, DiffusionType::Crank_Nicolson,
           DiffusionType::Implicit}) {
-        tmodel.update_turbulent_viscosity(kynema_sgf::FieldState::Old, dtype);
-        for (const auto& [name, expected] :
-             {std::pair{"tke", expected_tke}, std::pair{"sdr", expected_sdr}}) {
-            const auto forcing = source(name, kynema_sgf::FieldState::Old);
-            const auto rhs = source(name, kynema_sgf::FieldState::NPH);
-            const auto diag = diagonal_term(name, kynema_sgf::FieldState::Old);
-            const auto& src_arrs = (*forcing)(0).const_arrays();
-            const auto& rhs_arrs = (*rhs)(0).const_arrays();
-            const auto& diag_arrs = (*diag)(0).const_arrays();
-            const auto err = amrex::ParReduce(
-                amrex::TypeList<amrex::ReduceOpMax, amrex::ReduceOpMax>{},
-                amrex::TypeList<amrex::Real, amrex::Real>{}, (*forcing)(0),
-                amrex::IntVect(0),
-                [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept
-                    -> amrex::GpuTuple<amrex::Real, amrex::Real> {
-                    return {
-                        std::abs(src_arrs[nbx](i, j, k) - expected),
-                        std::abs(
-                            rhs_arrs[nbx](i, j, k) - diag_arrs[nbx](i, j, k) -
-                            expected)};
-                });
-            const amrex::Real scale = std::abs(expected);
-            EXPECT_LE(amrex::get<0>(err), tol * scale)
-                << name << " forcing, diffusion type "
-                << static_cast<int>(dtype);
-            EXPECT_LE(amrex::get<1>(err), tol * scale)
-                << name << " right-hand side, diffusion type "
-                << static_cast<int>(dtype);
+        for (const amrex::Real rho : {1.0_rt, 1.2_rt}) {
+            m_rho = rho;
+            init_fields(true);
+
+            // Uniform tke and sdr with F1 = 1 (no cross diffusion) and a strain
+            // rate small enough that neither the viscosity limiter nor the
+            // production limiters are active
+            const amrex::Real prod_k =
+                rho * (m_tke0 / m_sdr0) * m_srate * m_srate;
+            const amrex::Real expected_tke =
+                prod_k - (beta_star * rho * m_tke0 * m_sdr0) +
+                (beta_star * rho * m_sdr_amb * m_tke_amb);
+            const amrex::Real expected_sdr =
+                (rho * alpha1 * m_srate * m_srate) -
+                (beta1 * rho * m_sdr0 * m_sdr0) +
+                (beta1 * rho * m_sdr_amb * m_sdr_amb);
+
+            tmodel.update_turbulent_viscosity(
+                kynema_sgf::FieldState::Old, dtype);
+            for (const auto& [name, expected] :
+                 {std::pair{"tke", expected_tke},
+                  std::pair{"sdr", expected_sdr}}) {
+                const auto forcing = source(name, kynema_sgf::FieldState::Old);
+                const auto rhs = source(name, kynema_sgf::FieldState::NPH);
+                const auto diag =
+                    diagonal_term(name, kynema_sgf::FieldState::Old);
+                const auto& src_arrs = (*forcing)(0).const_arrays();
+                const auto& rhs_arrs = (*rhs)(0).const_arrays();
+                const auto& diag_arrs = (*diag)(0).const_arrays();
+                const auto err = amrex::ParReduce(
+                    amrex::TypeList<amrex::ReduceOpMax, amrex::ReduceOpMax>{},
+                    amrex::TypeList<amrex::Real, amrex::Real>{}, (*forcing)(0),
+                    amrex::IntVect(0),
+                    [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept
+                        -> amrex::GpuTuple<amrex::Real, amrex::Real> {
+                        return {
+                            std::abs(src_arrs[nbx](i, j, k) - expected),
+                            std::abs(
+                                rhs_arrs[nbx](i, j, k) -
+                                diag_arrs[nbx](i, j, k) - expected)};
+                    });
+                const amrex::Real scale = std::abs(expected);
+                EXPECT_LE(amrex::get<0>(err), tol * scale)
+                    << name << " forcing, diffusion type "
+                    << static_cast<int>(dtype);
+                EXPECT_LE(amrex::get<1>(err), tol * scale)
+                    << name << " right-hand side, diffusion type "
+                    << static_cast<int>(dtype);
+            }
         }
     }
 }

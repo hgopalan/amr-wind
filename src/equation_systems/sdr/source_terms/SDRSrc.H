@@ -15,6 +15,9 @@ namespace kynema_sgf::pde::tke {
  *  destruction that the turbulence model linearized onto the diagonal of the
  *  linear system (`sdr_lhs_src_term`), so that a converged solution satisfies
  *  the full balance independent of the diffusion type and time step.
+ *
+ *  The model terms are density weighted; the source is returned per unit mass
+ *  because the SDR equation multiplies it by density.
  */
 class SDRSrc : public SDRSource::Register<SDRSrc>
 {
