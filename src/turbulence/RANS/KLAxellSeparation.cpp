@@ -61,20 +61,24 @@ KLAxellSeparation<Transport>::KLAxellSeparation(CFDSim& sim)
     }
 
     // The relaxation time decides whether the gate field exists, so it is
-    // read here rather than in parse_model_coeffs
+    // read here rather than in parse_model_coeffs. The gate needs the sensor:
+    // without it the default relaxation time has no effect, and a positive
+    // value set in the input is an error.
     amrex::ParmParse pp_coeffs("KLAxellSeparation_coeffs");
-    pp_coeffs.query("gate_relaxation_time", m_gate_relaxation_time);
+    const bool relaxation_time_set =
+        pp_coeffs.query("gate_relaxation_time", m_gate_relaxation_time) != 0;
     if (m_gate_relaxation_time < 0.0_rt) {
         amrex::Abort(
             "KLAxellSeparation_coeffs.gate_relaxation_time must not be "
             "negative");
     }
-    if (m_gate_relaxation_time > 0.0_rt) {
-        if (!m_use_pressure_gradient_sensor) {
-            amrex::Abort(
-                "KLAxellSeparation_coeffs.gate_relaxation_time requires "
-                "KLAxellSeparation.pressure_gradient_sensor = true");
-        }
+    if (relaxation_time_set && (m_gate_relaxation_time > 0.0_rt) &&
+        !m_use_pressure_gradient_sensor) {
+        amrex::Abort(
+            "KLAxellSeparation_coeffs.gate_relaxation_time requires "
+            "KLAxellSeparation.pressure_gradient_sensor = true");
+    }
+    if (m_use_pressure_gradient_sensor && (m_gate_relaxation_time > 0.0_rt)) {
         m_separation_gate = &sim.repo().declare_field("separation_gate", 1, 1);
         m_separation_gate->set_default_fillpatch_bc(sim.time());
         m_separation_gate->fillpatch_on_regrid() = true;

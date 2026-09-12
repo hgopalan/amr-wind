@@ -265,11 +265,13 @@ protected:
     //! Strain rate magnitude, kept for the realizable Cmu limiter
     std::unique_ptr<ScratchField> m_strain;
 
-    //! Relaxation time tau of the gate; 0 uses the instantaneous gate
-    amrex::Real m_gate_relaxation_time{0.0_rt};
+    //! Relaxation time tau of the gate (default 10 s); 0 uses the
+    //! instantaneous gate
+    amrex::Real m_gate_relaxation_time{10.0_rt};
 
-    //! Gate relaxed in time, declared only when the relaxation time is
-    //! positive; kept in checkpoint files and interpolated on regrid
+    //! Gate relaxed in time, declared only when the sensor is on and the
+    //! relaxation time is positive; kept in checkpoint files and
+    //! interpolated on regrid
     Field* m_separation_gate{nullptr};
 };
 

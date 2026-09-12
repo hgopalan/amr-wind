@@ -90,7 +90,7 @@ This section is for setting turbulence model parameters
 
 .. input_param:: KLAxellSeparation_coeffs.gate_relaxation_time
 
-   **type:** Real, optional, default = 0
+   **type:** Real, optional, default = 10
 
    Relaxation time :math:`\tau` (s) of the gate of the "KLAxellSeparation"
    treatments. With 0 the gate follows the sensor instantly. With a positive
@@ -102,11 +102,13 @@ This section is for setting turbulence model parameters
    a feedback in which the treatments change the flow faster than the sensor
    settles. The gate starts at 0, is kept in checkpoint files and is
    interpolated on regrid; where the sensor stays below :math:`s_T` it stays
-   exactly 0. Requires ``KLAxellSeparation.pressure_gradient_sensor = true``;
-   must not be negative. With the instantaneous gate the realizable
-   :math:`C_\mu` limiter produced grid-scale stripes in the eddy viscosity on
-   a smooth hill; 10 s removed them with the same effect on the separation
-   (30 s gave the same result), so a value of about 10 s is suggested.
+   exactly 0. The gate exists only with
+   ``KLAxellSeparation.pressure_gradient_sensor = true``; setting a positive
+   value without the sensor is an error. Must not be negative. With the
+   instantaneous gate the realizable :math:`C_\mu` limiter produced grid-scale
+   stripes in the eddy viscosity on a smooth hill; 10 s removed them with the
+   same effect on the separation (30 s gave the same result), which is why
+   10 s is the default.
 
 .. input_param:: KLAxellSeparation.production_cap
 

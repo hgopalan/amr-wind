@@ -228,6 +228,37 @@ TEST_F(TurbRANSTest, test_1eqKrans_separation_setup_calc)
     check_klaxell_viscosity("KLAxellSeparation");
 }
 
+TEST_F(TurbRANSTest, test_1eqKrans_separation_gate_default)
+{
+    // The gate relaxes over 10 s by default, but without the sensor there is
+    // no gate and the default does not require the sensor
+    create_klaxell_model("KLAxellSeparation");
+    EXPECT_EQ(
+        sim().turbulence_model().model_coeffs().at("gate_relaxation_time"),
+        10.0_rt);
+    EXPECT_FALSE(sim().repo().field_exists("separation_gate"));
+}
+
+TEST_F(TurbRANSTest, test_1eqKrans_separation_gate_default_sensor)
+{
+    {
+        amrex::ParmParse pp("KLAxellSeparation");
+        pp.add("pressure_gradient_sensor", true);
+    }
+    create_klaxell_model("KLAxellSeparation");
+    EXPECT_TRUE(sim().repo().field_exists("separation_gate"));
+}
+
+TEST_F(TurbRANSTest, test_1eqKrans_separation_gate_requires_sensor)
+{
+    // A relaxation time set in the input without the sensor is an error
+    {
+        amrex::ParmParse pp("KLAxellSeparation_coeffs");
+        pp.add("gate_relaxation_time", 10.0_rt);
+    }
+    EXPECT_THROW(create_klaxell_model("KLAxellSeparation"), std::runtime_error);
+}
+
 TEST_F(TurbRANSTest, test_1eqKrans_separation_pressure_gradient_sensor)
 {
     {
@@ -404,6 +435,11 @@ TEST_F(TurbRANSTest, test_1eqKrans_separation_realizable_cmu)
         amrex::ParmParse pp("KLAxellSeparation");
         pp.add("pressure_gradient_sensor", true);
         pp.add("realizable_cmu", true);
+    }
+    {
+        // Instantaneous gate, so that one update applies the limiter
+        amrex::ParmParse pp("KLAxellSeparation_coeffs");
+        pp.add("gate_relaxation_time", 0.0_rt);
     }
     create_klaxell_model("KLAxellSeparation");
     auto& tmodel = sim().turbulence_model();

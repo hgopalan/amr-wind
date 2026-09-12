@@ -106,8 +106,8 @@ KransAxell::KransAxell(const CFDSim& sim)
                     "(implicit)");
             }
         }
-        // The model declares the gate field when its relaxation time is
-        // positive
+        // The model declares the gate field when the sensor is on and its
+        // relaxation time is positive (the default)
         m_relaxed_gate = sim.repo().field_exists("separation_gate");
     }
 }
