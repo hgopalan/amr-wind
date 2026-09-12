@@ -256,31 +256,65 @@ protected:
         density.state(kynema_sgf::FieldState::Old).setVal(m_rho);
         density.state(kynema_sgf::FieldState::NPH).setVal(m_rho);
 
-        const auto& geom = sim().mesh().Geom(0);
         const amrex::Real amp = uniform ? 0.0_rt : 0.5_rt;
 
         // Old and New states differ so that a source evaluated on the wrong
         // state is detected
-        for (const auto& [fstate, scale] :
-             {std::pair{kynema_sgf::FieldState::Old, 1.0_rt},
-              std::pair{kynema_sgf::FieldState::New, 1.5_rt}}) {
-            init_tke(
-                repo.get_field("tke").state(fstate)(0), geom, scale * m_tke0,
-                amp);
-            init_sdr(
-                repo.get_field("sdr").state(fstate)(0), geom, scale * m_sdr0,
-                amp);
-            init_strain_velocity(
-                repo.get_field("velocity").state(fstate)(0), geom, m_srate);
-        }
+        init_state(kynema_sgf::FieldState::Old, 1.0_rt, amp);
+        init_state(kynema_sgf::FieldState::New, 1.5_rt, amp);
 
         // A tiny wall distance gives F1 = 1 exactly
         auto& walldist = repo.get_field("wall_dist");
         if (uniform) {
             walldist.setVal(1.0e-5_rt);
         } else {
-            init_wall_dist(walldist(0), geom);
+            init_wall_dist(walldist(0), sim().mesh().Geom(0));
         }
+    }
+
+    /** Set tke, sdr and velocity of one field state
+     *
+     *  \param fstate field state
+     *  \param scale factor on the tke and sdr levels
+     *  \param amp relative amplitude of the tke and sdr variations
+     */
+    void init_state(
+        const kynema_sgf::FieldState fstate,
+        const amrex::Real scale,
+        const amrex::Real amp)
+    {
+        auto& repo = sim().repo();
+        const auto& geom = sim().mesh().Geom(0);
+        init_tke(
+            repo.get_field("tke").state(fstate)(0), geom, scale * m_tke0, amp);
+        init_sdr(
+            repo.get_field("sdr").state(fstate)(0), geom, scale * m_sdr0, amp);
+        init_strain_velocity(
+            repo.get_field("velocity").state(fstate)(0), geom, m_srate);
+    }
+
+    /** Check the forcing and the right-hand side against the balance
+     *
+     *  \param name equation field name
+     *  \param expected analytical balance
+     *  \param dtype diffusion type used to update the model
+     */
+    void check_balance_values(
+        const std::string& name,
+        const amrex::Real expected,
+        const DiffusionType dtype)
+    {
+        const auto forcing = source(name, kynema_sgf::FieldState::Old);
+        const auto rhs = source(name, kynema_sgf::FieldState::NPH);
+        const auto diag = diagonal_term(name, kynema_sgf::FieldState::Old);
+        const auto err =
+            balance_errors((*forcing)(0), (*rhs)(0), (*diag)(0), expected);
+        const amrex::Real scale = std::abs(expected);
+        EXPECT_LE(amrex::get<0>(err), tol * scale)
+            << name << " forcing, diffusion type " << static_cast<int>(dtype);
+        EXPECT_LE(amrex::get<1>(err), tol * scale)
+            << name << " right-hand side, diffusion type "
+            << static_cast<int>(dtype);
     }
 
     kynema_sgf::pde::PDEBase& equation(const std::string& name)
@@ -419,23 +453,8 @@ TEST_F(TurbSSTSourceTest, sst_explicit_balance_values)
 
             tmodel.update_turbulent_viscosity(
                 kynema_sgf::FieldState::Old, dtype);
-            for (const auto& [name, expected] :
-                 {std::pair{"tke", expected_tke},
-                  std::pair{"sdr", expected_sdr}}) {
-                const auto forcing = source(name, kynema_sgf::FieldState::Old);
-                const auto rhs = source(name, kynema_sgf::FieldState::NPH);
-                const auto diag =
-                    diagonal_term(name, kynema_sgf::FieldState::Old);
-                const auto err = balance_errors(
-                    (*forcing)(0), (*rhs)(0), (*diag)(0), expected);
-                const amrex::Real scale = std::abs(expected);
-                EXPECT_LE(amrex::get<0>(err), tol * scale)
-                    << name << " forcing, diffusion type "
-                    << static_cast<int>(dtype);
-                EXPECT_LE(amrex::get<1>(err), tol * scale)
-                    << name << " right-hand side, diffusion type "
-                    << static_cast<int>(dtype);
-            }
+            check_balance_values("tke", expected_tke, dtype);
+            check_balance_values("sdr", expected_sdr, dtype);
         }
     }
 }
