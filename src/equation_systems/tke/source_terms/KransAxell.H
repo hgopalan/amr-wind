@@ -73,6 +73,25 @@ public:
      */
     void destruction_boost_relaxed(int lev, amrex::MultiFab& src_term) const;
 
+    /** Treat the dissipation implicitly in the TKE diffusion solve
+     *
+     *  With the linearization eps = (Cmu^3 sqrt(k) / L) k, moves the implicit
+     *  part of the dissipation (all of it for the implicit solve, half for
+     *  Crank-Nicolson) from the explicit source to the diagonal of the
+     *  diffusion solve through tke_lhs_src_term, as rho dt Cmu^3 sqrt(k) / L
+     *  because the source is multiplied by the density before the solve. Not
+     *  applied to the old-time source, which the Godunov scheme uses as
+     *  forcing of the face states. Steady states are unchanged. The boundary,
+     *  sponge and terrain terms, the production cap and the destruction boost
+     *  stay explicit.
+     *
+     *  \param lev AMR level
+     *  \param fstate Field state of the source evaluation
+     *  \param src_term Source term to modify
+     */
+    void implicit_dissipation(
+        int lev, FieldState fstate, amrex::MultiFab& src_term) const;
+
 private:
     Field& m_turb_lscale;
     Field& m_shear_prod;
@@ -124,6 +143,12 @@ private:
 
     //! Increase the dissipation where the sensor of KLAxellSeparation fires
     bool m_destruction_boost{false};
+
+    //! Treat the dissipation implicitly (KLAxellSeparation)
+    bool m_implicit_dissipation{false};
+
+    //! Implicit fraction of the dissipation (1 implicit, 0.5 Crank-Nicolson)
+    amrex::Real m_implicit_factor{1.0};
 };
 
 } // namespace kynema_sgf::pde::tke

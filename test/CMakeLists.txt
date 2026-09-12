@@ -118,17 +118,26 @@ endfunction(add_test_red)
 # compare the two plot files with each other (no gold files). Further
 # arguments are runtime options for the KLAxellSeparation run; options after
 # COMMON_OPTIONS are given to both runs. By default the two plot files must
-# agree; with the EXPECT_DIFFERENT argument the KLAxellSeparation plot file
-# must be free of NaNs and differ from KLAxell.
+# agree; with RELATIVE_TOLERANCE <value> and ABSOLUTE_TOLERANCE <value> each
+# variable must agree to either tolerance (for numerical options that keep the
+# steady state; the absolute tolerance covers variables that are zero up to
+# round-off), and with the EXPECT_DIFFERENT argument the KLAxellSeparation plot
+# file must be free of NaNs and differ from KLAxell.
 function(add_test_klaxell_pair TEST_NAME SOURCE_TEST)
     set(PAIR_NAME ${TEST_NAME})
     set(TEST_NAME ${SOURCE_TEST})
     setup_test()
     set(PAIR_DIR ${CMAKE_CURRENT_BINARY_DIR}/test_files/${PAIR_NAME})
-    cmake_parse_arguments(PAIR "EXPECT_DIFFERENT" "" "COMMON_OPTIONS" ${ARGN})
+    cmake_parse_arguments(PAIR "EXPECT_DIFFERENT" "RELATIVE_TOLERANCE;ABSOLUTE_TOLERANCE" "COMMON_OPTIONS" ${ARGN})
     set(EXPECT_DIFFERENT ${PAIR_EXPECT_DIFFERENT})
     list(JOIN PAIR_UNPARSED_ARGUMENTS " " SEPARATION_OPTIONS)
     list(JOIN PAIR_COMMON_OPTIONS " " COMMON_OPTIONS)
+    if(DEFINED PAIR_RELATIVE_TOLERANCE)
+      set(FCOMPARE_TOLERANCE "${FCOMPARE_TOLERANCE} -r ${PAIR_RELATIVE_TOLERANCE}")
+    endif()
+    if(DEFINED PAIR_ABSOLUTE_TOLERANCE)
+      set(FCOMPARE_TOLERANCE "${FCOMPARE_TOLERANCE} --abs_tol ${PAIR_ABSOLUTE_TOLERANCE}")
+    endif()
     unset(PAIR_COMMAND)
     foreach(MODEL IN ITEMS KLAxell KLAxellSeparation)
       file(MAKE_DIRECTORY ${PAIR_DIR}/${MODEL})
@@ -307,6 +316,10 @@ if(KYNEMA_SGF_TEST_WITH_FCOMPARE)
   add_test_klaxell_pair(klaxellseparation_neutral_curvature_rotation abl_specifiedmol_neutral KLAxellSeparation.curvature_correction=true KLAxellSeparation.curvature_model=rotation_function)
   add_test_klaxell_pair(klaxellseparation_stable_curvature_rotation abl_specifiedmol_stable KLAxellSeparation.curvature_correction=true KLAxellSeparation.curvature_model=rotation_function)
   add_test_klaxell_pair(klaxellseparation_hill_curvature_rotation abl_klaxell_hill EXPECT_DIFFERENT KLAxellSeparation.curvature_correction=true KLAxellSeparation.curvature_model=rotation_function)
+  add_test_klaxell_pair(klaxellseparation_neutral_implicit_dissipation abl_specifiedmol_neutral RELATIVE_TOLERANCE 5.0e-3 ABSOLUTE_TOLERANCE 1.0e-10 KLAxellSeparation.implicit_dissipation=true)
+  add_test_klaxell_pair(klaxellseparation_stable_implicit_dissipation abl_specifiedmol_stable RELATIVE_TOLERANCE 5.0e-3 ABSOLUTE_TOLERANCE 1.0e-10 KLAxellSeparation.implicit_dissipation=true)
+  add_test_klaxell_pair(klaxellseparation_neutral_implicit_dissipation_crank_nicolson abl_specifiedmol_neutral RELATIVE_TOLERANCE 5.0e-3 ABSOLUTE_TOLERANCE 1.0e-10 COMMON_OPTIONS incflo.diffusion_type=1 KLAxellSeparation.implicit_dissipation=true)
+  add_test_klaxell_pair(klaxellseparation_hill_implicit_dissipation abl_klaxell_hill EXPECT_DIFFERENT KLAxellSeparation.implicit_dissipation=true)
 endif()
 add_test_r(abl_stable)
 add_test_r(abl_stable_different_roughness)

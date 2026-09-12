@@ -223,6 +223,25 @@ This section is for setting turbulence model parameters
 
    Constant :math:`c_{r3}` of the ``rotation_function`` curvature model.
 
+.. input_param:: KLAxellSeparation.implicit_dissipation
+
+   **type:** Boolean, optional, default = false
+
+   Treats the dissipation of turbulent kinetic energy of the
+   "KLAxellSeparation" model implicitly with the linearization
+   :math:`\varepsilon = (C_\mu^3 \sqrt{k} / L) \, k`. The ``KransAxell``
+   source moves the dissipation from the explicit source to the diagonal of
+   the TKE diffusion solve, as :math:`\rho \, \Delta t \, C_\mu^3 \sqrt{k} / L`: all
+   of it for ``incflo.diffusion_type = 2`` (implicit) and half of it for
+   ``incflo.diffusion_type = 1`` (Crank-Nicolson). Explicit diffusion
+   (``incflo.diffusion_type = 0``) is rejected. With the Godunov scheme the
+   old-time source, which forces the face states, keeps the full dissipation. The dissipation then cannot
+   drive the turbulent kinetic energy negative, and overshoots at large time
+   steps are damped. Steady states are unchanged, but individual steps
+   differ from "KLAxell", also on flat terrain. The boundary, sponge and
+   terrain terms, the production cap and the destruction boost stay
+   explicit. Independent of the pressure-gradient sensor.
+
    
 .. input_param:: Smagorinsky_coeffs.Cs
 
