@@ -259,6 +259,26 @@ TEST_F(TurbRANSTest, test_1eqKrans_separation_gate_requires_sensor)
     EXPECT_THROW(create_klaxell_model("KLAxellSeparation"), std::runtime_error);
 }
 
+TEST_F(TurbRANSTest, test_1eqKrans_separation_negative_strength)
+{
+    // A negative limiter strength could make the limiter denominator vanish
+    {
+        amrex::ParmParse pp("KLAxellSeparation_coeffs");
+        pp.add("realizable_cmu_strength", -1.0_rt);
+    }
+    EXPECT_THROW(create_klaxell_model("KLAxellSeparation"), std::runtime_error);
+}
+
+TEST_F(TurbRANSTest, test_1eqKrans_separation_negative_velocity_weight)
+{
+    // A negative velocity weight could make the sensor scale vanish
+    {
+        amrex::ParmParse pp("KLAxellSeparation_coeffs");
+        pp.add("sensor_velocity_weight", -0.05_rt);
+    }
+    EXPECT_THROW(create_klaxell_model("KLAxellSeparation"), std::runtime_error);
+}
+
 TEST_F(TurbRANSTest, test_1eqKrans_separation_pressure_gradient_sensor)
 {
     {

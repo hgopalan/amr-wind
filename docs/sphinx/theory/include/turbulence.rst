@@ -88,7 +88,10 @@ toward that ramp value with a time scale of 10 s
 (``KLAxellSeparation_coeffs.gate_relaxation_time``). An instantaneous gate lets
 the treatments, the pressure field and the sensor feed back on each other
 from one time step to the next, which produced grid-scale stripes in the eddy
-viscosity. Where the sensor stays below the threshold the gate is exactly 0.
+viscosity. A gate that is 0 stays exactly 0 while the sensor stays below the
+threshold. Once the relaxed gate has opened, it decays toward 0 with the time
+scale :math:`\tau` after the sensor falls below the threshold, so it stays
+positive for a while.
 
 **Treatments.**
 
@@ -144,9 +147,7 @@ treatments on. The instantaneous gate gave the same separation as the relaxed
 gate but a cell-to-cell roughness of the eddy viscosity about 190 times that
 of ``KLAxell``; the relaxed gate reduced it to about 5 times, as one smooth
 region under the shear layer that leaves the crest. The same trend held on an
-8 m grid (11, 20 and 33 cells) and with ``ImmersedTerrain`` on the 4 m grid
-(76 cells with ``KLAxell``, 107 with the limiter and the relaxed gate, 120
-with the curvature correction). Away from the hill the eddy viscosity changed
+8 m grid (11, 20 and 33 cells). Away from the hill the eddy viscosity changed
 by less than about 10 percent for most cells. These runs show the effect of the
 treatments; they are not a comparison with measurements.
 

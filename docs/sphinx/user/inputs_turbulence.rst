@@ -53,7 +53,8 @@ This section is for setting turbulence model parameters
    **type:** Real, optional, default = 0.05
 
    Weight :math:`c_u` of the velocity term in the scale of the
-   pressure-gradient sensor of the "KLAxellSeparation" model.
+   pressure-gradient sensor of the "KLAxellSeparation" model. Must not be
+   negative.
 
 .. input_param:: KLAxellSeparation_coeffs.sensor_threshold
 
@@ -86,7 +87,8 @@ This section is for setting turbulence model parameters
    **type:** Real, optional, default = 1.0
 
    Strength :math:`c_s` of the realizable :math:`C_\mu` limiter of the
-   "KLAxellSeparation" model; 0 leaves the eddy viscosity unchanged.
+   "KLAxellSeparation" model; 0 leaves the eddy viscosity unchanged. Must not
+   be negative.
 
 .. input_param:: KLAxellSeparation_coeffs.gate_relaxation_time
 
@@ -101,8 +103,10 @@ This section is for setting turbulence model parameters
    treatments use the stored gate, which lags the flow by one step. This damps
    a feedback in which the treatments change the flow faster than the sensor
    settles. The gate starts at 0, is kept in checkpoint files and is
-   interpolated on regrid; where the sensor stays below :math:`s_T` it stays
-   exactly 0. The gate exists only with
+   interpolated on regrid. A gate that is 0 stays exactly 0 while the sensor
+   stays below :math:`s_T`; a gate that has opened decays toward 0 by the
+   factor :math:`\exp(-\Delta t / \tau)` per step once the sensor falls below
+   :math:`s_T`, so it stays positive for several steps. The gate exists only with
    ``KLAxellSeparation.pressure_gradient_sensor = true``; setting a positive
    value without the sensor is an error. Must not be negative. With the
    instantaneous gate the realizable :math:`C_\mu` limiter produced grid-scale

@@ -109,6 +109,18 @@ void KLAxellSeparation<Transport>::parse_model_coeffs()
             "KLAxellSeparation_coeffs.curvature_coefficient must not be "
             "negative");
     }
+    // A negative weight or strength could make the sensor scale or the
+    // limiter denominator vanish or change sign
+    if (m_sensor_velocity_weight < 0.0_rt) {
+        amrex::Abort(
+            "KLAxellSeparation_coeffs.sensor_velocity_weight must not be "
+            "negative");
+    }
+    if (m_realizable_cmu_strength < 0.0_rt) {
+        amrex::Abort(
+            "KLAxellSeparation_coeffs.realizable_cmu_strength must not be "
+            "negative");
+    }
     if (m_sensor_threshold <= 0.0_rt) {
         amrex::Abort(
             "KLAxellSeparation_coeffs.sensor_threshold must be positive");
