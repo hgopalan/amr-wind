@@ -188,9 +188,10 @@ def write_case(out, kind, surface, model, model_keys, dx, dz):
         "ABL.temperature_heights": f"0.0 {LZ:g}",
         "ABL.temperature_values": f"{T0:g} {T0:g}",
         "ABL.stats_output_frequency": "100",
+        # No DragTempForcing: the cases are neutral without buoyancy, so the
+        # temperature only has to stay uniform, and its explicit terrain-cell
+        # relaxation (rate 10 / dz) is unstable on the 1 m vertical grid
         "ICNS.source_terms": "DragForcing",
-        "Temperature.source_terms": "DragTempForcing",
-        "DragTempForcing.soil_temperature": f"{T0:g}",
         "TerrainDrag.terrain_file": '"terrain.amrwind"',
         "TerrainDrag.uniform_roughness": f"{z0:g}",
         "TabulatedProfile.filename": "inflow_profile.txt",
@@ -212,7 +213,7 @@ def write_case(out, kind, surface, model, model_keys, dx, dz):
     keys.update(model_keys)
     for solver in ("mac_proj", "nodal_proj", "diffusion", "temperature_diffusion", "tke_diffusion"):
         keys[f"{solver}.mg_rtol"] = "-1"
-        keys[f"{solver}.mg_atol"] = "1e-4"
+        keys[f"{solver}.mg_atol"] = "1e-6"
     if dx != dz:
         for solver in ("mac_proj", "nodal_proj"):
             keys[f"{solver}.num_pre_smooth"] = f"{ANISOTROPIC_SMOOTHING}"

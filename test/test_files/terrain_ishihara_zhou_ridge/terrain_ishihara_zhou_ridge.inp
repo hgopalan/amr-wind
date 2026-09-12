@@ -64,8 +64,6 @@ ABL.temperature_values                      = 300.0 300.0
 ABL.stats_output_frequency                  = 10
 # Terrain
 ICNS.source_terms                           = DragForcing
-Temperature.source_terms                    = DragTempForcing
-DragTempForcing.soil_temperature            = 300.0
 TerrainDrag.terrain_file                    = "terrain.amrwind"
 TerrainDrag.uniform_roughness               = 0.3
 io.int_outputs                              = terrain_blank terrain_drag
