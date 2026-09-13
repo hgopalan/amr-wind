@@ -1,0 +1,14 @@
+.. meta::0d723105f90e5523b72870ec1082f4b133bd1c9d35e057eee224890ae0250b47b4aebf4468563fec0b2b8a86c8efb0b77d38f67f2c789de87231d9d0424a81b3
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::FieldFillPatchOps&lt; BCOpCreator &gt; Class Template Reference
+
+FieldFillPatchOps&lt; BCOpCreator &gt; Class Template Reference
+===============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_field_fill_patch_ops.html
