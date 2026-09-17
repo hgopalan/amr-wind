@@ -160,8 +160,10 @@ protected:
         auto box_refine =
             std::make_unique<kynema_sgf::CartBoxRefinement>(sim());
         box_refine->read_inputs(mesh(), ss);
-        mesh<RefineMesh>()->refine_criteria_vec().push_back(
-            std::move(box_refine));
+        if (mesh<RefineMesh>() != nullptr) {
+            mesh<RefineMesh>()->refine_criteria_vec().push_back(
+                std::move(box_refine));
+        }
     }
 
     //! Check that the mean wall stress and heat flux of every level match
