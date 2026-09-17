@@ -58,11 +58,12 @@ public:
 
     void update_tflux(amrex::Real tflux);
 
-private:
     //! Compute the mean quantities of the wall-adjacent cells of every level
-    //! that touches the wall (multi-level meshes only)
+    //! that touches the wall (multi-level meshes only).
+    //! Public because it launches GPU kernels
     void update_level_means();
 
+private:
     const CFDSim& m_sim;
 
     const amrex::AmrCore& m_mesh;
