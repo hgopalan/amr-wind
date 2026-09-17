@@ -4,6 +4,7 @@
 #include "src/core/ScratchField.H"
 #include "src/equation_systems/tke/TKE.H"
 #include "src/core/field_ops.H"
+#include "src/physics/ImmersedTerrain.H"
 #include "AMReX_REAL.H"
 
 using namespace amrex::literals;
@@ -64,6 +65,26 @@ struct PostSolveOp<TKE>
                     [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
                         field_arrs[nbx](i, j, k) =
                             (blank_arrs[nbx](i, j, k) == 1)
+                                ? clip_value
+                                : field_arrs[nbx](i, j, k);
+                    });
+            }
+            // Same reset for the ImmersedTerrain fields: without it the energy
+            //  inside the terrain decays without a floor and the solvers end
+            //  up working on a field spanning hundreds of decades
+            const bool has_immersed_terrain =
+                repo.int_field_exists("terrain_mask");
+            if (has_immersed_terrain) {
+                const IntField& terrain_mask =
+                    repo.get_int_field("terrain_mask");
+                const auto& mask_arrs = terrain_mask(lev).arrays();
+                const int mask_solid =
+                    immersedterrain::ImmersedTerrain::mask_solid;
+                amrex::ParallelFor(
+                    field(lev),
+                    [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                        field_arrs[nbx](i, j, k) =
+                            (mask_arrs[nbx](i, j, k) == mask_solid)
                                 ? clip_value
                                 : field_arrs[nbx](i, j, k);
                     });
