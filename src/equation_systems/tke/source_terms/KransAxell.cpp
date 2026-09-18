@@ -410,6 +410,8 @@ void KransAxell::immersed_terrain_forcing(
     const bool actual_reference = (m_ib_reference_distance == "actual");
     const bool center_weight = (m_ib_drag_weight == "center");
     const amrex::Real solid_threshold = m_ib_solid_threshold;
+    const amrex::Real wall_fraction =
+        immersed_wall::wall_threshold(center_weight, solid_threshold);
     const amrex::Real min_z0 = m_ib_min_z0;
     const amrex::Real drag_rate = m_ib_drag_coefficient / dx[2];
     immersed_wall::WallParams wp{};
@@ -458,11 +460,12 @@ void KransAxell::immersed_terrain_forcing(
             const amrex::Real z0 =
                 amrex::max<amrex::Real>(z0_arrs[nbx](i, j, k, 0), min_z0);
             amrex::GpuArray<WallPatch, 2 * AMREX_SPACEDIM> patches{};
-            int np = surface_cell ? immersed_wall::wall_patches(
-                                        wall_model, i, j, k, beta, frac, surf,
-                                        dx, z_c, z0, solid_threshold,
-                                        actual_reference, patches.data())
-                                  : 0;
+            int np = surface_cell
+                         ? immersed_wall::wall_patches(
+                               wall_model, i, j, k, beta, frac, surf, dx, z_c,
+                               z0, wall_fraction, actual_reference,
+                               !center_weight, patches.data())
+                         : 0;
             if (np == 0 && bottom_cell) {
                 WallPatch& p = patches[0];
                 p.nrm = {0.0_rt, 0.0_rt, 1.0_rt};

@@ -329,6 +329,8 @@ void Kosovic<Transport>::immersed_terrain_viscosity(
     const bool actual_reference = (m_ib_reference_distance == "actual");
     const bool center_weight = (m_ib_drag_weight == "center");
     const amrex::Real solid_threshold = m_ib_solid_threshold;
+    const amrex::Real wall_fraction =
+        immersed_wall::wall_threshold(center_weight, solid_threshold);
     const amrex::Real min_z0 = m_ib_min_z0;
     immersed_wall::WallParams wp{};
     wp.kappa = m_kappa;
@@ -422,11 +424,12 @@ void Kosovic<Transport>::immersed_terrain_viscosity(
             const amrex::Real z0 =
                 amrex::max<amrex::Real>(z0_arrs[nbx](i, j, k, 0), min_z0);
             amrex::GpuArray<WallPatch, 2 * AMREX_SPACEDIM> patches{};
-            const int np = wall_cell ? immersed_wall::wall_patches(
-                                           wall_model, i, j, k, beta, frac,
-                                           surf, dxv, z_c, z0, solid_threshold,
-                                           actual_reference, patches.data())
-                                     : 0;
+            const int np = wall_cell
+                               ? immersed_wall::wall_patches(
+                                     wall_model, i, j, k, beta, frac, surf, dxv,
+                                     z_c, z0, wall_fraction, actual_reference,
+                                     !center_weight, patches.data())
+                               : 0;
             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> u_c{
                 vel_arr(i, j, k, 0), vel_arr(i, j, k, 1), vel_arr(i, j, k, 2)};
             amrex::Real mu_sum = 0.0_rt;

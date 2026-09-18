@@ -279,8 +279,11 @@ void ImmersedTerrain::initialize_fields(int level, const amrex::Geometry& geom)
     }
 
     // Pass 2: cell classification. A fluid cell becomes a surface cell if any
-    // of its six face neighbors is mostly solid; this catches the side walls
-    // of steep terrain and buildings that a vertical-only search misses.
+    // of its six face neighbors is a wall (see immersed_wall::wall_threshold);
+    // this catches the side walls of steep terrain and buildings that a
+    // vertical-only search misses.
+    const amrex::Real wall_fraction = immersed_wall::wall_threshold(
+        m_drag_weight == "center", m_solid_threshold);
     const amrex::Real solid_threshold = m_solid_threshold;
     amrex::ParallelFor(
         fraction, [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
@@ -299,7 +302,7 @@ void ImmersedTerrain::initialize_fields(int level, const amrex::Geometry& geom)
                         frac(i, j - 1, k, 0), frac(i, j + 1, k, 0)),
                     amrex::max<amrex::Real>(
                         frac(i, j, k - 1, 0), frac(i, j, k + 1, 0)));
-                if (max_nb >= solid_threshold) {
+                if (max_nb >= wall_fraction) {
                     cell_mask = mask_surface;
                 }
             }

@@ -117,6 +117,8 @@ void ImmersedDragTempForcing::operator()(
         kynema_sgf::immersed_wall::parse_wall_model(m_wall_model);
     const int actual_reference = (m_reference_distance == "actual") ? 1 : 0;
     const int center_weight = (m_drag_weight == "center") ? 1 : 0;
+    const amrex::Real wall_fraction = kynema_sgf::immersed_wall::wall_threshold(
+        center_weight != 0, solid_threshold);
     const SurfaceCondition condition =
         (m_surface_condition == "surface_temperature")
             ? SurfaceCondition::surface_temperature
@@ -175,7 +177,8 @@ void ImmersedDragTempForcing::operator()(
             amrex::GpuArray<WallPatch, 2 * AMREX_SPACEDIM> patches{};
             const int np = kynema_sgf::immersed_wall::wall_patches(
                 wall_model, i, j, k, beta, frac, surf_arrs[nbx], dx, z_c, z0,
-                solid_threshold, actual_reference != 0, patches.data());
+                wall_fraction, actual_reference != 0, center_weight == 0,
+                patches.data());
 
             amrex::Real force = 0.0_rt;
             amrex::Real weight_sum = 0.0_rt;

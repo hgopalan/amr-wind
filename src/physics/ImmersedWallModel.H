@@ -157,10 +157,25 @@ magnitude(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& v)
     return std::sqrt((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));
 }
 
+/** Neighbor terrain fraction from which a face is a wall.
+ *
+ *  With center weighting a cell that is at least ``solid_threshold`` terrain
+ *  is treated as solid, so a face next to it is a wall. With fraction
+ *  weighting the partial cell carries the wall model itself, so only a
+ *  neighbor that is entirely terrain makes a face a wall; a lower threshold
+ *  would model the same wall again in the cell above the partial cell.
+ */
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real
+wall_threshold(const bool center_based, const amrex::Real solid_threshold)
+{
+    return center_based ? solid_threshold : 1.0_rt;
+}
+
 /** Build the wall patches of a surface cell.
  *
  *  Face based (cell_offset, terrain_height): one patch per face whose
- *  neighbor has a terrain fraction at or above solid_threshold. The
+ *  neighbor has a terrain fraction at or above ``wall_fraction`` (see
+ *  wall_threshold). The
  *  reference cell is the neighbor opposite the wall, d1 = 0.5 dx_f,
  *  d2 = 1.5 dx_f, except that terrain_height uses z - h on the bottom face.
  *  Patches are weighted by the neighbor fraction.
@@ -173,6 +188,12 @@ magnitude(const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& v)
  *  law consistent with the sampled velocity on slopes; otherwise d2 is the
  *  nominal d1 + dxn. Cells with no terrain below (side walls) fall back to
  *  the face-based patches.
+ *
+ *  With ``fluid_centroid`` the distance of a partial cell (0 < beta) to the
+ *  surface is measured from the centroid of its fluid part, (1 - beta) dz / 2
+ *  above the surface, instead of from the cell center, which lies inside the
+ *  terrain once beta passes 0.5. This is the fraction-weighted treatment, in
+ *  which the partial cell is the wall-model cell.
  *
  *  \return number of patches written (at most 6)
  */
@@ -187,14 +208,19 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE int wall_patches(
     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx,
     const amrex::Real z_c,
     const amrex::Real z0,
-    const amrex::Real solid_threshold,
+    const amrex::Real wall_fraction,
     const bool actual_reference_distance,
+    const bool fluid_centroid,
     WallPatch* patches)
 {
     using kynema_sgf::immersedterrain::ImmersedTerrain;
     const amrex::Real h = surf(i, j, k, ImmersedTerrain::surf_height);
     const bool terrain_below =
-        (beta > 0.0_rt) || (frac(i, j, k - 1, 0) >= solid_threshold);
+        (beta > 0.0_rt) || (frac(i, j, k - 1, 0) >= wall_fraction);
+    // Height above the surface of the point the cell velocity represents
+    const amrex::Real z_above = (fluid_centroid && beta > 0.0_rt)
+                                    ? 0.5_rt * (z_c + (0.5_rt * dx[2]) - h)
+                                    : z_c - h;
 
     if (model == WallModel::surface_normal && terrain_below) {
         const amrex::Real hx = surf(i, j, k, ImmersedTerrain::surf_slope_x);
@@ -205,8 +231,10 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE int wall_patches(
         p.dxn = 1.0_rt /
                 ((std::abs(p.nrm[0]) / dx[0]) + (std::abs(p.nrm[1]) / dx[1]) +
                  (std::abs(p.nrm[2]) / dx[2]));
-        p.d1 = (z_c - h) * p.nrm[2];
-        p.d2 = amrex::max<amrex::Real>(p.d1, z0) + p.dxn;
+        p.d1 = z_above * p.nrm[2];
+        // The reference cell sits one normal cell-width from the cell
+        // center, whichever point the cell velocity stands for
+        p.d2 = amrex::max<amrex::Real>((z_c - h) * p.nrm[2], z0) + p.dxn;
         const auto offset = [&](const int dir) {
             const amrex::Real s = p.dxn * p.nrm[dir] / dx[dir];
             const int o = static_cast<int>(std::floor(s + 0.5_rt));
@@ -237,7 +265,7 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE int wall_patches(
             const int jn = j + ((dir == 1) ? s : 0);
             const int kn = k + ((dir == 2) ? s : 0);
             const amrex::Real beta_nb = frac(in, jn, kn, 0);
-            if (beta_nb < solid_threshold) {
+            if (beta_nb < wall_fraction) {
                 continue;
             }
             WallPatch& p = patches[np++];
@@ -251,7 +279,7 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE int wall_patches(
             p.d1 = 0.5_rt * dx[dir];
             p.d2 = 1.5_rt * dx[dir];
             if (model == WallModel::terrain_height && dir == 2 && s == -1) {
-                p.d1 = z_c - h;
+                p.d1 = z_above;
                 p.d2 = z_c + dx[2] - h;
             }
             p.weight = beta_nb;

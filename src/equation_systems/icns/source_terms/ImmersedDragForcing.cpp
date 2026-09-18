@@ -105,6 +105,8 @@ void ImmersedDragForcing::operator()(
         kynema_sgf::immersed_wall::parse_wall_model(m_wall_model);
     const bool actual_reference = (m_reference_distance == "actual");
     const bool center_weight = (m_drag_weight == "center");
+    const amrex::Real wall_fraction = kynema_sgf::immersed_wall::wall_threshold(
+        center_weight, solid_threshold);
 
     WallParams wp{};
     wp.kappa = m_kappa;
@@ -152,7 +154,8 @@ void ImmersedDragForcing::operator()(
             amrex::GpuArray<WallPatch, 2 * AMREX_SPACEDIM> patches{};
             const int np = kynema_sgf::immersed_wall::wall_patches(
                 wall_model, i, j, k, beta, frac, surf_arrs[nbx], dx, z_c, z0,
-                solid_threshold, actual_reference, patches.data());
+                wall_fraction, actual_reference, !center_weight,
+                patches.data());
 
             amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> force{
                 0.0_rt, 0.0_rt, 0.0_rt};

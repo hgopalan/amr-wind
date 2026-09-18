@@ -127,6 +127,7 @@ public:
 
     void setup(const int n, const Terrain& terrain)
     {
+        m_terrain_def = terrain;
         write_terrain("terrain.amrwind", terrain);
         // Base defaults first so that the mesh parameters below take effect
         populate_parameters();
@@ -203,6 +204,9 @@ public:
         const amrex::Real ustar_d = ustar_exact;
         const bool actual = cfg.actual_reference;
         const bool center = cfg.center_weight;
+        const amrex::Real wall_thr =
+            kynema_sgf::immersed_wall::wall_threshold(center, thr);
+        const Terrain tt = m_terrain_def;
 
         // 0: ustar error, 1: target error, 2: count
         Errors e;
@@ -219,7 +223,7 @@ public:
                         const amrex::Real beta = f(i, j, k, 0);
                         const bool surface =
                             (beta > 0.0_rt && beta < 1.0_rt) ||
-                            (beta == 0.0_rt && f(i, j, k - 1, 0) >= thr);
+                            (beta == 0.0_rt && f(i, j, k - 1, 0) >= wall_thr);
                         if (!surface) {
                             return;
                         }
@@ -230,14 +234,33 @@ public:
                         amrex::GpuArray<WallPatch, 2 * AMREX_SPACEDIM>
                             patches{};
                         const int np = wall_patches(
-                            model, i, j, k, beta, f, s, dx, z_c, z0_d, thr,
-                            actual, patches.data());
+                            model, i, j, k, beta, f, s, dx, z_c, z0_d, wall_thr,
+                            actual, !center, patches.data());
                         amrex::Real eu = 0.0_rt;
                         amrex::Real et = 0.0_rt;
                         amrex::Real wsum = 0.0_rt;
                         const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> uc{
                             v(i, j, k, 0), v(i, j, k, 1), v(i, j, k, 2)};
-                        const amrex::Real u_exact = magnitude(uc);
+                        // With fraction weighting a partial cell stands for
+                        // the centroid of its fluid part, so its exact value
+                        // is the log law there rather than at the center
+                        amrex::Real u_exact = magnitude(uc);
+                        if (!center && beta > 0.0_rt) {
+                            const amrex::Real x_c =
+                                plo[0] + ((i + 0.5_rt) * dx[0]);
+                            const amrex::Real h_c = s(i, j, k, 0);
+                            const amrex::Real z_f =
+                                0.5_rt * (z_c + (0.5_rt * dx[2]) + h_c);
+                            const amrex::Real sf = tt.closest_s(x_c, z_f);
+                            const amrex::Real hf = tt.h(sf);
+                            const amrex::Real df = std::sqrt(
+                                ((x_c - sf) * (x_c - sf)) +
+                                ((z_f - hf) * (z_f - hf)));
+                            u_exact =
+                                ustar_d / kappa_d *
+                                std::log(
+                                    amrex::max<amrex::Real>(df, z0_d) / z0_d);
+                        }
                         for (int ip = 0; ip < np; ++ip) {
                             const WallPatch& p = patches[ip];
                             const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>
@@ -277,6 +300,7 @@ public:
 
     using ImmersedTerrainT = kynema_sgf::immersedterrain::ImmersedTerrain;
     std::unique_ptr<ImmersedTerrainT> m_terrain;
+    Terrain m_terrain_def;
     std::array<amrex::Real, 3> m_vals{{0.0_rt, 0.0_rt, 0.0_rt}};
 };
 
