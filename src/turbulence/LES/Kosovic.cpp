@@ -47,7 +47,15 @@ Kosovic<Transport>::Kosovic(CFDSim& sim)
         this->m_sim.io_manager().register_io_var("Nij");
         this->m_sim.io_manager().register_io_var("divNij");
     }
-    pp.query("LESOff", m_LESTurnOff);
+    pp.query(
+        "LESTurbOff_transition_zaglstart",
+        m_LESTurbOff_transition_zaglstart);
+    pp.query(
+        "LESTurbOff_transition_zaglend", m_LESTurbOff_transition_zaglend);
+    AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        m_LESTurbOff_transition_zaglstart <= m_LESTurbOff_transition_zaglend,
+        "Kosovic.LESTurbOff_transition_zaglstart must be <= "
+        "Kosovic.LESTurbOff_transition_zaglend");
     pp.query("muCoeff", m_muCoeff);
     amrex::ParmParse pp_abl("ABL");
     pp_abl.query("wall_het_model", m_wall_het_model);
@@ -84,7 +92,9 @@ void Kosovic<Transport>::update_turbulent_viscosity(
     const amrex::Real surface_roughness_z0 = m_surface_roughness_z0;
     const amrex::Real z0_min = 1.0e-4_rt;
     const amrex::Real dMdz_min = 0.01_rt;
-    const amrex::Real locLESTurnOff = m_LESTurnOff;
+    const amrex::Real loc_LESTurbOff_zaglstart =
+        m_LESTurbOff_transition_zaglstart;
+    const amrex::Real loc_LESTurbOff_zaglend = m_LESTurbOff_transition_zaglend;
     const amrex::Real locSwitchLoc = m_switchLoc;
     const amrex::Real locSurfaceRANSExp = m_surfaceRANSExp;
     const amrex::Real locSurfaceFactor = m_surfaceFactor;
@@ -165,8 +175,23 @@ void Kosovic<Transport>::update_turbulent_viscosity(
                         : (k + 1) * dz;
                 const amrex::Real ransL =
                     utils::powi(0.41_rt * wall_distance / phiM, 2);
-                //const amrex::Real turnOff = std::exp(-x3 / locLESTurnOff);
-		const amrex::Real turnOff = (x3<locLESTurnOff)?1:std::exp(- 10 * x3 / locLESTurnOff);
+                // Cosine-squared taper that smoothly drives the LES
+                // contribution from 1 (below zstart) to 0 (above zend).
+                // When zstart == zend the cosine branch is bypassed and the
+                // taper degenerates to a hard step at that height.
+                amrex::Real turnOff;
+                if (x3 <= loc_LESTurbOff_zaglstart) {
+                    turnOff = 1.0_rt;
+                } else if (x3 >= loc_LESTurbOff_zaglend) {
+                    turnOff = 0.0_rt;
+                } else {
+                    const amrex::Real term = std::cos(
+                        std::numbers::pi_v<amrex::Real> * 0.5_rt *
+                        (x3 - loc_LESTurbOff_zaglstart) /
+                        (loc_LESTurbOff_zaglend - loc_LESTurbOff_zaglstart +
+                         1e-15_rt));
+                    turnOff = term * term;
+                }
                 const amrex::Real viscosityScale =
                     (locSurfaceFactor *
                      (std::pow(1.0_rt - fmu, locSurfaceRANSExp) * smag_factor +
