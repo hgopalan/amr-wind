@@ -20,7 +20,9 @@ namespace kynema_sgf::immersedterrain {
  *  - ``terrain_fraction`` (Real, 1 component): fraction of the cell volume
  *    occupied by terrain. 0 in fluid, 1 inside terrain, in between for cells
  *    cut by the terrain surface: the fraction of the cell column below the
- *    terrain height at the cell center.
+ *    terrain height at the cell center,
+ *    \f[ \beta = \min\left(1, \max\left(0,
+ *         \frac{h - z_{bottom}}{\Delta z}\right)\right) \f]
  *
  *  - ``terrain_mask`` (Int, 1 component): cell classification
  *      - 0 ``mask_fluid``   : fluid cell away from the terrain
@@ -36,21 +38,36 @@ namespace kynema_sgf::immersedterrain {
  *    cell center, used for the wall distance of the no-slip flux.
  *
  *  - ``terrain_drag_rate`` (Real, 1 component), only with
- *    ``implicit_projection = true``: beta * C_d / dz, the immersed drag rate
- *    of each cell. Its presence makes the nodal and MAC projections treat
- *    the terrain as a fluid of density rho (1 + rate dt), so that the drag is
- *    applied implicitly with the pressure and the pressure gradient produces
- *    no velocity inside the terrain. ImmersedDragForcing then skips its
- *    explicit drag. Without this, the projection re-injects dt grad(p)/rho
- *    inside the body every step and the interior residual is first order in dt.
+ *    ``implicit_projection = true``: the immersed drag rate of each cell,
+ *    \f$ C = w C_d / \Delta z \f$ with the drag weight \f$ w \f$ of
+ *    immersed_wall::solid_weight. Its presence makes the nodal and MAC
+ *    projections apply the drag together with the pressure,
+ *    \f[ \mathbf{u}^{n+1} = \frac{\mathbf{u}^{**} - \Delta t \nabla p / \rho}
+ *         {1 + C \Delta t} \quad \Rightarrow \quad
+ *         \nabla \cdot \left( \frac{\Delta t}{\rho (1 + C \Delta t)}
+ *         \nabla p \right) = \nabla \cdot \frac{\mathbf{u}^{**}}
+ *         {1 + C \Delta t} \f]
+ *    so the terrain acts as a fluid of density \f$ \rho (1 + C \Delta t) \f$
+ *    and the pressure gradient produces no velocity inside it. The same
+ *    effective density is the time coefficient of the implicit diffusion
+ *    solve, which keeps momentum from diffusing a depth
+ *    \f$ \sqrt{\nu \Delta t} \f$ into the body every step.
+ *    ImmersedDragForcing then skips its explicit drag. Without this option
+ *    the velocity inside the body is first order in dt.
  *
  *  - ``terrain_diffusion_xf/yf/zf`` (Real, face centered): factor applied to
  *    the face diffusion coefficients of every equation solved with the shared
  *    diffusion operator. Wall faces are scaled by dx_f / d1 so that the
- *    discrete flux mu (u - 0)/dx_f equals the flux mu u / d1 to a no-slip wall
- *    at the true wall position; d1 is measured to the cell center (``center``
- *    weighting) or to the centroid of the fluid part of a partial cell
- *    (``fraction`` weighting) on the bottom face, and is dx_f / 2 elsewhere.
+ *    discrete flux mu (u - 0)/dx_f equals the flux to a no-slip wall at the
+ *    true wall position,
+ *    \f[ q = \mu \frac{u}{d_1}, \qquad d_1 = \left\{ \begin{array}{ll}
+ *         z_c - h & \mbox{center} \\
+ *         (1 - \beta) \Delta z / 2 & \mbox{fraction, partial cell}
+ *         \end{array} \right. \f]
+ *    With ``fraction`` weighting the partial cell stands for the centroid of
+ *    its fluid part, so the face above it spans
+ *    \f$ (2 - \beta) \Delta z / 2 \f$ and is scaled by
+ *    \f$ 2 / (2 - \beta) \f$. Side walls use d1 = dx_f / 2.
  */
 class ImmersedTerrain : public Physics::Register<ImmersedTerrain>
 {
@@ -110,7 +127,7 @@ private:
     bool m_laminar{false};
     //! Drag coefficient C_d shared with ImmersedDragForcing
     amrex::Real m_drag_coefficient{10.0_rt};
-    //! beta * C_d / dz, declared only when m_implicit_projection is true
+    //! Drag rate w C_d / dz, declared only when m_implicit_projection is true
     Field* m_terrain_drag_rate{nullptr};
 
     //! Face factors for the diffusion coefficients (no-slip wall flux)

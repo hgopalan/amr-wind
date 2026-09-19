@@ -16,9 +16,16 @@ namespace kynema_sgf::pde::icns {
  *
  *  Consumes ``terrain_fraction`` declared by ImmersedTerrain. Immersed drag
  *  in every cell with a non-zero drag weight w, relaxing the velocity toward
- *  zero at the rate C = w * drag_coefficient / dz. The relaxation is
- *  integrated exactly over the time step, C_eff = (1 - exp(-C dt)) / dt, so it
- *  is stable and monotone for any C and dt with no ad hoc limiters.
+ *  zero,
+ *  \f[ \frac{\partial \mathbf{u}}{\partial t} = \dots - C \mathbf{u},
+ *      \qquad C = \frac{w C_d}{\Delta z} \f]
+ *  The relaxation is integrated exactly over the time step: the source is
+ *  \f$ -C_{eff} \mathbf{u}^n \f$ with
+ *  \f[ C_{eff} = \frac{1 - e^{-C \Delta t}}{\Delta t} \quad \Rightarrow
+ *      \quad \mathbf{u}^{n+1} = \mathbf{u}^n e^{-C \Delta t} \f]
+ *  so it is stable and monotone for any C and dt with no ad hoc limiters
+ *  (\f$ C_{eff} \to C \f$ for small \f$ C \Delta t \f$ and
+ *  \f$ C_{eff} \to 1 / \Delta t \f$ for large).
  *
  *  The drag weight follows ``ImmersedTerrain.drag_weight``: ``fraction`` uses
  *  w = beta, ``center`` uses w = 1 where the cell center is inside the
@@ -27,7 +34,10 @@ namespace kynema_sgf::pde::icns {
  *  entirely inside the terrain take the drag.
  *
  *  With ``ImmersedTerrain.implicit_projection`` the drag is applied inside the
- *  projections instead and this source adds nothing.
+ *  projections and the diffusion solve instead and this source adds nothing.
+ *  As an explicit source the drag is not seen by the implicit diffusion solve,
+ *  which leaves a splitting error of depth \f$ \sqrt{\nu \Delta t} \f$ at the
+ *  wall: first order, and converging only when dt is refined with the mesh.
  */
 class ImmersedDragForcing : public MomentumSource::Register<ImmersedDragForcing>
 {
