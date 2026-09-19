@@ -230,7 +230,10 @@ void ImmersedTerrain::initialize_fields(int level, const amrex::Geometry& geom)
     // with center weighting, where d1 = z - h.
     const amrex::Real centroid =
         (m_drag_weight == "fraction") ? 1.0_rt : 0.0_rt;
-    const amrex::Real d1_min = (m_drag_weight == "fraction") ? 0.01_rt : 0.1_rt;
+    // The terrain height is resolved to fraction_tol * dz (pass 1), so d1 is
+    // the true wall distance down to that resolution; the floor only keeps
+    // the factor finite when the wall falls on a cell center
+    const amrex::Real d1_min = 0.5_rt * fraction_tol;
     for (int dir = 0; dir < AMREX_SPACEDIM; ++dir) {
         auto& ff = (*m_diffusion_factor[dir])(level);
         auto fac_arrs = ff.arrays();

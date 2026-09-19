@@ -5,20 +5,25 @@
 #include "AMReX_ParmParse.H"
 #include "AMReX_REAL.H"
 
+#include <iomanip>
 #include <limits>
 
 using namespace amrex::literals;
 
 namespace {
 // 100 m plateau for x in [449, 576], flat ground elsewhere
-void write_terrain(const std::string& fname)
+void write_terrain(const std::string& fname, const double height = 100.0)
 {
     std::ofstream os(fname);
+    os << std::setprecision(17);
     os << "6\n2\n";
     os << "0.0\n448.0\n449.0\n576.0\n577.0\n1024.0\n";
     os << "0.0\n1024.0\n";
-    os << "0.0\n0.0\n0.0\n0.0\n100.0\n100.0\n100.0\n100.0\n0.0\n0.0\n0.0\n0."
-          "0\n";
+    os << "0.0\n0.0\n0.0\n0.0\n";
+    for (int n = 0; n < 4; ++n) {
+        os << height << "\n";
+    }
+    os << "0.0\n0.0\n0.0\n0.0\n";
 }
 } // namespace
 
@@ -44,14 +49,14 @@ protected:
         }
     }
 
-    void setup(const std::string& weight)
+    void setup(const std::string& weight, const double height = 100.0)
     {
         {
             amrex::ParmParse pp("ImmersedTerrain");
             pp.remove("drag_weight");
             pp.add("drag_weight", weight);
         }
-        write_terrain("terrain.amrwind");
+        write_terrain("terrain.amrwind", height);
         populate_parameters();
         initialize_mesh();
         sim().pde_manager().register_icns();
@@ -106,6 +111,30 @@ TEST_F(ImmersedInterfaceDiffusionTest, fraction)
     // Solid/solid and fluid/fluid faces untouched
     EXPECT_NEAR(utils::field_probe(fz, 0, 15, 10, 2), 1.0_rt, m_tol);
     EXPECT_NEAR(utils::field_probe(fx, 0, 5, 5, 8), 1.0_rt, m_tol);
+}
+
+// The wall flux uses the true wall distance also when the terrain surface is
+// close to a cell center (center) or to the top of a cell (fraction)
+
+TEST_F(ImmersedInterfaceDiffusionTest, center_wall_near_cell_center)
+{
+    // Terrain 1.6 m (0.05 dz) below the center of cell k = 3 (112 m)
+    setup("center", 110.4);
+    const auto& fz = sim().repo().get_field("terrain_diffusion_zf");
+    const amrex::Real expected = 32.0_rt / 1.6_rt;
+    EXPECT_NEAR(
+        utils::field_probe(fz, 0, 15, 10, 3), expected, 2.0e-4_rt * expected);
+}
+
+TEST_F(ImmersedInterfaceDiffusionTest, fraction_wall_near_cell_top)
+{
+    // Partial cell k = 3 with beta = 0.985: fluid part 127.52-128 m, so
+    // d1 = 0.24 m
+    setup("fraction", 127.52);
+    const auto& fz = sim().repo().get_field("terrain_diffusion_zf");
+    const amrex::Real expected = 32.0_rt / 0.24_rt;
+    EXPECT_NEAR(
+        utils::field_probe(fz, 0, 15, 10, 3), expected, 2.0e-4_rt * expected);
 }
 
 } // namespace kynema_sgf_tests

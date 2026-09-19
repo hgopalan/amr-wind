@@ -39,7 +39,7 @@ ImmersedDragForcing::ImmersedDragForcing(const CFDSim& sim)
 ImmersedDragForcing::~ImmersedDragForcing() = default;
 
 void ImmersedDragForcing::operator()(
-    const int lev, const FieldState fstate, amrex::MultiFab& src_term) const
+    const int lev, const FieldState /*fstate*/, amrex::MultiFab& src_term) const
 {
     const auto& repo = m_sim.repo();
     // With ImmersedTerrain.implicit_projection the drag is applied inside the
@@ -49,8 +49,12 @@ void ImmersedDragForcing::operator()(
     }
 
     auto const& src_arrs = src_term.arrays();
+    // C_eff integrates the drag exactly over the whole step from u^n, so the
+    // source always acts on the old velocity: evaluated on the predictor
+    // velocity in a corrector it would give 1 - (1 - e) e instead of
+    // e = exp(-C dt)
     auto const& vel_arrs =
-        m_velocity.state(field_impl::dof_state(fstate))(lev).const_arrays();
+        m_velocity.state(FieldState::Old)(lev).const_arrays();
     auto const& frac_arrs =
         repo.get_field("terrain_fraction")(lev).const_arrays();
 

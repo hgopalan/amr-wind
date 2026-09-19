@@ -53,7 +53,7 @@ protected:
         }
     }
 
-    // Mesh, terrain, uniform velocity (10, 5, 0), dt = 0.5
+    // Mesh, terrain, uniform old velocity (10, 5, 0), dt = 0.5
     void setup()
     {
         write_terrain("terrain.amrwind");
@@ -67,10 +67,12 @@ protected:
         for (int lev = 0; lev < nlevels; ++lev) {
             m_terrain->initialize_fields(lev, sim().repo().mesh().Geom(lev));
         }
-        sim()
-            .repo()
-            .get_field("velocity")
+        // Old state (10, 5, 0); the new state stands for a predictor velocity
+        // that the drag must not see
+        auto& velocity = sim().repo().get_field("velocity");
+        velocity.state(kynema_sgf::FieldState::Old)
             .setVal({{10.0_rt, 5.0_rt, 0.0_rt}}, 1);
+        velocity.setVal({{3.0_rt, -2.0_rt, 1.0_rt}}, 1);
         sim().time().delta_t() = m_dt;
     }
 
@@ -98,7 +100,8 @@ TEST_F(ImmersedDragForcingTest, laminar_drag_only)
     kynema_sgf::pde::icns::ImmersedDragForcing forcing(sim());
     forcing(0, kynema_sgf::FieldState::New, src_term(0));
 
-    // Solid cell: full-rate relaxation of (10, 5, 0) toward zero
+    // Solid cell: full-rate relaxation of the old velocity (10, 5, 0) toward
+    // zero, also when the source is evaluated for a corrector (New state)
     EXPECT_NEAR(
         utils::field_probe(src_term, 0, 15, 10, 1, 0),
         -drag_rate(1.0_rt) * 10.0_rt, m_tol);
