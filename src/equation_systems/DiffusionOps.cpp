@@ -93,10 +93,15 @@ void DiffSolverIface<LinOp>::set_acoeffs(LinOp& linop, const FieldState fstate)
     // projections: the velocity left in a body cell is divided by it once in
     // the projection and once more in an implicit diffusion solve. Both
     // drive the body to rest; fluid cells (C = 0) are not affected.
+    // Only the velocity is driven to zero inside the body: applied to a
+    // scalar the same factor would relax it toward zero as well (a
+    // temperature of 300 K would fall by 1 / (1 + C dt) every step).
+    const bool pin_body =
+        (m_implicit_dt > 0.0_rt) && (m_pdefields.field.name() == "velocity");
     std::unique_ptr<ScratchField> rho_eff =
-        (m_implicit_dt > 0.0_rt) ? diffusion::immersed_effective_density(
-                                       repo, density, m_implicit_dt)
-                                 : nullptr;
+        pin_body ? diffusion::immersed_effective_density(
+                       repo, density, m_implicit_dt)
+                 : nullptr;
 
     for (int lev = 0; lev < nlevels; ++lev) {
         if (m_mesh_mapping) {
