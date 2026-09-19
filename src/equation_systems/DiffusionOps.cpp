@@ -87,7 +87,12 @@ void DiffSolverIface<LinOp>::set_acoeffs(LinOp& linop, const FieldState fstate)
         m_mesh_mapping ? repo.create_scratch_field(
                              1, m_density.num_grow()[0], FieldLoc::CELL)
                        : nullptr;
-    // Implicit immersed drag: pin the terrain cells during the solve
+    // Implicit immersed drag: pin the terrain cells during the solve. The
+    // factor 1 + C dt is a penalization that holds the body at rest at every
+    // stage of the step, so it is deliberately used here as well as in the
+    // projections: the velocity left in a body cell is divided by it once in
+    // the projection and once more in an implicit diffusion solve. Both
+    // drive the body to rest; fluid cells (C = 0) are not affected.
     std::unique_ptr<ScratchField> rho_eff =
         (m_implicit_dt > 0.0_rt) ? diffusion::immersed_effective_density(
                                        repo, density, m_implicit_dt)

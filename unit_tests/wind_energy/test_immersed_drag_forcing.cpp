@@ -7,7 +7,11 @@
 #include "AMReX_ParmParse.H"
 #include "AMReX_REAL.H"
 
+#include <cmath>
+#include <fstream>
 #include <limits>
+#include <memory>
+#include <string>
 
 using namespace amrex::literals;
 

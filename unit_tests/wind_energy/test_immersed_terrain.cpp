@@ -4,7 +4,9 @@
 #include "src/physics/ImmersedTerrain.H"
 #include "AMReX_REAL.H"
 
+#include <fstream>
 #include <limits>
+#include <string>
 
 using namespace amrex::literals;
 
