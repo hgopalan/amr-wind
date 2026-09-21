@@ -2,6 +2,7 @@
 #include "ks_test_utils/iter_tools.H"
 #include "ks_test_utils/test_utils.H"
 #include "src/physics/ImmersedTerrain.H"
+#include "src/physics/ImmersedWallModel.H"
 #include "src/equation_systems/icns/icns.H"
 #include "src/equation_systems/icns/source_terms/ImmersedDragForcing.H"
 #include "AMReX_ParmParse.H"
@@ -120,6 +121,17 @@ TEST_F(ImmersedDragForcingTest, laminar_drag_only)
     EXPECT_NEAR(utils::field_probe(src_term, 0, 13, 10, 1, 0), 0.0_rt, m_tol);
     EXPECT_NEAR(utils::field_probe(src_term, 0, 13, 10, 1, 1), 0.0_rt, m_tol);
     EXPECT_NEAR(utils::field_probe(src_term, 0, 5, 5, 8, 0), 0.0_rt, m_tol);
+}
+
+// The exact relaxation rate stays finite without a time step (limit C)
+TEST_F(ImmersedDragForcingTest, relaxation_rate_zero_dt)
+{
+    EXPECT_NEAR(
+        kynema_sgf::immersed_wall::exact_relaxation_rate(2.0_rt, 0.0_rt),
+        2.0_rt, m_tol);
+    EXPECT_NEAR(
+        kynema_sgf::immersed_wall::exact_relaxation_rate(2.0_rt, 0.5_rt),
+        (1.0_rt - std::exp(-1.0_rt)) / 0.5_rt, m_tol);
 }
 
 } // namespace kynema_sgf_tests

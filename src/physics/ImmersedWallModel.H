@@ -31,11 +31,11 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real solid_weight(
 
 //! Exact integration of du/dt = -C (u - u_t) over one step: the source
 //! -C_eff (u^n - u_t) with C_eff = (1 - exp(-C dt)) / dt reproduces
-//! u^{n+1} = u_t + (u^n - u_t) exp(-C dt)
+//! u^{n+1} = u_t + (u^n - u_t) exp(-C dt). For dt = 0 the rate is its limit C.
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real
 exact_relaxation_rate(const amrex::Real C, const amrex::Real dt)
 {
-    return (1.0_rt - std::exp(-C * dt)) / dt;
+    return (dt > 0.0_rt) ? (1.0_rt - std::exp(-C * dt)) / dt : C;
 }
 
 /** Neighbor terrain fraction from which a face is a wall.
