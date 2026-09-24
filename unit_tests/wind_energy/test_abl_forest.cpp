@@ -32,6 +32,13 @@ void write_point_cloud_forest(const std::string& fname)
     os << "2.5 6.5 2.5 100.0\n";
 }
 
+// One type-2 forest whose top (48 m) is a cell center of the 32 m grid
+void write_type2_forest_top_on_center(const std::string& fname)
+{
+    std::ofstream os(fname);
+    os << "2  512 512 48 200 0.2 6 0.8 \n";
+}
+
 // Terrain on a 2 x 2 grid, linear in x: height = z_west + slope * (x - x_west)
 void write_linear_terrain(
     const std::string& fname,
@@ -432,6 +439,57 @@ TEST_F(PointCloudForestTest, point_cloud_on_flat_terrain)
     // Inside the terrain
     EXPECT_NEAR(utils::field_probe(f_drag, 0, 2, 2, 1), 0.0_rt, tol);
     EXPECT_NEAR(utils::field_probe(f_id, 0, 2, 2, 1), -1.0_rt, tol);
+}
+
+// The type-2 profile divided by zero at the tree top (NaN drag); it is zero
+// there, in the legacy placement and on the terrain.
+TEST_F(ForestTest, type2_forest_top_on_cell_center)
+{
+    write_type2_forest_top_on_center(m_forest_fname);
+    populate_parameters();
+    initialize_mesh();
+    sim().pde_manager().register_icns();
+    kynema_sgf::forestdrag::ForestDrag forest_drag(sim());
+    forest_drag.initialize_fields(0, sim().repo().mesh().Geom(0));
+
+    const amrex::Real tol = kynema_sgf::constants::TIGHT_TOL;
+    const auto& f_drag = sim().repo().get_field("forest_drag");
+    EXPECT_TRUE(
+        std::isfinite(kynema_sgf::field_ops::global_max_magnitude(f_drag)));
+    // k = 0 (z = 16 m) is in the canopy, k = 1 (z = 48 m) is the tree top
+    EXPECT_GT(utils::field_probe(f_drag, 0, 16, 16, 0), 0.0_rt);
+    EXPECT_NEAR(utils::field_probe(f_drag, 0, 16, 16, 1), 0.0_rt, tol);
+    EXPECT_NEAR(
+        utils::field_probe(sim().repo().get_field("forest_id"), 0, 16, 16, 1),
+        0.0_rt, tol);
+}
+
+TEST_F(ForestTest, type2_forest_top_on_cell_center_terrain)
+{
+    write_type2_forest_top_on_center(m_forest_fname);
+    write_linear_terrain(
+        m_terrain_fname, 0.0_rt, 1024.0_rt, 0.0_rt, 1024.0_rt, 128.0_rt,
+        128.0_rt);
+    populate_parameters();
+    {
+        amrex::ParmParse pp("TerrainDrag");
+        pp.add("terrain_file", m_terrain_fname);
+    }
+    initialize_mesh();
+    sim().pde_manager().register_icns();
+    auto& terrain_drag = sim().physics_manager().create("TerrainDrag", sim());
+    auto& forest_drag = sim().physics_manager().create("ForestDrag", sim());
+    const auto& geom = sim().repo().mesh().Geom(0);
+    terrain_drag.initialize_fields(0, geom);
+    forest_drag.initialize_fields(0, geom);
+
+    const amrex::Real tol = kynema_sgf::constants::TIGHT_TOL;
+    const auto& f_drag = sim().repo().get_field("forest_drag");
+    EXPECT_TRUE(
+        std::isfinite(kynema_sgf::field_ops::global_max_magnitude(f_drag)));
+    // Ground at 128 m: k = 4 is 16 m and k = 5 is 48 m above it
+    EXPECT_GT(utils::field_probe(f_drag, 0, 16, 16, 4), 0.0_rt);
+    EXPECT_NEAR(utils::field_probe(f_drag, 0, 16, 16, 5), 0.0_rt, tol);
 }
 
 } // namespace kynema_sgf_tests

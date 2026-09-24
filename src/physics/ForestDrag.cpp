@@ -144,13 +144,13 @@ void ForestDrag::initialize_fields(int level, const amrex::Geometry& geom)
             "ForestDrag: list TerrainDrag before ForestDrag in incflo.physics, "
             "or set ForestDrag.terrain_aware = false");
     }
-    const Field* terrain_height = nullptr;
     m_terrain_zmin = 0.0_rt;
     m_terrain_zmax = 0.0_rt;
     if (use_terrain) {
-        terrain_height = &m_sim.repo().get_field("terrain_height");
-        m_terrain_zmin = (*terrain_height)(level).min(0);
-        m_terrain_zmax = (*terrain_height)(level).max(0);
+        const auto& terrain_height =
+            m_sim.repo().get_field("terrain_height")(level);
+        m_terrain_zmin = terrain_height.min(0);
+        m_terrain_zmax = terrain_height.max(0);
     }
 
     // Build host-side forest metadata for the requested AMR level.
@@ -210,7 +210,9 @@ void ForestDrag::initialize_fields(int level, const amrex::Geometry& geom)
                 if (use_terrain) {
                     // Heights of the forest and point-cloud files are above
                     // the local ground; no drag inside the terrain.
-                    const auto& ht = (*terrain_height)(level).const_array(mfi);
+                    const auto& ht = m_sim.repo()
+                                         .get_field("terrain_height")(level)
+                                         .const_array(mfi);
                     const amrex::Real half_dz = 0.5_rt * dx[2];
                     amrex::ParallelFor(
                         bxi, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
