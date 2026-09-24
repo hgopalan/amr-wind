@@ -92,7 +92,9 @@ struct Forest
         amrex::Real af = 0.0_rt;
         if (m_type_forest == 1) {
             af = m_lai_forest / m_height_forest;
-        } else if (m_type_forest == 2) {
+        } else if (m_type_forest == 2 && z < m_height_forest) {
+            // The profile tends to zero at the tree top, where the ratio
+            // below divides by zero, so the top and above are left at zero.
             const auto treeZm = m_laimax_forest * m_height_forest;
             const auto ratio =
                 (m_height_forest - treeZm) / (m_height_forest - z);
