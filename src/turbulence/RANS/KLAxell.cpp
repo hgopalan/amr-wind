@@ -145,6 +145,7 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
         // Near-wall options for TerrainDrag, all off by default
         amrex::ParmParse pp("KLAxell");
         pp.query("terrain_wall_stencil", m_terrain_wall_stencil);
+        pp.query("terrain_blanked_face_length", m_terrain_blanked_face_length);
     }
 
     // TKE source term to be added to PDE
@@ -222,6 +223,15 @@ void KLAxell<Transport>::update_turbulent_viscosity(
     const amrex::Real surf_flux = m_surf_flux;
     const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
     const amrex::Real lengthscale_switch = m_meso_sponge_start;
+    // KLAxell.terrain_blanked_face_length: the TerrainDrag kernel below reads
+    // the height of the top face of the blanked column in place of the
+    // terrain height
+    std::unique_ptr<ScratchField> face_height;
+    if (m_terrain_blanked_face_length &&
+        this->m_sim.repo().int_field_exists("terrain_blank")) {
+        face_height = repo.create_scratch_field(1, 0);
+        terrain_blanked_face_height(*face_height);
+    }
     for (int lev = 0; lev < nlevels; ++lev) {
         const auto& geom = geom_vec[lev];
         const auto& problo = repo.mesh().Geom(lev).ProbLoArray();
@@ -244,7 +254,9 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                 &this->m_sim.repo().get_field("terrain_height");
             const auto* m_terrain_blank =
                 &this->m_sim.repo().get_int_field("terrain_blank");
-            const auto& ht_arrs = (*m_terrain_height)(lev).const_arrays();
+            const auto& ht_arrs = face_height
+                                      ? (*face_height)(lev).const_arrays()
+                                      : (*m_terrain_height)(lev).const_arrays();
             const auto& blank_arrs = (*m_terrain_blank)(lev).const_arrays();
             amrex::ParallelFor(
                 mu_turb(lev),
@@ -471,6 +483,39 @@ void KLAxell<Transport>::terrain_wall_strain_rate(const Field& velocity)
                 }
                 s_arrs[nbx](i, j, k) =
                     wall_strain_rate(v_arrs[nbx], i, j, k, side, dx);
+            });
+    }
+    amrex::Gpu::streamSynchronize();
+}
+
+// TerrainDrag, KLAxell.terrain_blanked_face_length: a cell is blanked when
+//  its center is at or below the terrain height h, so the resolved wall is
+//  the top face of the blanked column,
+//      z_f = z_lo + max(0, dz floor((h - z_lo) / dz + 1/2)),
+//  not h. The mixing length of the TerrainDrag kernel is measured from z_f,
+//  z = max(z_c - z_f, dz / 2), as flat ground measures it from its wall; with
+//  h between cell faces the height above h puts the first fluid cells up to
+//  dz / 2 too close to the wall.
+template <typename Transport>
+void KLAxell<Transport>::terrain_blanked_face_height(
+    ScratchField& face_height) const
+{
+    const auto& repo = this->m_sim.repo();
+    const auto& terrain_height = repo.get_field("terrain_height");
+    const int nlevels = repo.num_active_levels();
+    for (int lev = 0; lev < nlevels; ++lev) {
+        const auto& geom = repo.mesh().Geom(lev);
+        const amrex::Real zlo = geom.ProbLoArray()[2];
+        const amrex::Real dz = geom.CellSize()[2];
+        const auto& h_arrs = terrain_height(lev).const_arrays();
+        const auto& f_arrs = face_height(lev).arrays();
+        amrex::ParallelFor(
+            face_height(lev),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept {
+                const amrex::Real h = h_arrs[nbx](i, j, k) - zlo;
+                f_arrs[nbx](i, j, k) =
+                    zlo + amrex::max<amrex::Real>(
+                              0.0_rt, dz * std::floor((h / dz) + 0.5_rt));
             });
     }
     amrex::Gpu::streamSynchronize();

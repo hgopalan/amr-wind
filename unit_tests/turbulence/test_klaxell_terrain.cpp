@@ -193,6 +193,26 @@ protected:
             utils::field_probe(mu, 0, i, j, k));
     }
 
+    //! Neutral surface-layer mixing length at height z above the wall
+    [[nodiscard]] static amrex::Real lscale(const amrex::Real z)
+    {
+        const amrex::Real lambda = 30.0_rt;
+        const amrex::Real kappa = 0.41_rt;
+        return (lambda * kappa * z) / (lambda + (kappa * z));
+    }
+
+    //! Neutral KLAxell viscosity rho Cmu l(z) sqrt(k)
+    [[nodiscard]] amrex::Real mu_rans(const amrex::Real z) const
+    {
+        return m_rho0 * m_Cmu * lscale(z) * std::sqrt(m_tke);
+    }
+
+    [[nodiscard]] amrex::Real mu(const int i, const int j, const int k)
+    {
+        return utils::field_probe(
+            sim().repo().get_field("mu_turb"), 0, i, j, k);
+    }
+
     //! u of the shear flow at the center of level k
     [[nodiscard]] amrex::Real u_shear(const int k) const
     {
@@ -207,6 +227,7 @@ protected:
     const amrex::Real m_shear{0.05_rt};
     const amrex::Real m_vspan{2.0_rt};
     const amrex::Real m_tke{0.1_rt};
+    const amrex::Real m_Cmu{0.556_rt};
     const amrex::Real m_tol{
         std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt};
 };
@@ -234,6 +255,21 @@ TEST_F(KLAxellTerrainTest, wall_stencil_uses_the_flat_ground_stencil)
     }
 }
 
+// The plateau (h = 100 m) blanks the cells up to k = 2, whose top face is at
+// 96 m. With the option the mixing length is measured from that face: 48 m
+// above it at k = 4 (144 m), not 44 m above the terrain height. The drag cell
+// keeps the floor dz / 2 and flat ground (h = 0) is unchanged.
+TEST_F(KLAxellTerrainTest, blanked_face_length_measures_from_the_face)
+{
+    set_bool("KLAxell", "terrain_blanked_face_length", true);
+    setup();
+    update_viscosity();
+    EXPECT_NEAR(mu(15, 10, 4), mu_rans(48.0_rt), m_tol * mu_rans(48.0_rt));
+    EXPECT_NEAR(mu(15, 10, 5), mu_rans(80.0_rt), m_tol * mu_rans(80.0_rt));
+    EXPECT_NEAR(mu(15, 10, 3), mu_rans(16.0_rt), m_tol * mu_rans(16.0_rt));
+    EXPECT_NEAR(mu(5, 5, 8), mu_rans(272.0_rt), m_tol * mu_rans(272.0_rt));
+}
+
 // With every option at its default the model runs the unchanged TerrainDrag
 // path: at each cell an option changes, the result is the legacy value.
 TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
@@ -250,6 +286,8 @@ TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
     EXPECT_NEAR(
         strain(15, 10, 3), std::sqrt((dudz * dudz) + (dvdz * dvdz)),
         m_tol * m_shear);
+    // Mixing length from the terrain height (terrain_blanked_face_length)
+    EXPECT_NEAR(mu(15, 10, 4), mu_rans(44.0_rt), m_tol * mu_rans(44.0_rt));
 }
 
 } // namespace kynema_sgf_tests

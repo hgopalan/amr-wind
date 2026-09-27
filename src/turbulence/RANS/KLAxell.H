@@ -54,6 +54,15 @@ public:
      */
     void terrain_wall_strain_rate(const Field& velocity);
 
+    /** With TerrainDrag and ``KLAxell.terrain_blanked_face_length``: height
+     *  of the top face of the blanked column, from which the mixing length is
+     *  measured in place of the terrain height. Public because it launches a
+     *  device lambda.
+     *
+     *  @param face_height Scratch field (one component) set to the face height
+     */
+    void terrain_blanked_face_height(ScratchField& face_height) const;
+
     //! Parse turbulence model coefficients
     void parse_model_coeffs() override;
 
@@ -85,6 +94,8 @@ private:
     //! TerrainDrag options, all off by default (``KLAxell.<name>``)
     //! Flat-ground wall stencil for the strain rate of the wall cells
     bool m_terrain_wall_stencil{false};
+    //! Mixing length measured from the top face of the blanked column
+    bool m_terrain_blanked_face_length{false};
 };
 
 } // namespace kynema_sgf::turbulence

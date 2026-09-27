@@ -46,3 +46,16 @@ effect on flat ground or without ``TerrainDrag``.
    zero wall value, :math:`(u_0 + u_1/3)/\Delta x`. Between two blanked
    neighbors the derivative is zero; at a domain face the usual boundary
    stencil is kept.
+
+.. input_param:: KLAxell.terrain_blanked_face_length
+
+   **type:** Boolean, optional, default = false
+
+   Measures the mixing length from the top face of the blanked column instead
+   of the terrain height. A cell is blanked when its center is at or below
+   the terrain height :math:`h`, so the resolved wall is the face at
+   :math:`z_f = z_{lo} + \max(0, \Delta z\,\lfloor (h - z_{lo})/\Delta z + 1/2 \rfloor)`,
+   and the height entering the mixing length is
+   :math:`\max(z_c - z_f, \Delta z/2)`, as flat ground measures it from its
+   wall. Measured from :math:`h` it is up to :math:`\Delta z/2` smaller in the
+   first fluid cells, depending on where :math:`h` falls within its cell.
