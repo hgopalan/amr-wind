@@ -13,6 +13,105 @@ using namespace amrex::literals;
 namespace kynema_sgf {
 namespace turbulence {
 
+namespace {
+//! Derivative at the first of three points p0, p1, p2 spaced s and t along
+//! the direction away from a wall, from the quadratic through them. For
+//! s = t = dx it is the stencil of flat ground at its bottom wall for a
+//! tangential velocity: the zlo stencil (p1 / 3 + p0 - 4 g / 3) / dx with the
+//! hoextrap ghost g = (15 p0 - 10 p1 + 3 p2) / 8, i.e.
+//! (-3 p0 + 4 p1 - p2) / (2 dx).
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE amrex::Real one_sided_derivative(
+    const amrex::Real p0,
+    const amrex::Real p1,
+    const amrex::Real p2,
+    const amrex::Real s,
+    const amrex::Real t)
+{
+    return (-((2.0_rt * s) + t) / (s * (s + t)) * p0) +
+           ((s + t) / (s * t) * p1) - (s / ((s + t) * t) * p2);
+}
+
+//! Derivative at distance a from a wall where the value is zero, from the
+//! quadratic through the wall, the point p0 and the next point p1 at a + s.
+//! For a = dx / 2 and s = dx it is the stencil of flat ground at its bottom
+//! wall for the wall-normal velocity, whose ghost holds the zero wall value:
+//! (p1 / 3 + p0) / dx.
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE amrex::Real zero_wall_derivative(
+    const amrex::Real p0,
+    const amrex::Real p1,
+    const amrex::Real a,
+    const amrex::Real s)
+{
+    return ((s - a) / (a * s) * p0) + (a / ((a + s) * s) * p1);
+}
+
+//! Strain-rate magnitude sqrt(2 S_ij S_ij) of cell (i, j, k) as
+//! fvm::strainrate computes it, except toward terrain. side[2 d] (low) and
+//! side[2 d + 1] (high) are 0 for a fluid neighbor, 1 for a blanked cell and
+//! 2 for a non-periodic domain face. Toward a blanked cell the derivative
+//! takes the stencil flat ground uses at its bottom wall, the wall being the
+//! face between the two cells: one-sided over the fluid cells for a
+//! tangential component, through the zero wall value for the normal one.
+//! Toward a domain face it keeps the boundary stencil of fvm::strainrate;
+//! between two blanked cells the derivative is zero.
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE amrex::Real wall_strain_rate(
+    amrex::Array4<amrex::Real const> const& vel,
+    const int i,
+    const int j,
+    const int k,
+    const amrex::GpuArray<int, 2 * AMREX_SPACEDIM>& side,
+    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx)
+{
+    // g[c][d] = d u_c / d x_d
+    amrex::Real g[AMREX_SPACEDIM][AMREX_SPACEDIM];
+    for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+        const int di = (d == 0) ? 1 : 0;
+        const int dj = (d == 1) ? 1 : 0;
+        const int dk = (d == 2) ? 1 : 0;
+        const int lo = side[2 * d];
+        const int hi = side[(2 * d) + 1];
+        for (int c = 0; c < AMREX_SPACEDIM; ++c) {
+            const amrex::Real p0 = vel(i, j, k, c);
+            const amrex::Real pp = vel(i + di, j + dj, k + dk, c);
+            const amrex::Real pm = vel(i - di, j - dj, k - dk, c);
+            amrex::Real grad = 0.0_rt;
+            if (lo == 2) {
+                grad = ((pp / 3.0_rt) + p0 - (4.0_rt / 3.0_rt * pm)) / dx[d];
+            } else if (hi == 2) {
+                grad = ((4.0_rt / 3.0_rt * pp) - p0 - (pm / 3.0_rt)) / dx[d];
+            } else if ((lo == 1) && (hi == 1)) {
+                grad = 0.0_rt;
+            } else if (lo == 1) {
+                grad =
+                    (c == d)
+                        ? zero_wall_derivative(p0, pp, 0.5_rt * dx[d], dx[d])
+                        : one_sided_derivative(
+                              p0, pp,
+                              vel(i + (2 * di), j + (2 * dj), k + (2 * dk), c),
+                              dx[d], dx[d]);
+            } else if (hi == 1) {
+                grad = -(
+                    (c == d)
+                        ? zero_wall_derivative(p0, pm, 0.5_rt * dx[d], dx[d])
+                        : one_sided_derivative(
+                              p0, pm,
+                              vel(i - (2 * di), j - (2 * dj), k - (2 * dk), c),
+                              dx[d], dx[d]));
+            } else {
+                grad = 0.5_rt * (pp - pm) / dx[d];
+            }
+            g[c][d] = grad;
+        }
+    }
+    return std::sqrt(
+        (2.0_rt * g[0][0] * g[0][0]) + (2.0_rt * g[1][1] * g[1][1]) +
+        (2.0_rt * g[2][2] * g[2][2]) +
+        ((g[0][1] + g[1][0]) * (g[0][1] + g[1][0])) +
+        ((g[1][2] + g[2][1]) * (g[1][2] + g[2][1])) +
+        ((g[2][0] + g[0][2]) * (g[2][0] + g[0][2])));
+}
+} // namespace
+
 template <typename Transport>
 KLAxell<Transport>::KLAxell(CFDSim& sim)
     : TurbModelBase<Transport>(sim)
@@ -40,6 +139,12 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
     {
         amrex::ParmParse pp("incflo");
         pp.queryarr("gravity", m_gravity);
+    }
+
+    {
+        // Near-wall options for TerrainDrag, all off by default
+        amrex::ParmParse pp("KLAxell");
+        pp.query("terrain_wall_stencil", m_terrain_wall_stencil);
     }
 
     // TKE source term to be added to PDE
@@ -94,6 +199,10 @@ void KLAxell<Transport>::update_turbulent_viscosity(
 
     const auto& vel = this->m_vel.state(fstate);
     fvm::strainrate(this->m_shear_prod, vel);
+    if (m_terrain_wall_stencil &&
+        this->m_sim.repo().int_field_exists("terrain_blank")) {
+        terrain_wall_strain_rate(vel);
+    }
 
     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> gravity{
         m_gravity[0], m_gravity[1], m_gravity[2]};
@@ -293,6 +402,78 @@ void KLAxell<Transport>::update_turbulent_viscosity(
     amrex::Gpu::streamSynchronize();
 
     mu_turb.fillpatch(this->m_sim.time().current_time());
+}
+
+// TerrainDrag, KLAxell.terrain_wall_stencil: the central strain rate of a
+//  fluid cell next to a blanked cell reads the near-zero velocity the drag
+//  holds in the blanked cell, not a fluid value. For a wall on the face
+//  between them dU/dz = U_{k+1} / (2 dz), 1.4 times the log-law shear
+//  u* / (kappa dz / 2), and the wall-cell TKE settles 16-22 % above the
+//  target KransAxell relaxes it to, where flat ground sits 9-12 % below it.
+//  Flat ground takes a one-sided stencil at its bottom wall (StencilKLO with
+//  the hoextrap ghost of the tangential velocity and the zero wall value of
+//  the normal one):
+//      du_t/dn = (-3 u_0 + 4 u_1 - u_2) / (2 dx),
+//      du_n/dn = (u_0 + u_1 / 3) / dx,
+//  with u_0 the wall cell and u_1, u_2 the next fluid cells away from the
+//  wall. The cells next to the blanked cells take the same stencil in each
+//  direction that has a blanked neighbor, so that a wall on a cell face
+//  reproduces flat ground, error included.
+template <typename Transport>
+void KLAxell<Transport>::terrain_wall_strain_rate(const Field& velocity)
+{
+    const auto& repo = this->m_sim.repo();
+    const auto& blank = repo.get_int_field("terrain_blank");
+    auto& strain = this->m_shear_prod;
+    const int nlevels = repo.num_active_levels();
+    for (int lev = 0; lev < nlevels; ++lev) {
+        const auto& geom = repo.mesh().Geom(lev);
+        const auto dx = geom.CellSizeArray();
+        const auto dlo = amrex::lbound(geom.Domain());
+        const auto dhi = amrex::ubound(geom.Domain());
+        const amrex::GpuArray<int, AMREX_SPACEDIM> periodic{
+            static_cast<int>(geom.isPeriodic(0)),
+            static_cast<int>(geom.isPeriodic(1)),
+            static_cast<int>(geom.isPeriodic(2))};
+        const auto& s_arrs = strain(lev).arrays();
+        const auto& v_arrs = velocity(lev).const_arrays();
+        const auto& b_arrs = blank(lev).const_arrays();
+        amrex::ParallelFor(
+            strain(lev),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept {
+                const auto& bl = b_arrs[nbx];
+                if (bl(i, j, k) == 1) {
+                    return;
+                }
+                const amrex::GpuArray<int, AMREX_SPACEDIM> idx{i, j, k};
+                const amrex::GpuArray<int, AMREX_SPACEDIM> lo{
+                    dlo.x, dlo.y, dlo.z};
+                const amrex::GpuArray<int, AMREX_SPACEDIM> hi{
+                    dhi.x, dhi.y, dhi.z};
+                amrex::GpuArray<int, 2 * AMREX_SPACEDIM> side{};
+                bool wall = false;
+                for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+                    const int di = (d == 0) ? 1 : 0;
+                    const int dj = (d == 1) ? 1 : 0;
+                    const int dk = (d == 2) ? 1 : 0;
+                    side[2 * d] = ((periodic[d] == 0) && (idx[d] == lo[d]))
+                                      ? 2
+                                      : bl(i - di, j - dj, k - dk);
+                    side[(2 * d) + 1] =
+                        ((periodic[d] == 0) && (idx[d] == hi[d]))
+                            ? 2
+                            : bl(i + di, j + dj, k + dk);
+                    wall =
+                        wall || (side[2 * d] == 1) || (side[(2 * d) + 1] == 1);
+                }
+                if (!wall) {
+                    return;
+                }
+                s_arrs[nbx](i, j, k) =
+                    wall_strain_rate(v_arrs[nbx], i, j, k, side, dx);
+            });
+    }
+    amrex::Gpu::streamSynchronize();
 }
 
 template <typename Transport>

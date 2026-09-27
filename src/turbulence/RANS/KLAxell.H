@@ -45,6 +45,15 @@ public:
     //! Update the effective scalar diffusivity field
     void update_scalar_diff(Field& deff, const std::string& name) override;
 
+    /** With TerrainDrag and ``KLAxell.terrain_wall_stencil``: strain rate of
+     *  the fluid cells next to the blanked cells from the stencil that flat
+     *  ground uses at its bottom wall, the wall being the face of the blanked
+     *  cell. Public because it launches a device lambda.
+     *
+     *  @param velocity Velocity field of the state being updated
+     */
+    void terrain_wall_strain_rate(const Field& velocity);
+
     //! Parse turbulence model coefficients
     void parse_model_coeffs() override;
 
@@ -72,6 +81,10 @@ private:
     amrex::Real m_meso_sponge_start{2000};
 
     std::unique_ptr<ScratchField> m_gradT;
+
+    //! TerrainDrag options, all off by default (``KLAxell.<name>``)
+    //! Flat-ground wall stencil for the strain rate of the wall cells
+    bool m_terrain_wall_stencil{false};
 };
 
 } // namespace kynema_sgf::turbulence
