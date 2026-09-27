@@ -1,6 +1,7 @@
 #include "ks_test_utils/MeshTest.H"
 #include "ks_test_utils/test_utils.H"
 #include "src/physics/TerrainDrag.H"
+#include "src/equation_systems/temperature/source_terms/DragTempForcing.H"
 #include "src/turbulence/TurbulenceModel.H"
 #include "src/utilities/math_ops.H"
 #include "AMReX_ParmParse.H"
@@ -170,6 +171,10 @@ protected:
             pp.add("terrain_file", (std::string) "terrain.amrwind");
             pp.add("uniform_roughness", m_z0);
         }
+        {
+            amrex::ParmParse pp("DragTempForcing");
+            pp.add("soil_temperature", m_soil_temperature);
+        }
     }
 
     void setup()
@@ -291,6 +296,23 @@ protected:
         return m_mu_lam + (mu(i, j, k) / prt);
     }
 
+    //! DragTempForcing source of a cell with the current inputs
+    kynema_sgf::Field& drag_temp_source(const std::string& name)
+    {
+        auto& src = sim().repo().declare_cc_field(name, 1, 0);
+        src.setVal(0.0_rt);
+        const kynema_sgf::pde::temperature::DragTempForcing forcing(sim());
+        const int nlevels = sim().repo().num_active_levels();
+        for (int lev = 0; lev < nlevels; ++lev) {
+            forcing(lev, kynema_sgf::FieldState::New, src(lev));
+        }
+        return src;
+    }
+
+    //! Explicit drag rate of a blanked cell at rest, min(Cd / (dz |u|), 10 /
+    //! dz) = 10 / dz
+    [[nodiscard]] amrex::Real blank_drag_rate() const { return 10.0_rt / m_dz; }
+
     //! u of the shear flow at the center of level k
     [[nodiscard]] amrex::Real u_shear(const int k) const
     {
@@ -310,6 +332,7 @@ protected:
     const amrex::Real m_beta{1.0_rt / 300.0_rt};
     const amrex::Real m_L{200.0_rt};
     const amrex::Real m_dTdz{0.01_rt};
+    const amrex::Real m_soil_temperature{290.0_rt};
     const amrex::Real m_tol{
         std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt};
 };
@@ -423,6 +446,40 @@ TEST_F(KLAxellTerrainTest, face_heat_flux_needs_mol)
     EXPECT_NEAR(a3, legacy_alpha(15, 10, 3), m_tol * a3);
 }
 
+// The blanked cells relax toward the temperature of the cell above, at the
+// exactly integrated rate (1 - exp(-C dt)) / dt, in place of the soil
+// temperature; every other cell keeps the source of the default forcing.
+TEST_F(KLAxellTerrainTest, blank_follow_fluid_relaxes_toward_the_cell_above)
+{
+    set_stable_mol();
+    setup();
+    init_stable_temperature();
+    set_blank_velocity(
+        sim().repo().get_field("velocity"),
+        sim().repo().get_int_field("terrain_blank"), 0.0_rt);
+    const auto& src_soil = drag_temp_source("src_soil");
+    set_bool("DragTempForcing", "blank_follow_fluid", true);
+    const auto& src_follow = drag_temp_source("src_follow");
+    const auto T = [&](const int k) {
+        return 300.0_rt + (m_dTdz * (k + 0.5_rt) * m_dz);
+    };
+    const amrex::Real C = blank_drag_rate();
+    const amrex::Real C_e = (1.0_rt - std::exp(-C * m_dt)) / m_dt;
+    for (const int k : {0, 1, 2}) {
+        const amrex::Real expected = -C_e * (T(k) - T(k + 1));
+        EXPECT_NEAR(
+            utils::field_probe(src_follow, 0, 15, 10, k), expected,
+            m_tol * std::abs(expected));
+    }
+    for (const auto& ijk :
+         {amrex::IntVect(15, 10, 3), amrex::IntVect(5, 5, 0),
+          amrex::IntVect(5, 5, 8)}) {
+        EXPECT_EQ(
+            utils::field_probe(src_follow, 0, ijk[0], ijk[1], ijk[2]),
+            utils::field_probe(src_soil, 0, ijk[0], ijk[1], ijk[2]));
+    }
+}
+
 // With every option at its default the model runs the unchanged TerrainDrag
 // path: at each cell an option changes, the result is the legacy value.
 TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
@@ -449,6 +506,15 @@ TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
     // Model heat diffusivity in the drag cell (terrain_face_heat_flux)
     const amrex::Real a3 = utils::field_probe(update_alpha(), 0, 15, 10, 3);
     EXPECT_NEAR(a3, legacy_alpha(15, 10, 3), m_tol * a3);
+    // Soil relaxation of the blanked cells (blank_follow_fluid)
+    set_blank_velocity(
+        sim().repo().get_field("velocity"),
+        sim().repo().get_int_field("terrain_blank"), 0.0_rt);
+    const amrex::Real T1 = 300.0_rt + (m_dTdz * 1.5_rt * m_dz);
+    const amrex::Real soil = -blank_drag_rate() * (T1 - m_soil_temperature);
+    EXPECT_NEAR(
+        utils::field_probe(drag_temp_source("src"), 0, 15, 10, 1), soil,
+        m_tol * std::abs(soil));
 }
 
 } // namespace kynema_sgf_tests
