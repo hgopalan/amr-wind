@@ -58,6 +58,26 @@ void init_shear(
     amrex::Gpu::streamSynchronize();
 }
 
+//! Temperature T0 + dTdz z including ghost cells
+void init_temperature(
+    kynema_sgf::Field& temp, const amrex::Real T0, const amrex::Real dTdz)
+{
+    const auto& mesh = temp.repo().mesh();
+    const int nlevels = temp.repo().num_active_levels();
+    for (int lev = 0; lev < nlevels; ++lev) {
+        const auto& dx = mesh.Geom(lev).CellSizeArray();
+        const auto& problo = mesh.Geom(lev).ProbLoArray();
+        const auto& tarrs = temp(lev).arrays();
+        amrex::ParallelFor(
+            temp(lev), temp.num_grow(),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
+                tarrs[nbx](i, j, k) = T0 + (dTdz * z);
+            });
+    }
+    amrex::Gpu::streamSynchronize();
+}
+
 //! Horizontal velocity u_s in the blanked cells, including ghost cells
 void set_blank_velocity(
     kynema_sgf::Field& vel,
@@ -121,8 +141,9 @@ protected:
         }
         {
             amrex::ParmParse pp("transport");
-            pp.add("viscosity", 1.0e-5_rt);
+            pp.add("viscosity", m_mu_lam);
             pp.add("reference_temperature", 300.0_rt);
+            pp.add("thermal_expansion_coefficient", m_beta);
         }
         {
             amrex::ParmParse pp("ABL");
@@ -229,6 +250,47 @@ protected:
         EXPECT_NEAR(mu(5, 5, 8), mu_rans(272.0_rt), m_tol * mu_rans(272.0_rt));
     }
 
+    //! Stable surface layer: ABL.wall_het_model = mol with the Obukhov
+    //! length m_L and a potential temperature rising at m_dTdz
+    void set_stable_mol()
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("wall_het_model", (std::string) "mol");
+        pp.add("monin_obukhov_length", m_L);
+    }
+
+    void init_stable_temperature()
+    {
+        init_temperature(
+            sim().repo().get_field("temperature"), 300.0_rt, m_dTdz);
+    }
+
+    //! Update and return the effective thermal diffusivity
+    kynema_sgf::Field& update_alpha()
+    {
+        auto& alphaeff = sim().repo().declare_cc_field("alphaeff", 1, 1);
+        sim().turbulence_model().update_alphaeff(alphaeff);
+        return alphaeff;
+    }
+
+    //! alpha_lam + mu_t / Pr_t(Rt) of the unchanged kernel for the uniform
+    //! stratification of init_stable_temperature
+    [[nodiscard]] amrex::Real
+    legacy_alpha(const int i, const int j, const int k)
+    {
+        const amrex::Real N2 = 9.81_rt * m_beta * m_dTdz;
+        const amrex::Real tke =
+            utils::field_probe(sim().repo().get_field("tke"), 0, i, j, k);
+        const amrex::Real l = utils::field_probe(
+            sim().repo().get_field("turb_lscale"), 0, i, j, k);
+        const amrex::Real eps =
+            kynema_sgf::utils::powi(m_Cmu, 3) * std::pow(tke, 1.5_rt) / l;
+        const amrex::Real Rt = kynema_sgf::utils::powi(tke / eps, 2) * N2;
+        const amrex::Real prt =
+            (1.0_rt + (0.193_rt * Rt)) / (1.0_rt + (0.0302_rt * Rt));
+        return m_mu_lam + (mu(i, j, k) / prt);
+    }
+
     //! u of the shear flow at the center of level k
     [[nodiscard]] amrex::Real u_shear(const int k) const
     {
@@ -244,6 +306,10 @@ protected:
     const amrex::Real m_vspan{2.0_rt};
     const amrex::Real m_tke{0.1_rt};
     const amrex::Real m_Cmu{0.556_rt};
+    const amrex::Real m_mu_lam{1.0e-5_rt};
+    const amrex::Real m_beta{1.0_rt / 300.0_rt};
+    const amrex::Real m_L{200.0_rt};
+    const amrex::Real m_dTdz{0.01_rt};
     const amrex::Real m_tol{
         std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt};
 };
@@ -315,11 +381,56 @@ TEST_F(KLAxellTerrainTest, face_stress_uses_the_stability_function)
     check_face_stress(-5.0_rt * 1.5_rt * m_dz / L);
 }
 
+// Under mol the drag cell takes the heat diffusivity for which the face above
+// it carries the MOST heat flux q = -u* theta*, theta* = T u*^2 / (kappa g L),
+// over the temperature difference of the stable profile (-dTdz dz, down the
+// gradient of q < 0). The cell above and flat ground keep the model value.
+TEST_F(KLAxellTerrainTest, face_heat_flux_sets_the_drag_cell_diffusivity)
+{
+    set_bool("KLAxell", "terrain_face_heat_flux", true);
+    set_stable_mol();
+    setup();
+    init_stable_temperature();
+    update_viscosity();
+    const auto& alpha = update_alpha();
+    const auto a = [&](const int i, const int j, const int k) {
+        return utils::field_probe(alpha, 0, i, j, k);
+    };
+    const amrex::Real psi = -5.0_rt * 1.5_rt * m_dz / m_L;
+    const amrex::Real mref =
+        std::sqrt((u_shear(4) * u_shear(4)) + (m_vspan * m_vspan));
+    const amrex::Real us =
+        0.41_rt * mref / (std::log(1.5_rt * m_dz / m_z0) - psi);
+    const amrex::Real T = 300.0_rt + (m_dTdz * 3.5_rt * m_dz);
+    const amrex::Real q = -us * T * us * us / (0.41_rt * 9.81_rt * m_L);
+    const amrex::Real a_face = m_rho0 * q * m_dz / (-m_dTdz * m_dz);
+    const amrex::Real expected = (2.0_rt * a_face) - a(15, 10, 4);
+    EXPECT_GT(expected, m_mu_lam);
+    EXPECT_NEAR(a(15, 10, 3), expected, m_tol * expected);
+    EXPECT_NEAR(a(15, 10, 4), legacy_alpha(15, 10, 4), m_tol * a(15, 10, 4));
+    EXPECT_NEAR(a(5, 5, 8), legacy_alpha(5, 5, 8), m_tol * a(5, 5, 8));
+}
+
+// Without mol there is no Obukhov length and the option does nothing.
+TEST_F(KLAxellTerrainTest, face_heat_flux_needs_mol)
+{
+    set_bool("KLAxell", "terrain_face_heat_flux", true);
+    setup();
+    init_stable_temperature();
+    update_viscosity();
+    const auto& alpha = update_alpha();
+    const amrex::Real a3 = utils::field_probe(alpha, 0, 15, 10, 3);
+    EXPECT_NEAR(a3, legacy_alpha(15, 10, 3), m_tol * a3);
+}
+
 // With every option at its default the model runs the unchanged TerrainDrag
 // path: at each cell an option changes, the result is the legacy value.
 TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
 {
+    // Stable mol surface layer, under which every option acts
+    set_stable_mol();
     setup();
+    init_stable_temperature();
     const amrex::Real us = -3.0_rt;
     set_blank_velocity(
         sim().repo().get_field("velocity"),
@@ -335,6 +446,9 @@ TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
     EXPECT_NEAR(mu(15, 10, 4), mu_rans(44.0_rt), m_tol * mu_rans(44.0_rt));
     // Model viscosity in the drag cell (terrain_face_stress)
     EXPECT_NEAR(mu(15, 10, 3), mu_rans(16.0_rt), m_tol * mu_rans(16.0_rt));
+    // Model heat diffusivity in the drag cell (terrain_face_heat_flux)
+    const amrex::Real a3 = utils::field_probe(update_alpha(), 0, 15, 10, 3);
+    EXPECT_NEAR(a3, legacy_alpha(15, 10, 3), m_tol * a3);
 }
 
 } // namespace kynema_sgf_tests

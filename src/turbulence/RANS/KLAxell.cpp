@@ -148,6 +148,7 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
         pp.query("terrain_wall_stencil", m_terrain_wall_stencil);
         pp.query("terrain_blanked_face_length", m_terrain_blanked_face_length);
         pp.query("terrain_face_stress", m_terrain_face_stress);
+        pp.query("terrain_face_heat_flux", m_terrain_face_heat_flux);
     }
     {
         amrex::ParmParse pp_abl("ABL");
@@ -645,10 +646,76 @@ void KLAxell<Transport>::update_alphaeff(Field& alphaeff)
                     lam_diff_arrs[nbx](i, j, k) +
                     (muturb_arrs[nbx](i, j, k) / prandtlRt);
             });
+        if (m_terrain_face_heat_flux && (m_wall_het_model == "mol") &&
+            this->m_sim.repo().int_field_exists("terrain_drag")) {
+            terrain_face_heat_flux(lev, alphaeff, *lam_alpha);
+        }
     }
     amrex::Gpu::streamSynchronize();
 
     alphaeff.fillpatch(this->m_sim.time().current_time());
+}
+
+// TerrainDrag, KLAxell.terrain_face_heat_flux (ABL.wall_het_model = mol):
+//  DragTempForcing relaxes the drag cell toward the MOST temperature from the
+//  cell above it, which fixes the temperature difference across the face
+//  between the two, so that face carries the surface heat flux. The drag-cell
+//  heat diffusivity is sized so that the face (the mean of the two cells)
+//  carries the MOST heat flux given by the Obukhov length, with the friction
+//  velocity of terrain_face_stress:
+//      theta* = theta_k u*^2 / (kappa g L),   q = -u* theta*,
+//      alpha_f = rho q dz / (theta_k - theta_{k+1}),
+//      alpha_k = max(2 alpha_f - alpha_{k+1}, alpha_lam).
+//  Left unchanged where the difference is below 1e-4 K or runs against the
+//  flux (q (theta_k - theta_{k+1}) <= 0).
+template <typename Transport>
+void KLAxell<Transport>::terrain_face_heat_flux(
+    const int lev, Field& alphaeff, const ScratchField& lam_alpha)
+{
+    const auto& repo = this->m_sim.repo();
+    const amrex::Real dz = repo.mesh().Geom(lev).CellSize()[2];
+    const amrex::Real kappa = m_kappa;
+    const amrex::Real min_z0 = m_min_z0;
+    const amrex::Real L = m_monin_obukhov_length;
+    const amrex::Real gmod = std::abs(m_gravity[2]);
+    const amrex::Real psi_ref =
+        MOData::calc_psi_m(1.5_rt * dz / L, m_beta_m, m_gamma_m);
+    const auto& alpha_arrs = alphaeff(lev).arrays();
+    const auto& lam_arrs = lam_alpha(lev).const_arrays();
+    const auto& v_arrs = m_vel(lev).const_arrays();
+    const auto& t_arrs = m_temperature(lev).const_arrays();
+    const auto& rho_arrs = m_rho(lev).const_arrays();
+    const auto& drag_arrs =
+        repo.get_int_field("terrain_drag")(lev).const_arrays();
+    const auto& z0_arrs = repo.get_field("terrainz0")(lev).const_arrays();
+    amrex::ParallelFor(
+        alphaeff(lev),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept {
+            if (drag_arrs[nbx](i, j, k) != 1) {
+                return;
+            }
+            const auto& v = v_arrs[nbx];
+            const auto& t = t_arrs[nbx];
+            const amrex::Real z0 =
+                amrex::max<amrex::Real>(z0_arrs[nbx](i, j, k), min_z0);
+            const amrex::Real mref = std::sqrt(
+                (v(i, j, k + 1, 0) * v(i, j, k + 1, 0)) +
+                (v(i, j, k + 1, 1) * v(i, j, k + 1, 1)));
+            const amrex::Real us =
+                kappa * mref / (std::log(1.5_rt * dz / z0) - psi_ref);
+            const amrex::Real ts = t(i, j, k) * us * us / (kappa * gmod * L);
+            // Upward heat flux, positive when the surface heats the air
+            const amrex::Real q = -us * ts;
+            // Down-gradient: the flux runs from the drag cell up
+            const amrex::Real dth = t(i, j, k) - t(i, j, k + 1);
+            if ((q * dth <= 0.0_rt) || (std::abs(dth) < 1.0e-4_rt)) {
+                return;
+            }
+            const amrex::Real a_face = rho_arrs[nbx](i, j, k) * q * dz / dth;
+            alpha_arrs[nbx](i, j, k) = amrex::max<amrex::Real>(
+                (2.0_rt * a_face) - alpha_arrs[nbx](i, j, k + 1),
+                lam_arrs[nbx](i, j, k));
+        });
 }
 
 template <typename Transport>

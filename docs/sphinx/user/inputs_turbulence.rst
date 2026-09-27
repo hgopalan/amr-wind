@@ -86,3 +86,25 @@ effect on flat ground or without ``TerrainDrag``.
    stability constants are read from the ``ABL`` inputs, as in
    ``DragForcing``. The shear production of the drag cell keeps the model
    viscosity.
+
+.. input_param:: KLAxell.terrain_face_heat_flux
+
+   **type:** Boolean, optional, default = false
+
+   With ``ABL.wall_het_model = mol``, sizes the heat diffusivity of the drag
+   cells so that the face above each one carries the surface heat flux given
+   by the Obukhov length, as :input_param:`KLAxell.terrain_face_stress` does
+   for the stress. ``DragTempForcing`` relaxes the drag cell toward the
+   surface-layer temperature from the cell above it, which fixes the
+   temperature difference across that face. With :math:`u_*` as above,
+
+   .. math::
+
+      \theta_* = \frac{\theta_k u_*^2}{\kappa g L}, \qquad
+      q = -u_*\theta_*, \qquad
+      \alpha_f = \frac{\rho q \Delta z}{\theta_k - \theta_{k+1}}, \qquad
+      \alpha_k = \max(2\alpha_f - \alpha_{k+1}, \alpha_{lam}).
+
+   The diffusivity is left unchanged where the temperature difference is below
+   :math:`10^{-4}` K or runs against the flux. Without ``mol`` the option has
+   no effect.

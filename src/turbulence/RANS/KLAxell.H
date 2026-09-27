@@ -76,6 +76,19 @@ public:
     void
     terrain_face_stress(int lev, const Field& velocity, const Field& density);
 
+    /** With TerrainDrag, ``KLAxell.terrain_face_heat_flux`` and
+     *  ``ABL.wall_het_model = mol``: heat diffusivity of the drag cells sized
+     *  so that the face above each one carries the surface heat flux
+     *  -u* theta* given by the Obukhov length. Public because it launches a
+     *  device lambda.
+     *
+     *  @param lev Level to update
+     *  @param alphaeff Effective thermal diffusivity being updated
+     *  @param lam_alpha Laminar thermal diffusivity
+     */
+    void terrain_face_heat_flux(
+        int lev, Field& alphaeff, const ScratchField& lam_alpha);
+
     //! Parse turbulence model coefficients
     void parse_model_coeffs() override;
 
@@ -111,6 +124,9 @@ private:
     bool m_terrain_blanked_face_length{false};
     //! Drag-cell viscosity from the wall stress on the face above it
     bool m_terrain_face_stress{false};
+    //! Drag-cell heat diffusivity from the surface heat flux on the face
+    //! above it (mol only)
+    bool m_terrain_face_heat_flux{false};
 
     //! Surface-layer inputs of the face stress and heat flux, read from the
     //! same inputs as DragForcing (``ABL.wall_het_model``,
