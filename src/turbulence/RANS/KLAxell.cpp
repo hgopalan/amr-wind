@@ -7,6 +7,7 @@
 #include "src/equation_systems/tke/TKE.H"
 #include "AMReX_ParmParse.H"
 #include "src/utilities/math_ops.H"
+#include "src/wind_energy/MOData.H"
 
 using namespace amrex::literals;
 
@@ -146,6 +147,17 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
         amrex::ParmParse pp("KLAxell");
         pp.query("terrain_wall_stencil", m_terrain_wall_stencil);
         pp.query("terrain_blanked_face_length", m_terrain_blanked_face_length);
+        pp.query("terrain_face_stress", m_terrain_face_stress);
+    }
+    {
+        amrex::ParmParse pp_abl("ABL");
+        pp_abl.query("wall_het_model", m_wall_het_model);
+        pp_abl.query("monin_obukhov_length", m_monin_obukhov_length);
+        pp_abl.query("kappa", m_kappa);
+        pp_abl.query("mo_beta_m", m_beta_m);
+        pp_abl.query("mo_gamma_m", m_gamma_m);
+        amrex::ParmParse pp_drag("DragForcing");
+        pp_drag.query("minimum_z0", m_min_z0);
     }
 
     // TKE source term to be added to PDE
@@ -335,6 +347,9 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                     shear_prod_arrs[nbx](i, j, k) *=
                         shear_prod_arrs[nbx](i, j, k) * mu_arrs[nbx](i, j, k);
                 });
+            if (m_terrain_face_stress) {
+                terrain_face_stress(lev, vel, den);
+            }
         } else {
             amrex::ParallelFor(
                 mu_turb(lev),
@@ -519,6 +534,66 @@ void KLAxell<Transport>::terrain_blanked_face_height(
             });
     }
     amrex::Gpu::streamSynchronize();
+}
+
+// TerrainDrag, KLAxell.terrain_face_stress: DragForcing relaxes the drag
+//  cell (terrain_drag == 1, first fluid cell above the blanked column) toward
+//  the log-law velocity of the cell above it, which fixes the velocity
+//  difference across the face between the two cells; the resolved flux
+//  through that face is then the wall stress. The blanked cell below has no
+//  turbulent viscosity, so the model viscosity leaves that flux short of
+//  u*^2. Here the drag-cell viscosity is sized so that the face viscosity,
+//  the mean of the two cells, carries the wall stress of the DragForcing
+//  wall law over the current velocity difference:
+//      u* = kappa |U_{k+1}| / (ln(1.5 dz / z0) - psi_m(1.5 dz / L)),
+//      mu_f = rho u*^2 dz / max(|U_{k+1} - U_k|, 1e-2),
+//      mu_k = max(2 mu_f - mu_{k+1}, 0),
+//  with z0 floored at DragForcing.minimum_z0 and psi_m = 0 unless
+//  ABL.wall_het_model = mol. The shear production of the drag cell keeps the
+//  model viscosity.
+template <typename Transport>
+void KLAxell<Transport>::terrain_face_stress(
+    const int lev, const Field& velocity, const Field& density)
+{
+    const auto& repo = this->m_sim.repo();
+    const amrex::Real dz = repo.mesh().Geom(lev).CellSize()[2];
+    const amrex::Real kappa = m_kappa;
+    const amrex::Real min_z0 = m_min_z0;
+    const amrex::Real psi_ref =
+        (m_wall_het_model == "mol")
+            ? MOData::calc_psi_m(
+                  1.5_rt * dz / m_monin_obukhov_length, m_beta_m, m_gamma_m)
+            : 0.0_rt;
+    auto& mu_turb = this->mu_turb();
+    const auto& mu_arrs = mu_turb(lev).arrays();
+    const auto& rho_arrs = density(lev).const_arrays();
+    const auto& v_arrs = velocity(lev).const_arrays();
+    const auto& drag_arrs =
+        repo.get_int_field("terrain_drag")(lev).const_arrays();
+    const auto& z0_arrs = repo.get_field("terrainz0")(lev).const_arrays();
+    amrex::ParallelFor(
+        mu_turb(lev),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept {
+            if (drag_arrs[nbx](i, j, k) != 1) {
+                return;
+            }
+            const auto& v = v_arrs[nbx];
+            const amrex::Real z0 =
+                amrex::max<amrex::Real>(z0_arrs[nbx](i, j, k), min_z0);
+            const amrex::Real mref = std::sqrt(
+                (v(i, j, k + 1, 0) * v(i, j, k + 1, 0)) +
+                (v(i, j, k + 1, 1) * v(i, j, k + 1, 1)));
+            const amrex::Real us =
+                kappa * mref / (std::log(1.5_rt * dz / z0) - psi_ref);
+            const amrex::Real du = v(i, j, k + 1, 0) - v(i, j, k, 0);
+            const amrex::Real dv = v(i, j, k + 1, 1) - v(i, j, k, 1);
+            const amrex::Real dM = amrex::max<amrex::Real>(
+                std::sqrt((du * du) + (dv * dv)), 1.0e-2_rt);
+            const amrex::Real rho = rho_arrs[nbx](i, j, k);
+            const amrex::Real mu_face = rho * us * us * dz / dM;
+            mu_arrs[nbx](i, j, k) = amrex::max<amrex::Real>(
+                (2.0_rt * mu_face) - mu_arrs[nbx](i, j, k + 1), 0.0_rt);
+        });
 }
 
 template <typename Transport>

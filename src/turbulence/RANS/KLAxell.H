@@ -4,6 +4,7 @@
 #include <string>
 #include "src/core/ScratchField.H"
 #include "src/turbulence/TurbModelBase.H"
+#include "src/utilities/constants.H"
 #include "AMReX_REAL.H"
 
 using namespace amrex::literals;
@@ -63,6 +64,18 @@ public:
      */
     void terrain_blanked_face_height(ScratchField& face_height) const;
 
+    /** With TerrainDrag and ``KLAxell.terrain_face_stress``: viscosity of the
+     *  drag cells sized so that the face above each one carries the wall
+     *  stress u*^2 of the DragForcing wall law. Public because it launches a
+     *  device lambda.
+     *
+     *  @param lev Level to update
+     *  @param velocity Velocity field of the state being updated
+     *  @param density Density field of the state being updated
+     */
+    void
+    terrain_face_stress(int lev, const Field& velocity, const Field& density);
+
     //! Parse turbulence model coefficients
     void parse_model_coeffs() override;
 
@@ -96,6 +109,19 @@ private:
     bool m_terrain_wall_stencil{false};
     //! Mixing length measured from the top face of the blanked column
     bool m_terrain_blanked_face_length{false};
+    //! Drag-cell viscosity from the wall stress on the face above it
+    bool m_terrain_face_stress{false};
+
+    //! Surface-layer inputs of the face stress and heat flux, read from the
+    //! same inputs as DragForcing (``ABL.wall_het_model``,
+    //! ``ABL.monin_obukhov_length``, ``ABL.kappa``, ``ABL.mo_beta_m``,
+    //! ``ABL.mo_gamma_m``, ``DragForcing.minimum_z0``)
+    std::string m_wall_het_model{"none"};
+    amrex::Real m_monin_obukhov_length{constants::LARGE_NUM};
+    amrex::Real m_kappa{0.41_rt};
+    amrex::Real m_beta_m{16.0_rt};
+    amrex::Real m_gamma_m{5.0_rt};
+    amrex::Real m_min_z0{1.0e-4_rt};
 };
 
 } // namespace kynema_sgf::turbulence

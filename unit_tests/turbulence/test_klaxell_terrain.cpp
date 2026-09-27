@@ -213,6 +213,22 @@ protected:
             sim().repo().get_field("mu_turb"), 0, i, j, k);
     }
 
+    //! Drag-cell viscosity of terrain_face_stress for the stability
+    //! correction psi of the reference height
+    void check_face_stress(const amrex::Real psi)
+    {
+        const amrex::Real mref =
+            std::sqrt((u_shear(4) * u_shear(4)) + (m_vspan * m_vspan));
+        const amrex::Real us =
+            0.41_rt * mref / (std::log(1.5_rt * m_dz / m_z0) - psi);
+        const amrex::Real mu_face = m_rho0 * us * us * m_dz / (m_shear * m_dz);
+        const amrex::Real mu_above = mu_rans(44.0_rt);
+        EXPECT_NEAR(mu(15, 10, 4), mu_above, m_tol * mu_above);
+        EXPECT_NEAR(
+            mu(15, 10, 3), (2.0_rt * mu_face) - mu_above, m_tol * mu_face);
+        EXPECT_NEAR(mu(5, 5, 8), mu_rans(272.0_rt), m_tol * mu_rans(272.0_rt));
+    }
+
     //! u of the shear flow at the center of level k
     [[nodiscard]] amrex::Real u_shear(const int k) const
     {
@@ -270,6 +286,35 @@ TEST_F(KLAxellTerrainTest, blanked_face_length_measures_from_the_face)
     EXPECT_NEAR(mu(5, 5, 8), mu_rans(272.0_rt), m_tol * mu_rans(272.0_rt));
 }
 
+// The drag cell (15, 10, 3) takes the viscosity for which the face above it,
+// the mean of the two cells, carries u*^2 of the DragForcing wall law from
+// the speed of the cell above (1.5 dz from the wall) over the velocity
+// difference s dz of the shear flow. The cells above and flat ground are
+// unchanged.
+TEST_F(KLAxellTerrainTest, face_stress_sets_the_drag_cell_viscosity)
+{
+    set_bool("KLAxell", "terrain_face_stress", true);
+    setup();
+    update_viscosity();
+    check_face_stress(0.0_rt);
+}
+
+// Under mol the friction velocity includes psi_m(1.5 dz / L), -5 zeta for a
+// stable L.
+TEST_F(KLAxellTerrainTest, face_stress_uses_the_stability_function)
+{
+    set_bool("KLAxell", "terrain_face_stress", true);
+    const amrex::Real L = 200.0_rt;
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("wall_het_model", (std::string) "mol");
+        pp.add("monin_obukhov_length", L);
+    }
+    setup();
+    update_viscosity();
+    check_face_stress(-5.0_rt * 1.5_rt * m_dz / L);
+}
+
 // With every option at its default the model runs the unchanged TerrainDrag
 // path: at each cell an option changes, the result is the legacy value.
 TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
@@ -288,6 +333,8 @@ TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
         m_tol * m_shear);
     // Mixing length from the terrain height (terrain_blanked_face_length)
     EXPECT_NEAR(mu(15, 10, 4), mu_rans(44.0_rt), m_tol * mu_rans(44.0_rt));
+    // Model viscosity in the drag cell (terrain_face_stress)
+    EXPECT_NEAR(mu(15, 10, 3), mu_rans(16.0_rt), m_tol * mu_rans(16.0_rt));
 }
 
 } // namespace kynema_sgf_tests

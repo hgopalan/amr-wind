@@ -59,3 +59,30 @@ effect on flat ground or without ``TerrainDrag``.
    :math:`\max(z_c - z_f, \Delta z/2)`, as flat ground measures it from its
    wall. Measured from :math:`h` it is up to :math:`\Delta z/2` smaller in the
    first fluid cells, depending on where :math:`h` falls within its cell.
+
+.. input_param:: KLAxell.terrain_face_stress
+
+   **type:** Boolean, optional, default = false
+
+   Sizes the turbulent viscosity of the drag cells (the first fluid cell above
+   a blanked column) so that the face above each one carries the wall stress
+   of the ``DragForcing`` wall law. ``DragForcing`` relaxes the drag cell
+   toward the log-law velocity of the cell above it, which fixes the velocity
+   difference across that face; with the model viscosity the resolved flux
+   through it falls short of :math:`u_*^2`. With this option
+
+   .. math::
+
+      u_* = \frac{\kappa |U_{k+1}|}{\ln(1.5\Delta z/z_0) - \psi_m(1.5\Delta z/L)},
+      \qquad
+      \mu_f = \frac{\rho u_*^2 \Delta z}{\max(|U_{k+1} - U_k|, 10^{-2})},
+      \qquad
+      \mu_k = \max(2\mu_f - \mu_{k+1}, 0),
+
+   where :math:`U` is the horizontal velocity, :math:`\mu_f` the face value
+   (the mean of the two cells) and :math:`z_0` is floored at
+   :input_param:`DragForcing.minimum_z0`. :math:`\psi_m` is used only with
+   ``ABL.wall_het_model = mol``, and :math:`\kappa`, :math:`L` and the
+   stability constants are read from the ``ABL`` inputs, as in
+   ``DragForcing``. The shear production of the drag cell keeps the model
+   viscosity.
