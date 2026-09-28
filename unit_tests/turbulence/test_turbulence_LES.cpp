@@ -6,6 +6,10 @@
 #include "src/utilities/math_ops.H"
 #include "src/utilities/tagging/CartBoxRefinement.H"
 #include "src/turbulence/LES/hybrid_length_scale.H"
+#include "src/wind_energy/ABL.H"
+#include "AMReX_MultiFabUtil.H"
+#include "AMReX_ParReduce.H"
+#include "AMReX_iMultiFab.H"
 #include <sstream>
 
 using namespace amrex::literals;
@@ -366,6 +370,7 @@ protected:
             const amrex::Vector<amrex::Real> probhi{{m_len, m_len, m_len}};
             pp.addarr("prob_lo", problo);
             pp.addarr("prob_hi", probhi);
+            pp.addarr("is_periodic", m_periodic);
         }
 
         // Refine a box in the middle of the domain, from the wall up
@@ -387,6 +392,7 @@ protected:
 
     const int m_nx{8};
     const amrex::Real m_len{64.0_rt};
+    amrex::Vector<int> m_periodic{{1, 1, 1}};
 
 public:
     //! Filter width cbrt(dx dy dz) on a level
@@ -540,6 +546,323 @@ TEST_F(TurbLESLevelTest, test_hybrid_length_level_independence)
     const amrex::Real ds_fine = 0.25_rt * ds_coarse;
     EXPECT_GT(level_ratio(8.0_rt, ds_coarse, ds_fine), 0.75_rt);
     EXPECT_GT(level_ratio(16.0_rt, ds_coarse, ds_fine), 0.7_rt);
+}
+
+namespace {
+
+//! Fill the velocity with a logarithmic wind along x that depends on the
+//! height only. The ghost cells below the wall repeat the first cell so that
+//! every plane average reads finite values.
+void init_log_wind(
+    kynema_sgf::Field& vel,
+    const amrex::Real utau,
+    const amrex::Real kappa,
+    const amrex::Real z0)
+{
+    const auto& mesh = vel.repo().mesh();
+    const int nlevels = vel.repo().num_active_levels();
+    for (int lev = 0; lev < nlevels; ++lev) {
+        const amrex::Real dz = mesh.Geom(lev).CellSizeArray()[2];
+        const amrex::Real zlo = mesh.Geom(lev).ProbLoArray()[2];
+        const auto& varrs = vel(lev).arrays();
+        amrex::ParallelFor(
+            vel(lev), vel.num_grow(),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                const int kk = amrex::max(k, 0);
+                const amrex::Real z = zlo + ((kk + 0.5_rt) * dz);
+                varrs[nbx](i, j, k, 0) = utau / kappa * std::log(z / z0);
+                varrs[nbx](i, j, k, 1) = 0.0_rt;
+                varrs[nbx](i, j, k, 2) = 0.0_rt;
+            });
+    }
+    amrex::Gpu::streamSynchronize();
+}
+
+//! Cells of a level not covered by a finer level (1) or covered (0)
+amrex::iMultiFab level_mask(const kynema_sgf::FieldRepo& repo, const int lev)
+{
+    const auto& mesh = repo.mesh();
+    amrex::iMultiFab mask;
+    if (lev < repo.num_active_levels() - 1) {
+        mask = amrex::makeFineMask(
+            mesh.boxArray(lev), mesh.DistributionMap(lev),
+            mesh.boxArray(lev + 1), mesh.refRatio(lev), 1, 0);
+    } else {
+        mask.define(mesh.boxArray(lev), mesh.DistributionMap(lev), 1, 0);
+        mask.setVal(1);
+    }
+    return mask;
+}
+
+//! Mean over the uncovered wall cells of a level of the x-stress the wall
+//! model applies: the ghost cell below the wall holds the wall-normal
+//! gradient, so the stress is ghost * mueff / rho of the wall cell
+amrex::Real wall_stress_mean(
+    const kynema_sgf::Field& vel,
+    const kynema_sgf::Field& mueff,
+    const kynema_sgf::Field& rho,
+    const int lev,
+    amrex::Real& ncells)
+{
+    const auto& repo = vel.repo();
+    const int kwall = repo.mesh().Geom(lev).Domain().smallEnd(2);
+    const amrex::iMultiFab mask = level_mask(repo, lev);
+    const auto& v_arrs = vel(lev).const_arrays();
+    const auto& mu_arrs = mueff(lev).const_arrays();
+    const auto& rho_arrs = rho(lev).const_arrays();
+    const auto& msk_arrs = mask.const_arrays();
+
+    using SumTuple = amrex::GpuTuple<amrex::Real, amrex::Real>;
+    const SumTuple sums = amrex::ParReduce(
+        amrex::TypeList<amrex::ReduceOpSum, amrex::ReduceOpSum>{},
+        amrex::TypeList<amrex::Real, amrex::Real>{}, vel(lev),
+        amrex::IntVect(0),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) -> SumTuple {
+            if (k != kwall) {
+                return {0.0_rt, 0.0_rt};
+            }
+            const auto msk = static_cast<amrex::Real>(msk_arrs[nbx](i, j, k));
+            const amrex::Real tau = v_arrs[nbx](i, j, k - 1, 0) *
+                                    mu_arrs[nbx](i, j, k) /
+                                    rho_arrs[nbx](i, j, k);
+            return {msk * tau, msk};
+        });
+    amrex::GpuArray<amrex::Real, 2> vals{
+        amrex::get<0>(sums), amrex::get<1>(sums)};
+    amrex::ParallelDescriptor::ReduceRealSum(vals.data(), 2);
+    ncells = vals[1];
+    return vals[0] / amrex::max(vals[1], 1.0_rt);
+}
+
+//! Mean over the uncovered cells (i, j, kcell) of a level of the modelled
+//! x-stress across the face above the cell, mu_t du/dz / rho, with the
+//! viscosity averaged from the two cells that share the face
+amrex::Real sgs_stress_mean(
+    const kynema_sgf::Field& vel,
+    const kynema_sgf::Field& mu_turb,
+    const kynema_sgf::Field& rho,
+    const int lev,
+    const int kcell)
+{
+    const auto& repo = vel.repo();
+    const amrex::Real dz = repo.mesh().Geom(lev).CellSizeArray()[2];
+    const amrex::iMultiFab mask = level_mask(repo, lev);
+    const auto& v_arrs = vel(lev).const_arrays();
+    const auto& mu_arrs = mu_turb(lev).const_arrays();
+    const auto& rho_arrs = rho(lev).const_arrays();
+    const auto& msk_arrs = mask.const_arrays();
+
+    using SumTuple = amrex::GpuTuple<amrex::Real, amrex::Real>;
+    const SumTuple sums = amrex::ParReduce(
+        amrex::TypeList<amrex::ReduceOpSum, amrex::ReduceOpSum>{},
+        amrex::TypeList<amrex::Real, amrex::Real>{}, vel(lev),
+        amrex::IntVect(0),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) -> SumTuple {
+            if (k != kcell) {
+                return {0.0_rt, 0.0_rt};
+            }
+            const auto msk = static_cast<amrex::Real>(msk_arrs[nbx](i, j, k));
+            const amrex::Real mu_face =
+                0.5_rt * (mu_arrs[nbx](i, j, k) + mu_arrs[nbx](i, j, k + 1));
+            const amrex::Real dudz =
+                (v_arrs[nbx](i, j, k + 1, 0) - v_arrs[nbx](i, j, k, 0)) / dz;
+            return {msk * mu_face * dudz / rho_arrs[nbx](i, j, k), msk};
+        });
+    amrex::GpuArray<amrex::Real, 2> vals{
+        amrex::get<0>(sums), amrex::get<1>(sums)};
+    amrex::ParallelDescriptor::ReduceRealSum(vals.data(), 2);
+    return vals[0] / amrex::max(vals[1], 1.0_rt);
+}
+
+} // namespace
+
+/** Two-level mesh of TurbLESLevelTest with a wall-modeled lower boundary */
+class TurbLESWallLevelTest : public TurbLESLevelTest
+{
+protected:
+    void populate_parameters() override
+    {
+        m_periodic = {1, 1, 0};
+        TurbLESLevelTest::populate_parameters();
+        {
+            amrex::ParmParse pp("zlo");
+            pp.add("type", (std::string) "wall_model");
+            pp.add("temperature_type", (std::string) "wall_model");
+        }
+        {
+            amrex::ParmParse pp("zhi");
+            pp.add("type", (std::string) "slip_wall");
+            pp.add("temperature_type", (std::string) "fixed_gradient");
+        }
+    }
+};
+
+/** Stress budget of the first coarse cell inside and outside a refined box
+ *
+ *  A logarithmic wind with friction velocity utau and the subgrid kinetic
+ *  energy of the equilibrium log layer are set on both levels. The wall model
+ *  (local stress, whose magnitude is the plane-mean utau^2) then applies the
+ *  same stress under the coarse and the fine wall cells. Across the plane at
+ *  the top of the coarse wall cell, z = dz0, the modelled stress of
+ *  OneEqKsgsM84 in the refined box is less than half of the coarse value for
+ *  the same velocity and the same subgrid kinetic energy, because its length
+ *  scale is the filter width of each level. The wall-distance length scale of
+ *  the hybrid helper gives kappa utau z on both levels, so the modelled stress
+ *  at z = dz0 is the wall stress on both, up to the discrete log law.
+ */
+TEST_F(TurbLESWallLevelTest, test_1eqKsgs_wall_stress_budget)
+{
+    namespace hl = kynema_sgf::turbulence::hybrid_length;
+    const amrex::Real Ceps = 0.93_rt;
+    const amrex::Real Ce = 0.1_rt;
+    const amrex::Real kappa = 0.41_rt;
+    const amrex::Real z0 = 0.1_rt;
+    const amrex::Real utau = 0.4_rt;
+    const amrex::Real utau2 = utau * utau;
+    const amrex::Real Tref = 300.0_rt;
+    const amrex::Real rho0 = 1.2_rt;
+    const amrex::Real mu = 0.01_rt;
+    // Subgrid kinetic energy of the log layer when production balances
+    // dissipation: nu_t S = utau^2, S = utau / (kappa z) and
+    // nu_t S^2 = Ceps k^(3/2) / l with nu_t = Ce l sqrt(k) give
+    // k = utau^2 / sqrt(Ce Ceps)
+    const amrex::Real tke_eq = utau2 / std::sqrt(Ce * Ceps);
+    const amrex::Real tol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+    // Log wind at the reference height of the wall function, 0.5 dz0
+    const amrex::Real u_ref =
+        utau / kappa * std::log(0.5_rt * filter_width(0) / z0);
+    {
+        amrex::ParmParse pp("turbulence");
+        pp.add("model", (std::string) "OneEqKsgsM84");
+    }
+    {
+        amrex::ParmParse pp("OneEqKsgsM84_coeffs");
+        pp.add("Ceps", Ceps);
+        pp.add("Ce", Ce);
+    }
+    {
+        amrex::ParmParse pp("incflo");
+        amrex::Vector<std::string> physics{"ABL"};
+        pp.addarr("physics", physics);
+        pp.add("density", rho0);
+        amrex::Vector<amrex::Real> vvec{8.0_rt, 0.0_rt, 0.0_rt};
+        pp.addarr("velocity", vvec);
+        amrex::Vector<amrex::Real> gvec{0.0_rt, 0.0_rt, -9.81_rt};
+        pp.addarr("gravity", gvec);
+    }
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("kappa", kappa);
+        pp.add("surface_roughness_z0", z0);
+        pp.add("surface_temp_flux", 0.0_rt);
+        pp.add("wall_shear_stress_type", (std::string) "local");
+        // Hand the wall function its reference velocity instead of the
+        // plane average, so that the test does not depend on the averaging
+        // stencil next to the wall of a mesh refined at the wall
+        pp.add("inflow_outflow_mode", 1);
+        amrex::Vector<amrex::Real> wf_vel{u_ref, 0.0_rt};
+        pp.addarr("wf_velocity", wf_vel);
+        pp.add("wf_vmag", u_ref);
+        pp.add("wf_theta", Tref);
+        amrex::Vector<amrex::Real> t_hts{0.0_rt, 100.0_rt};
+        pp.addarr("temperature_heights", t_hts);
+        amrex::Vector<amrex::Real> t_vals{Tref, Tref};
+        pp.addarr("temperature_values", t_vals);
+    }
+    {
+        amrex::ParmParse pp("transport");
+        pp.add("reference_temperature", Tref);
+        pp.add("viscosity", mu);
+    }
+
+    populate_parameters();
+    initialize_mesh();
+    auto& pde_mgr = sim().pde_manager();
+    pde_mgr.register_icns();
+    sim().create_transport_model();
+    sim().init_physics();
+    sim().create_turbulence_model();
+    sim().turbulence_model().post_init_actions();
+    auto& tmodel = sim().turbulence_model();
+
+    ASSERT_EQ(sim().repo().num_active_levels(), 2);
+    const amrex::Real dz0 = filter_width(0);
+    const amrex::Real dz1 = filter_width(1);
+
+    auto& repo = sim().repo();
+    auto& velocity = repo.get_field("velocity");
+    auto& density = repo.get_field("density");
+    auto& vel_mueff = repo.get_field("velocity_mueff");
+    init_log_wind(velocity, utau, kappa, z0);
+    density.setVal(rho0);
+    repo.get_field("temperature").setVal(Tref);
+    repo.get_field("tke").setVal(tke_eq);
+    vel_mueff.setVal(mu);
+
+    // Wall function: the log wind at zref = 0.5 dz0 gives back the friction
+    // velocity of the profile
+    for (auto& phys : sim().physics()) {
+        phys->post_init_actions();
+    }
+    const auto& abl = sim().physics_manager().get<kynema_sgf::ABL>();
+    const auto& mo = abl.abl_wall_function().mo();
+    EXPECT_NEAR(mo.zref, 0.5_rt * dz0, tol);
+    EXPECT_NEAR(mo.utau, utau, tol);
+
+    // Fill the wall-model ghost cells on both levels
+    pde_mgr.advance_states();
+    velocity.apply_bc_funcs(kynema_sgf::FieldState::Old);
+
+    // The wall model applies the same stress utau^2 under the coarse and the
+    // fine wall cells
+    for (int lev = 0; lev < 2; ++lev) {
+        amrex::Real ncells = 0.0_rt;
+        const amrex::Real tau_w =
+            wall_stress_mean(velocity, vel_mueff, density, lev, ncells);
+        ASSERT_GT(ncells, 0.0_rt) << "level " << lev;
+        EXPECT_NEAR(tau_w, utau2, tol * utau2) << "level " << lev;
+    }
+
+    // OneEqKsgsM84: nu_t = Ce ds sqrt(k) with the filter width of each level
+    tmodel.update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    const auto& mu_turb = repo.get_field("mu_turb");
+    for (int lev = 0; lev < 2; ++lev) {
+        const amrex::Real answer =
+            rho0 * Ce * filter_width(lev) * std::sqrt(tke_eq);
+        EXPECT_NEAR(mu_turb(lev).min(0), answer, tol);
+        EXPECT_NEAR(mu_turb(lev).max(0), answer, tol);
+    }
+
+    // Discrete shear of the log wind across the plane z = dz0: between the
+    // level-0 cells centered at 0.5 dz0 and 1.5 dz0, and between the level-1
+    // cells centered at 1.5 dz1 and 2.5 dz1
+    const amrex::Real shear0 = utau / kappa * std::log(3.0_rt) / dz0;
+    const amrex::Real shear1 = utau / kappa * std::log(5.0_rt / 3.0_rt) / dz1;
+
+    // Modelled stress across z = dz0: the level-0 wall cell (kcell = 0) and
+    // the second level-1 cell (kcell = 1) share that plane
+    const amrex::Real sgs0 = sgs_stress_mean(velocity, mu_turb, density, 0, 0);
+    const amrex::Real sgs1 = sgs_stress_mean(velocity, mu_turb, density, 1, 1);
+    EXPECT_NEAR(sgs0, Ce * dz0 * std::sqrt(tke_eq) * shear0, tol);
+    EXPECT_NEAR(sgs1, Ce * dz1 * std::sqrt(tke_eq) * shear1, tol);
+    // Same velocity, same subgrid kinetic energy, same wall stress below:
+    // the refined box transmits ln(5/3) / ln(3) = 0.47 of the coarse stress
+    EXPECT_NEAR(sgs1 / sgs0, std::log(5.0_rt / 3.0_rt) / std::log(3.0_rt), tol);
+    EXPECT_LT(sgs1 / sgs0, 0.5_rt);
+
+    // With the wall-distance length scale at the height of that plane the
+    // eddy viscosity is kappa utau z on both levels, and the modelled stress
+    // is the wall stress on both up to the discrete log law (within 10 %,
+    // fine to coarse ratio 2 ln(5/3) / ln(3) = 0.93)
+    const amrex::Real nu_rans =
+        Ce * hl::one_eq_rans_length(kappa, dz0, 1.0_rt, Ce, Ceps) *
+        std::sqrt(tke_eq);
+    EXPECT_NEAR(nu_rans, kappa * utau * dz0, tol);
+    EXPECT_NEAR(nu_rans * shear0, utau2, 0.1_rt * utau2);
+    EXPECT_NEAR(nu_rans * shear1, utau2, 0.1_rt * utau2);
+    EXPECT_GT(shear1 / shear0, 0.9_rt);
 }
 
 TEST_F(TurbLESTest, test_AMD_setup_calc)
