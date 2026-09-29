@@ -118,7 +118,7 @@ in :input_param:`incflo.physics`.
    resolves the canopy overestimates the wind above it, because it has no
    displacement height. In canopy mode, ``ForestDrag`` prints a warning after
    initialization and after each regrid when a forest spans fewer than 5 cells
-   of the finest level; for a point-cloud forest the height is that of its
+   of the finest level that covers it; for a point-cloud forest the height is that of its
    highest sample.
 
    The footprint is the cylinder cross section of a legacy forest, or the
@@ -127,6 +127,8 @@ in :input_param:`incflo.physics`.
 
    The ``roughness`` model requires ``TerrainDrag`` listed before
    ``ForestDrag`` in :input_param:`incflo.physics`, otherwise the run aborts.
+   It also aborts when the ``TerrainDrag`` terrain is built from single-phase
+   ``OceanWaves``, which resets ``terrainz0`` every step.
    The roughness is then set in this order:
 
    1. ``TerrainDrag`` fills ``terrainz0`` from

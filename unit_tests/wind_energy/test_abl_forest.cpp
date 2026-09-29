@@ -5,9 +5,12 @@
 #include "src/physics/TerrainDrag.H"
 #include "src/core/field_ops.H"
 #include "src/utilities/output_quantities/FieldNorms.H"
+#include "src/utilities/tagging/CartBoxRefinement.H"
 #include "AMReX_REAL.H"
 #include <cmath>
 #include <fstream>
+#include <memory>
+#include <sstream>
 
 using namespace amrex::literals;
 
@@ -719,6 +722,53 @@ TEST_F(ForestTest, roughness_mode_without_terrain_aborts)
         amrex::RuntimeError);
 }
 
+// A cylinder forest file with 4 forests takes one value or four
+TEST_F(ForestTest, roughness_mode_rejects_extra_values)
+{
+    write_forest(m_forest_fname);
+    populate_parameters();
+    {
+        amrex::ParmParse pp("ForestDrag");
+        pp.add("model", std::string("roughness"));
+        amrex::Vector<amrex::Real> z0{0.5_rt, 1.0_rt, 1.5_rt, 2.0_rt, 2.5_rt};
+        pp.addarr("roughness_z0", z0);
+    }
+    initialize_mesh();
+    sim().pde_manager().register_icns();
+    EXPECT_THROW(
+        sim().physics_manager().create("ForestDrag", sim()),
+        amrex::RuntimeError);
+}
+
+// TerrainDrag resets terrainz0 every step when its terrain comes from waves
+TEST_F(ForestTest, roughness_mode_on_wave_terrain_aborts)
+{
+    write_forest(m_forest_fname);
+    populate_parameters();
+    {
+        amrex::ParmParse pp("OceanWaves");
+        pp.add("label", (std::string) "lin_ow");
+        amrex::ParmParse ppow("OceanWaves.lin_ow");
+        ppow.add("type", (std::string) "LinearWaves");
+        ppow.add("wave_height", 2.0_rt);
+        ppow.add("wave_length", 40.0_rt);
+        ppow.add("water_depth", 133.0_rt);
+    }
+    {
+        amrex::ParmParse pp("ForestDrag");
+        pp.add("model", std::string("roughness"));
+        pp.add("roughness_z0", 1.0_rt);
+    }
+    initialize_mesh();
+    sim().pde_manager().register_icns();
+    sim().physics_manager().create("OceanWaves", sim());
+    sim().physics_manager().create("TerrainDrag", sim());
+    auto& forest_drag = sim().physics_manager().create("ForestDrag", sim());
+    EXPECT_THROW(
+        forest_drag.initialize_fields(0, sim().repo().mesh().Geom(0)),
+        amrex::RuntimeError);
+}
+
 TEST_F(ForestTest, roughness_mode_needs_one_roughness_input)
 {
     write_forest(m_forest_fname);
@@ -883,6 +933,74 @@ TEST_F(PointCloudForestTest, canopy_resolution_threshold)
     EXPECT_EQ(n_coarse, 1);
     if (amrex::ParallelDescriptor::IOProcessor()) {
         EXPECT_NE(out.find("forest 1 spans 4"), std::string::npos);
+    }
+}
+
+// 8 m domain on 1 m cells, refined to 0.5 m for x < 4 m only (the tagged
+// box ends at 2.9 m and grows to the blocking factor)
+class ForestRefineTest : public MeshTest
+{
+protected:
+    void populate_parameters() override
+    {
+        MeshTest::populate_parameters();
+        {
+            amrex::ParmParse pp("amr");
+            amrex::Vector<int> ncell{{8, 8, 8}};
+            pp.addarr("n_cell", ncell);
+            pp.add("max_level", 1);
+            pp.add("blocking_factor", 2);
+            // Keep level 1 to the tagged box
+            pp.add("n_error_buf", 0);
+            pp.add("grid_eff", 1.0_rt);
+        }
+        {
+            amrex::ParmParse pp("geometry");
+            amrex::Vector<amrex::Real> probhi{{8.0_rt, 8.0_rt, 8.0_rt}};
+            pp.addarr("prob_hi", probhi);
+        }
+        std::stringstream ss;
+        ss << "1 // Number of levels" << '\n';
+        ss << "1 // Number of boxes at this level" << '\n';
+        ss << "0.1 0.1 0.1 2.9 7.9 7.9" << '\n';
+
+        create_mesh_instance<RefineMesh>();
+        std::unique_ptr<kynema_sgf::CartBoxRefinement> box_refine(
+            new kynema_sgf::CartBoxRefinement(sim()));
+        box_refine->read_inputs(mesh(), ss);
+        if (mesh<RefineMesh>() != nullptr) {
+            mesh<RefineMesh>()->refine_criteria_vec().push_back(
+                std::move(box_refine));
+        }
+    }
+};
+
+// The 6 m forest at x = 2 m is on the 0.5 m cells (12 cells, resolved); the
+// 4 m forest at x = 6 m is only on the 1 m cells (4 cells, under-resolved)
+TEST_F(ForestRefineTest, canopy_resolution_uses_covering_level)
+{
+    const std::string fname = "forest_small_refine.amrwind";
+    write_small_forests(fname);
+    populate_parameters();
+    {
+        amrex::ParmParse pp("ForestDrag");
+        pp.add("forest_file", fname);
+    }
+    initialize_mesh();
+    ASSERT_EQ(sim().repo().num_active_levels(), 2);
+    // Level 1 covers x < 4 m: the forest at x = 6 m is not on it
+    ASSERT_EQ(sim().repo().mesh().boxArray(1).minimalBox().bigEnd(0), 7);
+    sim().pde_manager().register_icns();
+    kynema_sgf::forestdrag::ForestDrag forest_drag(sim());
+    for (int lev = 0; lev < sim().repo().num_active_levels(); ++lev) {
+        forest_drag.initialize_fields(lev, sim().repo().mesh().Geom(lev));
+    }
+    testing::internal::CaptureStdout();
+    const int n_coarse = forest_drag.check_canopy_resolution();
+    const std::string out = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(n_coarse, 1);
+    if (amrex::ParallelDescriptor::IOProcessor()) {
+        EXPECT_NE(out.find("forest 1 spans 4 (dz = 1 m)"), std::string::npos);
     }
 }
 

@@ -353,16 +353,23 @@ public:
     /** Warn when the canopy model does not resolve the forests
      *
      *  In canopy mode, prints one warning when a forest is shorter than
-     *  min_canopy_cells() cells of the finest level. Nothing in roughness mode.
+     *  min_canopy_cells() cells of the finest level that covers it. Nothing
+     *  in roughness mode.
      *
      *  \return Number of under-resolved forests
      */
-    int check_canopy_resolution() const;
+    int check_canopy_resolution();
 
     //! Cells over the canopy height below which the canopy model warns
     static constexpr int min_canopy_cells() { return 5; }
 
 private:
+    //! True when the forests are placed on a TerrainDrag terrain
+    [[nodiscard]] bool uses_terrain() const;
+
+    //! Terrain height range of a level, used to extend the bounding boxes
+    void set_terrain_range(int level);
+
     CFDSim& m_sim;
     // Output fields populated by this physics source.
     Field& m_forest_drag;
