@@ -309,6 +309,31 @@ TEST_F(ABLMeshTest, abl_forcing_free_atmosphere_needs_coriolis)
         std::runtime_error);
 }
 
+TEST_F(ABLMeshTest, abl_forcing_free_atmosphere_needs_nonzero_coriolis)
+{
+    populate_parameters();
+    add_free_atmosphere_inputs(false);
+    {
+        amrex::ParmParse pp("CoriolisForcing");
+        pp.add("latitude", 0.0_rt);
+    }
+    initialize_mesh();
+
+    auto& pde_mgr = sim().pde_manager();
+    pde_mgr.register_icns();
+    pde_mgr.register_transport_pde("Temperature");
+    sim().init_physics();
+    {
+        amrex::ParmParse pp("ICNS");
+        pp.addarr(
+            "source_terms",
+            amrex::Vector<std::string>{"CoriolisForcing", "ABLForcing"});
+    }
+    EXPECT_THROW(
+        kynema_sgf::pde::icns::ABLForcing abl_forcing(sim()),
+        std::runtime_error);
+}
+
 TEST_F(ABLMeshTest, body_force)
 {
     constexpr amrex::Real tol =
