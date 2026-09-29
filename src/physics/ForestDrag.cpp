@@ -1,4 +1,5 @@
 #include "src/physics/ForestDrag.H"
+#include "src/physics/TerrainDrag.H"
 #include "src/CFDSim.H"
 #include "AMReX_iMultiFab.H"
 #include "AMReX_MultiFabUtil.H"
@@ -180,9 +181,13 @@ void ForestDrag::initialize_fields(int level, const amrex::Geometry& geom)
 
     // With TerrainDrag, the forests stand on the local terrain. Physics are
     // initialized in the incflo.physics order, so TerrainDrag must come first
-    // for terrain_height to be filled before it is used here.
+    // for terrain_height to be filled before it is used here. Terrain built
+    // from single-phase OceanWaves is only filled after the levels are set up
+    // and moves every step, so the forests keep their legacy placement there.
+    const auto& physics = m_sim.physics_manager();
     const bool use_terrain =
-        m_terrain_aware && m_sim.physics_manager().contains("TerrainDrag");
+        m_terrain_aware && physics.contains("TerrainDrag") &&
+        !physics.get<terraindrag::TerrainDrag>().terrain_is_waves();
     if (use_terrain && !m_terrain_created_first) {
         amrex::Abort(
             "ForestDrag: list TerrainDrag before ForestDrag in incflo.physics, "

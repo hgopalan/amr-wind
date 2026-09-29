@@ -92,6 +92,9 @@ in :input_param:`incflo.physics`.
    Place the forests on the ``TerrainDrag`` terrain. Only used when
    ``TerrainDrag`` is active. Set it to false when the point-cloud ``z``
    coordinates are absolute heights rather than heights above the ground.
+   A ``TerrainDrag`` terrain built from single-phase ``OceanWaves`` moves
+   every step and is not used: there, the forests keep the placement of
+   ``terrain_aware = false``.
 
 .. input_param:: ForestDrag.model
 
