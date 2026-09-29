@@ -394,6 +394,49 @@ TEST_F(ForestTest, forest_terrain_aware_off)
         0.0030635155406915832_rt, tol);
 }
 
+// Terrain built from single-phase OceanWaves is filled after the levels are
+// set up and moves every step, so the forests keep their legacy placement.
+TEST_F(ForestTest, forest_ignores_wave_terrain)
+{
+    write_forest(m_forest_fname);
+    populate_parameters();
+    {
+        amrex::ParmParse pp("OceanWaves");
+        pp.add("label", (std::string) "lin_ow");
+        amrex::ParmParse ppow("OceanWaves.lin_ow");
+        ppow.add("type", (std::string) "LinearWaves");
+        ppow.add("wave_height", 2.0_rt);
+        ppow.add("wave_length", 40.0_rt);
+        ppow.add("water_depth", 133.0_rt);
+    }
+    initialize_mesh();
+    sim().pde_manager().register_icns();
+    sim().physics_manager().create("OceanWaves", sim());
+    auto& terrain_drag = sim().physics_manager().create("TerrainDrag", sim());
+    auto& forest_drag = sim().physics_manager().create("ForestDrag", sim());
+    EXPECT_TRUE(
+        sim()
+            .physics_manager()
+            .get<kynema_sgf::terraindrag::TerrainDrag>()
+            .terrain_is_waves());
+
+    // Stand-in for a wave surface, which TerrainDrag::initialize_fields does
+    // not fill
+    sim().repo().get_field("terrain_height").setVal(128.0_rt);
+    const auto& geom = sim().repo().mesh().Geom(0);
+    terrain_drag.initialize_fields(0, geom);
+    forest_drag.initialize_fields(0, geom);
+
+    const amrex::Real tol = kynema_sgf::constants::TIGHT_TOL;
+    const auto& f_drag = sim().repo().get_field("forest_drag");
+    EXPECT_NEAR(
+        utils::field_probe(f_drag, 0, 16, 8, 0), 0.2_rt * 6.0_rt / 45.0_rt,
+        tol);
+    EXPECT_NEAR(
+        kynema_sgf::field_norms::FieldNorms::get_norm(f_drag, 0, 1, 2, false),
+        0.0030635155406915832_rt, tol);
+}
+
 // Point-cloud heights are above the local ground: 2 m of flat terrain moves
 // the samples at z = 2.5 to the cells at z = 4.5.
 TEST_F(PointCloudForestTest, point_cloud_on_flat_terrain)
