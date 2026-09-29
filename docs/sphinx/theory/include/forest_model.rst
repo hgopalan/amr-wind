@@ -103,8 +103,8 @@ effects to the ``KransAxell`` TKE source,
 where :math:`C_d L` is the ``forest_drag`` field, :math:`\beta_p` is the
 fraction of the drag work converted to TKE (``ForestDrag.canopy_beta_p``,
 default 1) and :math:`\beta_d` sets the short-circuit dissipation
-(``ForestDrag.canopy_beta_d``, default 4, following Green (1992),
-Liu et al. (1996) and Sanz (2003)). The sink is a relaxation of :math:`k` at
+(``ForestDrag.canopy_beta_d``, default 4, following
+:cite:t:`green:1992`, :cite:t:`liu-etal:1996` and :cite:t:`sanz:2003`). The sink is a relaxation of :math:`k` at
 the rate :math:`c = \beta_d C_d L |U|`. It is integrated exactly over a time
 step,
 
@@ -128,14 +128,14 @@ drag length :math:`L_c = 1 / (C_d L)`,
    l \leftarrow \min \left( l, \ \alpha L_c \right)
    \qquad \text{where } C_d L > 0,
 
-where :math:`\alpha` is ``ForestDrag.canopy_length_alpha``. Harman and
-Finnigan (2007) give the mixing length in the canopy as
+where :math:`\alpha` is ``ForestDrag.canopy_length_alpha``. :cite:t:`harman-finnigan:2007`
+give the mixing length in the canopy as
 :math:`l = 2 \beta^3 L_c` with :math:`\beta = u_* / U_h` the ratio of the
 friction velocity to the wind speed at the canopy top, so
 :math:`\alpha = 2 \beta^3`. The default :math:`\alpha = 0.04`
 (:math:`\beta \approx 0.27`) was chosen from a sweep of
 :math:`\alpha` = 0.02 to 0.07 in a one-dimensional analogue of the
-Shaw and Schumann (1992) large-eddy simulation (canopy depth ratio, drag
+:cite:t:`shaw-schumann:1992` large-eddy simulation (canopy depth ratio, drag
 coefficient and leaf area density profiles of their LAI = 2 and 5 cases):
 it gave the smallest combined error in the mean wind and momentum flux
 profiles for both canopies, and the runs settle at
@@ -150,22 +150,6 @@ are not changed.
 The canopy terms are off by default and are independent of the momentum drag:
 with ``ForestDrag.canopy_tke = false`` the forest only acts through
 ``ForestForcing``, as before.
-
-References:
-
-- Green, S. R. (1992). Modelling turbulent air flow in a stand of widely-spaced
-  trees. PHOENICS Journal of Computational Fluid Dynamics and Its
-  Applications, 5, 294-312.
-- Liu, J., Chen, J. M., Black, T. A., & Novak, M. D. (1996). E-epsilon
-  modelling of turbulent air flow downwind of a model forest edge.
-  Boundary-Layer Meteorology, 77, 21-44.
-- Harman, I. N., & Finnigan, J. J. (2007). A simple unified theory for flow
-  in the canopy and roughness sublayer. Boundary-Layer Meteorology, 123,
-  339-363.
-- Shaw, R. H., & Schumann, U. (1992). Large-eddy simulation of turbulent
-  flow above and within a forest. Boundary-Layer Meteorology, 61, 47-64.
-- Sanz, C. (2003). A note on k-epsilon modelling of vegetation canopy
-  air-flows. Boundary-Layer Meteorology, 108, 191-197.
 
 Roughness representation
 ~~~~~~~~~~~~~~~~~~~~~~~~

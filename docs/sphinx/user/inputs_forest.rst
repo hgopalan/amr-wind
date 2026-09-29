@@ -177,10 +177,10 @@ in :input_param:`incflo.physics`.
 
    Coefficient :math:`\alpha` of the ``KLAxell`` length scale limit
    :math:`l \le \alpha L_c` with the canopy drag length
-   :math:`L_c = 1 / (C_d L)`. Harman and Finnigan (2007) give
+   :math:`L_c = 1 / (C_d L)`. :cite:t:`harman-finnigan:2007` give
    :math:`\alpha = 2 \beta^3` with :math:`\beta = u_*/U_h`; the default
-   0.04 (:math:`\beta \approx 0.27`) best fits the Shaw and Schumann (1992)
-   LES for LAI = 2 and 5 (see the theory section), and 0.054 corresponds to
+   0.04 (:math:`\beta \approx 0.27`) best fits the
+   :cite:t:`shaw-schumann:1992` LES for LAI = 2 and 5 (see the theory section), and 0.054 corresponds to
    :math:`\beta = 0.3`. Zero disables the limit and keeps the TKE source.
 
 .. input_param:: ForestDrag.roughness_z0
