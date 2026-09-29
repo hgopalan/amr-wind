@@ -110,7 +110,8 @@ public:
     void operator()(Field& velocity, FieldState rho_state) override;
 
     //! Apply the shear-stress model, built per level from the mean
-    //! quantities of that level
+    //! quantities of that level (from those of the reference height for the
+    //! Donelan model)
     template <typename ShearStress>
     void wall_model(Field& velocity, FieldState rho_state);
 
@@ -129,7 +130,8 @@ public:
     void operator()(Field& temperature, FieldState rho_state) override;
 
     //! Apply the heat-flux model, built per level from the mean quantities
-    //! of that level
+    //! of that level (from those of the reference height for the Donelan
+    //! model)
     template <typename HeatFlux>
     void wall_model(Field& temperature, FieldState rho_state);
 

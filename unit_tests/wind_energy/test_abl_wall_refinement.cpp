@@ -148,6 +148,9 @@ protected:
             pp.add("surface_roughness_z0", m_z0);
             pp.add("surface_temp_flux", m_qwall);
             pp.add("wall_shear_stress_type", m_shear_stress_type);
+            if (m_log_law_height > 0.0_rt) {
+                pp.add("log_law_height", m_log_law_height);
+            }
         }
 
         std::stringstream ss;
@@ -256,11 +259,60 @@ protected:
         }
     }
 
+    //! Check that the Donelan model uses the mean wind at the reference
+    //! height on every level: the stress of the wall cells of each level is
+    //! Cd(U_ref) |u_h| u_h with the drag coefficient of the reference-height
+    //! mean wind, not of the first-cell mean wind of that level
+    void check_donelan_reference_height()
+    {
+        constexpr amrex::Real tol =
+            std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+
+        init_wall_fields();
+
+        auto& repo = sim().repo();
+        const auto& velocity = repo.get_field("velocity");
+        const auto& density = repo.get_field("density");
+        const auto& vel_mueff = repo.get_field("velocity_mueff");
+        const amrex::Real wind_cos = std::cos(m_wind_angle);
+        const amrex::Real wind_sin = std::sin(m_wind_angle);
+
+        const auto& abl = sim().physics_manager().get<kynema_sgf::ABL>();
+        const auto& wall_func = abl.abl_wall_function();
+        // The mesh has per-level mean quantities, which Donelan must not use
+        ASSERT_NE(&wall_func.mo(1), &wall_func.mo());
+        const amrex::Real wspd_ref = wall_func.mo().vmag_mean;
+        // Drag coefficient of ShearStressDonelan, in its linear range for
+        // the mean wind of the reference height and of both first cells
+        ASSERT_GT(wspd_ref, 5.0_rt);
+        ASSERT_LT(wspd_ref, 25.0_rt);
+        const amrex::Real cd = 0.001_rt + (7.0e-5_rt * (wspd_ref - 5.0_rt));
+
+        for (int lev = 0; lev < 2; ++lev) {
+            // Wind speed of the first cell of this level, uniform in plane
+            const amrex::Real z1 =
+                0.5_rt * repo.mesh().Geom(lev).CellSizeArray()[2];
+            const amrex::Real wspd = m_ustar / m_kappa * std::log(z1 / m_z0);
+            ASSERT_GT(wspd, 5.0_rt) << "level " << lev;
+            const amrex::Real tau = cd * wspd * wspd;
+            amrex::Real ncells = 0.0_rt;
+            const amrex::Real taux =
+                wall_flux_mean(velocity, vel_mueff, density, 0, lev, ncells);
+            ASSERT_GT(ncells, 0.0_rt) << "level " << lev;
+            const amrex::Real tauy =
+                wall_flux_mean(velocity, vel_mueff, density, 1, lev, ncells);
+            EXPECT_NEAR(taux, tau * wind_cos, tol * tau) << "level " << lev;
+            EXPECT_NEAR(tauy, tau * wind_sin, tol * tau) << "level " << lev;
+        }
+    }
+
     //! Level-1 box (xlo ylo zlo xhi yhi zhi), by default over x < 60, all
     //! y and z < 250
     std::string m_refine_box{"0.0 0.0 0.0 60.0 120.0 250.0"};
     std::string m_shear_stress_type{"moeng"};
-    const amrex::Real m_ustar{0.5_rt};
+    //! Reference height of the plane averages, first-cell height if <= 0
+    amrex::Real m_log_law_height{0.0_rt};
+    amrex::Real m_ustar{0.5_rt};
     const amrex::Real m_thetastar{-0.05_rt};
     const amrex::Real m_wind_angle{0.5_rt};
     const amrex::Real m_theta0{300.0_rt};
@@ -286,6 +338,17 @@ TEST_F(ABLWallRefinementTest, constant_wall_model_level_consistent)
 {
     m_shear_stress_type = "constant";
     check_level_fluxes();
+}
+
+TEST_F(ABLWallRefinementTest, donelan_wall_model_keeps_reference_height)
+{
+    // Donelan selects its drag coefficient from the mean wind at the
+    // reference height, here 10 m as in the hurricane boundary layer case,
+    // with a wind strong enough for the linear range of the coefficient
+    m_shear_stress_type = "donelan";
+    m_log_law_height = 10.0_rt;
+    m_ustar = 1.0_rt;
+    check_donelan_reference_height();
 }
 
 TEST_F(ABLWallRefinementTest, refinement_aloft_keeps_reference_height)

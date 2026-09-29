@@ -9,6 +9,7 @@
 #include "src/utilities/linear_interpolation.H"
 
 #include <cmath>
+#include <type_traits>
 
 #include "AMReX_ParmParse.H"
 #include "AMReX_Print.H"
@@ -417,6 +418,19 @@ ABLVelWallFunc::ABLVelWallFunc(
     }
 }
 
+namespace {
+//! Whether a wall model takes the mean quantities of each mesh level. The
+//! Donelan model selects its drag coefficient (and, with a specified
+//! surface temperature, its heat flux) from the mean wind at the reference
+//! height, ABL.log_law_height, so it keeps the reference-height data on
+//! every level
+template <typename WallModel>
+constexpr bool uses_level_means()
+{
+    return !std::is_same_v<WallModel, ShearStressDonelan>;
+}
+} // namespace
+
 template <typename ShearStress>
 void ABLVelWallFunc::wall_model(Field& velocity, const FieldState rho_state)
 {
@@ -448,8 +462,11 @@ void ABLVelWallFunc::wall_model(Field& velocity, const FieldState rho_state)
         const auto& vold_lev = velocity.state(FieldState::Old)(lev);
         auto& vel_lev = velocity(lev);
         const auto& eta_lev = viscosity(lev);
-        // Shear-stress model with the mean quantities of this level
-        const ShearStress tau(m_wall_func.mo(lev));
+        // Shear-stress model with the mean quantities of this level, or of
+        // the reference height for the Donelan model
+        const ShearStress tau(
+            uses_level_means<ShearStress>() ? m_wall_func.mo(lev)
+                                            : m_wall_func.mo());
 
         if (amrex::Gpu::notInLaunchRegion()) {
             mfi_info.SetDynamic(true);
@@ -594,8 +611,11 @@ void ABLTempWallFunc::wall_model(Field& temperature, const FieldState rho_state)
         const auto& told_lev = temperature.state(FieldState::Old)(lev);
         auto& theta = temperature(lev);
         const auto& eta_lev = alpha(lev);
-        // Heat-flux model with the mean quantities of this level
-        const HeatFlux tau(m_wall_func.mo(lev));
+        // Heat-flux model with the mean quantities of this level, or of the
+        // reference height for the Donelan model
+        const HeatFlux tau(
+            uses_level_means<HeatFlux>() ? m_wall_func.mo(lev)
+                                         : m_wall_func.mo());
 
         if (amrex::Gpu::notInLaunchRegion()) {
             mfi_info.SetDynamic(true);
