@@ -14,6 +14,7 @@
 #include "AMReX_Print.H"
 #include "AMReX_ParallelDescriptor.H"
 #include "AMReX_ParReduce.H"
+#include "AMReX_GpuContainers.H"
 #include "AMReX_MultiFabUtil.H"
 #include "AMReX_iMultiFab.H"
 #include "AMReX_REAL.H"
@@ -226,42 +227,102 @@ void ABLWallFunction::update_level_means()
         return;
     }
 
+    // Same wall as ABLVelWallFunc and ABLTempWallFunc, which apply the wall
+    // models at zlo with u and v as the tangential components
+    constexpr int idim = 2;
+    // Layer of the wall-adjacent cells of a level
+    const auto& mesh = m_mesh;
+    const auto wall_layer = [&mesh](const int lev) {
+        amrex::Box bx = mesh.Geom(lev).Domain();
+        bx.setBig(idim, bx.smallEnd(idim));
+        return bx;
+    };
+
+    // Refinement that does not reach the wall leaves level 0 alone on the
+    // wall, which then keeps the plane averages at the reference height as
+    // on a single-level mesh. The box arrays tell without touching any data
+    bool fine_level_on_wall = false;
+    for (int lev = 1; lev < nlevels; ++lev) {
+        fine_level_on_wall = fine_level_on_wall ||
+                             m_mesh.boxArray(lev).intersects(wall_layer(lev));
+    }
+    if (!fine_level_on_wall) {
+        return;
+    }
+
     // The wall models combine the local values of the first cell of each
     // level with the mean values entering the Monin-Obukhov data. On a mesh
     // where a finer level touches the wall, the first cells of the levels
     // sit at different heights, so the means must be taken per level from
     // the wall-adjacent cells that the level owns: the mean stress and heat
-    // flux then match the friction velocity and the surface heat flux on
-    // every level. The friction velocity, the Obukhov length and the surface
-    // heat flux themselves stay those of the reference height.
+    // flux of every level then follow from the friction velocity and the
+    // surface heat flux as at the reference height. The friction velocity,
+    // the Obukhov length and the surface heat flux themselves stay those of
+    // the reference height.
     const auto& velocity = repo.get_field("velocity");
     const auto& temperature = repo.get_field("temperature");
-    // Same wall as ABLVelWallFunc and ABLTempWallFunc, which apply the wall
-    // models at zlo with u and v as the tangential components
-    constexpr int idim = 2;
-    // Whether a level finer than level 0 owns part of the wall
-    bool fine_level_on_wall = false;
 
     m_mo_lev.resize(nlevels, m_mo);
     for (int lev = 0; lev < nlevels; ++lev) {
         const auto& geom = m_mesh.Geom(lev);
-        const int kwall = geom.Domain().smallEnd(idim);
+        const auto& ba = m_mesh.boxArray(lev);
+        const auto& dm = m_mesh.DistributionMap(lev);
+
+        // Wall-adjacent cells of the boxes of this level that touch the
+        // wall, on the ranks that own these boxes, so that the sums below
+        // only visit the wall layer
+        const amrex::Box wall_bx = wall_layer(lev);
+        amrex::BoxList wall_bl;
+        amrex::Vector<int> wall_ranks;
+        amrex::Vector<int> wall_box_index;
+        for (int ib = 0; ib < static_cast<int>(ba.size()); ++ib) {
+            const amrex::Box bx = ba[ib] & wall_bx;
+            if (bx.ok()) {
+                wall_bl.push_back(bx);
+                wall_ranks.push_back(dm[ib]);
+                wall_box_index.push_back(ib);
+            }
+        }
+        if (wall_box_index.empty()) {
+            // This level does not touch the wall
+            continue;
+        }
+        const amrex::BoxArray wall_ba(std::move(wall_bl));
+        const amrex::DistributionMapping wall_dm(std::move(wall_ranks));
 
         // Exclude the wall cells covered by a finer level
         amrex::iMultiFab level_mask;
         if (lev < nlevels - 1) {
             level_mask = amrex::makeFineMask(
-                m_mesh.boxArray(lev), m_mesh.DistributionMap(lev),
-                m_mesh.boxArray(lev + 1), m_mesh.refRatio(lev), 1, 0);
+                wall_ba, wall_dm, m_mesh.boxArray(lev + 1),
+                m_mesh.refRatio(lev), 1, 0);
         } else {
-            level_mask.define(
-                m_mesh.boxArray(lev), m_mesh.DistributionMap(lev), 1, 0,
-                amrex::MFInfo());
+            level_mask.define(wall_ba, wall_dm, 1, 0, amrex::MFInfo());
             level_mask.setVal(1);
         }
 
-        const auto& vel_arrs = velocity(lev).const_arrays();
-        const auto& temp_arrs = temperature(lev).const_arrays();
+        // Velocity and temperature of the boxes that touch the wall, in the
+        // local order of the wall layer
+        const int nlocal = level_mask.local_size();
+        amrex::Vector<amrex::Array4<const amrex::Real>> vel_h(nlocal);
+        amrex::Vector<amrex::Array4<const amrex::Real>> temp_h(nlocal);
+        for (amrex::MFIter mfi(level_mask); mfi.isValid(); ++mfi) {
+            const int ib = wall_box_index[mfi.index()];
+            vel_h[mfi.LocalIndex()] = velocity(lev).const_array(ib);
+            temp_h[mfi.LocalIndex()] = temperature(lev).const_array(ib);
+        }
+        amrex::Gpu::DeviceVector<amrex::Array4<const amrex::Real>> vel_d(
+            nlocal);
+        amrex::Gpu::DeviceVector<amrex::Array4<const amrex::Real>> temp_d(
+            nlocal);
+        amrex::Gpu::copy(
+            amrex::Gpu::hostToDevice, vel_h.begin(), vel_h.end(),
+            vel_d.begin());
+        amrex::Gpu::copy(
+            amrex::Gpu::hostToDevice, temp_h.begin(), temp_h.end(),
+            temp_d.begin());
+        const auto* vel_arrs = vel_d.data();
+        const auto* temp_arrs = temp_d.data();
         const auto& mask_arrs = level_mask.const_arrays();
 
         // Sums of u, v, |u_h|, |u_h| u, |u_h| v, theta and the cell count
@@ -277,12 +338,8 @@ void ABLWallFunction::update_level_means()
             amrex::TypeList<
                 amrex::Real, amrex::Real, amrex::Real, amrex::Real, amrex::Real,
                 amrex::Real, amrex::Real>{},
-            velocity(lev), amrex::IntVect(0),
+            level_mask, amrex::IntVect(0),
             [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) -> SumTuple {
-                if (k != kwall) {
-                    return {0.0_rt, 0.0_rt, 0.0_rt, 0.0_rt,
-                            0.0_rt, 0.0_rt, 0.0_rt};
-                }
                 const auto msk =
                     static_cast<amrex::Real>(mask_arrs[box_no](i, j, k));
                 const auto& vel = vel_arrs[box_no];
@@ -306,10 +363,9 @@ void ABLWallFunction::update_level_means()
 
         const amrex::Real count = vals[6];
         if (!(count > 0.0_rt)) {
-            // This level does not touch the wall
+            // A finer level covers all the wall cells of this level
             continue;
         }
-        fine_level_on_wall = fine_level_on_wall || (lev > 0);
 
         auto& mo_lev = m_mo_lev[lev];
         mo_lev.zref = 0.5_rt * geom.CellSize(idim);
@@ -326,13 +382,6 @@ void ABLWallFunction::update_level_means()
                                 (mo_lev.utau * mo_lev.kappa)) +
                                mo_lev.theta_mean;
         }
-    }
-
-    // Refinement that does not reach the wall leaves level 0 alone on the
-    // wall, which then keeps the plane averages at the reference height as
-    // on a single-level mesh
-    if (!fine_level_on_wall) {
-        m_mo_lev.clear();
     }
 }
 
