@@ -96,6 +96,8 @@ void DiffSolverIface<LinOp>::set_acoeffs(LinOp& linop, const FieldState fstate)
     // Only the velocity is driven to zero inside the body: applied to a
     // scalar the same factor would relax it toward zero as well (a
     // temperature of 300 K would fall by 1 / (1 + C dt) every step).
+    // ImmersedTerrain aborts with mesh mapping, so the mapped branch below
+    // never needs the effective density.
     const bool pin_body =
         (m_implicit_dt > 0.0_rt) && (m_pdefields.field.name() == "velocity");
     std::unique_ptr<ScratchField> rho_eff =

@@ -30,6 +30,15 @@ ImmersedTerrain::ImmersedTerrain(CFDSim& sim)
     , m_terrain_mask(sim.repo().declare_int_field("terrain_mask", 1, 1, 1))
     , m_terrain_surface(sim.repo().declare_field("terrain_surface", 1, 1, 1))
 {
+    // The terrain fraction and the wall distances are computed on the uniform
+    // mesh, and the solvers apply the implicit drag density only without mesh
+    // mapping, so the combination is not supported
+    if (sim.has_mesh_mapping()) {
+        amrex::Abort(
+            identifier() +
+            " does not support mesh mapping (geometry.mesh_mapping)");
+    }
+
     amrex::ParmParse pp(identifier());
     pp.query("terrain_file", m_terrain_file);
     pp.query("solid_threshold", m_solid_threshold);

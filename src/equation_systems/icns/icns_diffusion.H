@@ -188,7 +188,8 @@ public:
         const amrex::Real alpha = 1.0_rt;
         const amrex::Real beta = dt;
         m_solver_scalar->setScalars(alpha, beta);
-        // Implicit immersed drag in the diffusion solve (see ImmersedTerrain)
+        // Implicit immersed drag in the diffusion solve (see ImmersedTerrain,
+        // which aborts with mesh mapping, so the mapped branch never needs it)
         auto rho_eff = diffusion::immersed_effective_density(repo, density, dt);
 
         for (int lev = 0; lev < nlevels; ++lev) {
@@ -397,7 +398,8 @@ public:
 
         const amrex::Real alpha = 1.0_rt;
         const amrex::Real beta = dt;
-        // Implicit immersed drag in the diffusion solve (see ImmersedTerrain)
+        // Implicit immersed drag in the diffusion solve (see ImmersedTerrain,
+        // which aborts with mesh mapping, so the mapped branch never needs it)
         auto rho_eff = diffusion::immersed_effective_density(repo, density, dt);
 
         for (int i = 0; i < AMREX_SPACEDIM; ++i) {

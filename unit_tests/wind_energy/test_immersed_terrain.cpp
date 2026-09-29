@@ -2,6 +2,7 @@
 #include "ks_test_utils/iter_tools.H"
 #include "ks_test_utils/test_utils.H"
 #include "src/physics/ImmersedTerrain.H"
+#include "AMReX_ParmParse.H"
 #include "AMReX_REAL.H"
 
 #include <fstream>
@@ -115,6 +116,25 @@ TEST_F(ImmersedTerrainTest, fraction_mask_and_height)
     EXPECT_NEAR(
         utils::field_probe(surface, 0, 15, 10, 1, Terrain::surf_height),
         100.0_rt, tol);
+}
+
+// The terrain fraction and the wall distances are built on the uniform mesh,
+// and the implicit drag density is not combined with the mesh-mapping factor
+// in the solvers: mesh mapping is rejected
+TEST_F(ImmersedTerrainTest, mesh_mapping_not_supported)
+{
+    using Terrain = kynema_sgf::immersedterrain::ImmersedTerrain;
+    write_terrain(m_terrain_fname);
+    populate_parameters();
+    {
+        amrex::ParmParse pp("geometry");
+        pp.add("mesh_mapping", std::string("ConstantMap"));
+    }
+    initialize_mesh();
+    sim().pde_manager().register_icns();
+    sim().activate_mesh_map();
+    ASSERT_TRUE(sim().has_mesh_mapping());
+    EXPECT_THROW({ const Terrain terrain(sim()); }, amrex::RuntimeError);
 }
 
 } // namespace kynema_sgf_tests
