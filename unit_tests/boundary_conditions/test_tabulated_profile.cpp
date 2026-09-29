@@ -895,4 +895,87 @@ TEST_F(TabulatedProfileTest, a_height_with_no_values_is_rejected)
     expect_abort_with(vel, "tp_e10.txt line 2 holds a height and no values");
 }
 
+TEST_F(TabulatedProfileTest, a_repeated_height_name_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_e11.txt",
+        "# z z u v T\n"
+        "0.0 0.0 1.0 2.0 300.0\n"
+        "8.0 8.0 3.0 4.0 308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_e11.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "the header of tp_e11.txt names 'z' more than once");
+}
+
+// 1e40 and 1e-40 are finite doubles but overflow and underflow a float
+TEST_F(TabulatedProfileTest, a_number_too_large_for_real_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_e12.txt",
+        "# z u v T\n"
+        "0.0 1e40 2.0 300.0\n"
+        "8.0 3.0 4.0 308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_e12.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    if (std::numeric_limits<amrex::Real>::max() < 1.0e40) {
+        expect_abort_with(
+            vel,
+            "tp_e12.txt line 2, column 2: '1e40' is too large or too small to "
+            "represent");
+    } else {
+        EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+    }
+}
+
+TEST_F(TabulatedProfileTest, a_number_too_small_for_real_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_e13.txt",
+        "# z u v T\n"
+        "0.0 1e-40 2.0 300.0\n"
+        "8.0 3.0 4.0 308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_e13.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    if (std::numeric_limits<amrex::Real>::min() > 1.0e-40) {
+        expect_abort_with(
+            vel,
+            "tp_e13.txt line 2, column 2: '1e-40' is too large or too small "
+            "to represent");
+    } else {
+        EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+    }
+}
+
+// The same file under two spellings of its name is still the RANS file
+TEST_F(TabulatedProfileTest, the_rans_profile_file_needs_a_header)
+{
+    populate_parameters();
+    write_profile(
+        "tp_rans.txt",
+        "0.0 1.0 2.0 0.0 0.5\n"
+        "8.0 3.0 4.0 0.0 0.4\n");
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("rans_1dprofile_file", std::string("./tp_rans.txt"));
+    }
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_rans.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "is also used as ABL.rans_1dprofile_file");
+}
+
 } // namespace kynema_sgf_tests

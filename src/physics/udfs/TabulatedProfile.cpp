@@ -13,9 +13,12 @@
 #include <cerrno>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <sstream>
+#include <system_error>
 
 using namespace amrex::literals;
 
@@ -52,6 +55,31 @@ struct ProfileData
         return -1;
     }
 };
+
+/** Whether two file names point at the same file
+ *
+ *  Compares the files themselves, so './a.txt', 'a.txt' and a link to it are
+ *  one file. Falls back to the normalized paths when a file cannot be found.
+ *
+ *  \param a First file name
+ *  \param b Second file name
+ *  \return True when both names refer to the same file
+ */
+bool same_file(const std::string& a, const std::string& b)
+{
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    const bool equal = fs::equivalent(a, b, ec);
+    if (!ec) {
+        return equal;
+    }
+    const auto pa = fs::weakly_canonical(a, ec);
+    const auto pb = ec ? fs::path() : fs::weakly_canonical(b, ec);
+    if (!ec) {
+        return pa == pb;
+    }
+    return fs::path(a).lexically_normal() == fs::path(b).lexically_normal();
+}
 
 /** Map the spellings accepted in a header onto the field names used internally
  */
@@ -105,16 +133,17 @@ bool parse_header(
     if (names.empty() || (names[0] != "z")) {
         return false;
     }
-    colnames.assign(names.begin() + 1, names.end());
-    for (int i = 0; i < static_cast<int>(colnames.size()); ++i) {
-        for (int j = i + 1; j < static_cast<int>(colnames.size()); ++j) {
-            if (colnames[i] == colnames[j]) {
+    // The height column counts too: '# z z u v T' names z twice
+    for (int i = 0; i < static_cast<int>(names.size()); ++i) {
+        for (int j = i + 1; j < static_cast<int>(names.size()); ++j) {
+            if (names[i] == names[j]) {
                 amrex::Abort(
                     "TabulatedProfile: the header of " + fname + " names '" +
-                    colnames[i] + "' more than once");
+                    names[i] + "' more than once");
             }
         }
     }
+    colnames.assign(names.begin() + 1, names.end());
     return true;
 }
 
@@ -160,6 +189,16 @@ amrex::Real parse_value(
         amrex::Abort(
             "TabulatedProfile: " + at(fname, lineno, col) + ": '" + tok +
             "' is not a finite value");
+    }
+    // strtod checks the range of a double; in single precision a finite
+    // double such as 1e40 or 1e-40 still overflows or underflows amrex::Real
+    const double mag = std::abs(val);
+    if ((mag > static_cast<double>(std::numeric_limits<amrex::Real>::max())) ||
+        ((mag > 0.0) && (mag < static_cast<double>(
+                                   std::numeric_limits<amrex::Real>::min())))) {
+        amrex::Abort(
+            "TabulatedProfile: " + at(fname, lineno, col) + ": '" + tok +
+            "' is too large or too small to represent");
     }
     return static_cast<amrex::Real>(val);
 }
@@ -533,7 +572,7 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
             auto prof = read_profile_file(fname);
 
             if (!prof.has_header) {
-                if (!rans_file.empty() && (fname == rans_file)) {
+                if (!rans_file.empty() && same_file(fname, rans_file)) {
                     amrex::Abort(
                         "TabulatedProfile: " + fname +
                         " is also used as ABL.rans_1dprofile_file, whose "
