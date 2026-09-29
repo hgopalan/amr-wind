@@ -6,14 +6,27 @@
 #            cases/ridge2d/smooth_klaxell_4m [more case folders ...]
 # Extra ParmParse overrides can be passed through ARGS, e.g.
 #   ARGS="amr.max_grid_size=64" ./run_sequential.sh ...
+#
+# A failed case does not stop the ones after it, but the script exits nonzero
+# when any case failed, so that a caller can tell.
 set -u
 EXE=${EXE:?set EXE to the kynema-sgf executable}
 NP=${NP:-4}
 MPIRUN=${MPIRUN:-mpirun}
 ARGS=${ARGS:-}
+nfailed=0
 for dir in "$@"; do
     echo "== $dir started $(date)"
     # shellcheck disable=SC2086
     (cd "$dir" && "$MPIRUN" -np "$NP" "$EXE" case.inp $ARGS > run.log 2>&1)
-    echo "== $dir finished $(date) status $?"
+    # Kept before anything else runs, since even the $(date) below resets $?
+    status=$?
+    echo "== $dir finished $(date) status $status"
+    if [ "$status" -ne 0 ]; then
+        nfailed=$((nfailed + 1))
+    fi
 done
+if [ "$nfailed" -ne 0 ]; then
+    echo "== $nfailed of $# cases failed" >&2
+    exit 1
+fi
