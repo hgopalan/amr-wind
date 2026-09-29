@@ -42,6 +42,26 @@ void init_log_profile(
     amrex::Gpu::streamSynchronize();
 }
 
+//! Multiply the valid cells of a level that are covered by the next finer
+//! level by a factor
+void scale_covered_cells(
+    kynema_sgf::Field& fld, const int lev, const amrex::Real factor)
+{
+    const auto& mesh = fld.repo().mesh();
+    const auto mask = amrex::makeFineMask(
+        fld(lev), mesh.boxArray(lev + 1), mesh.refRatio(lev), 0, 1);
+    const auto& farrs = fld(lev).arrays();
+    const auto& mask_arrs = mask.const_arrays();
+    amrex::ParallelFor(
+        fld(lev), amrex::IntVect(0), fld.num_comp(),
+        [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int n) {
+            if (mask_arrs[nbx](i, j, k) == 1) {
+                farrs[nbx](i, j, k, n) *= factor;
+            }
+        });
+    amrex::Gpu::streamSynchronize();
+}
+
 //! Mean, over the wall-adjacent cells of a level that are not covered by a
 //! finer level, of the wall flux implied by the wall-model ghost value:
 //! ghost * mueff / rho of the first cell
@@ -199,6 +219,12 @@ protected:
         init_log_profile(
             temperature, {m_theta0, 0.0_rt, 0.0_rt},
             {m_thetastar / m_kappa, 0.0_rt, 0.0_rt}, m_z0);
+        if (m_covered_scale != 1.0_rt) {
+            // Level-0 cells covered by level 1, which the means of level 0
+            // must not see
+            scale_covered_cells(velocity, 0, m_covered_scale);
+            scale_covered_cells(temperature, 0, m_covered_scale);
+        }
         density.setVal(1.0_rt);
         vel_mueff.setVal(m_mu);
         temp_mueff.setVal(m_mu);
@@ -306,10 +332,53 @@ protected:
         }
     }
 
+    //! Check that the mean quantities of every level are those of the
+    //! wall-adjacent cells that the level owns, with the level-0 cells
+    //! covered by level 1 set to other values
+    void check_covered_cells_excluded()
+    {
+        constexpr amrex::Real tol =
+            std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+
+        m_covered_scale = 2.0_rt;
+        init_wall_fields();
+
+        const auto& mesh = sim().repo().mesh();
+        const auto& abl = sim().physics_manager().get<kynema_sgf::ABL>();
+        const auto& wall_func = abl.abl_wall_function();
+        const amrex::Real wind_cos = std::cos(m_wind_angle);
+        const amrex::Real wind_sin = std::sin(m_wind_angle);
+        for (int lev = 0; lev < 2; ++lev) {
+            const auto& mo_lev = wall_func.mo(lev);
+            ASSERT_NE(&mo_lev, &wall_func.mo()) << "level " << lev;
+            // Plane-uniform first-cell values of the cells the level owns
+            const amrex::Real z1 = 0.5_rt * mesh.Geom(lev).CellSizeArray()[2];
+            const amrex::Real wspd = m_ustar / m_kappa * std::log(z1 / m_z0);
+            const amrex::Real theta =
+                m_theta0 + (m_thetastar / m_kappa * std::log(z1 / m_z0));
+            EXPECT_NEAR(mo_lev.zref, z1, tol * z1) << "level " << lev;
+            EXPECT_NEAR(mo_lev.vel_mean[0], wspd * wind_cos, tol * wspd)
+                << "level " << lev;
+            EXPECT_NEAR(mo_lev.vel_mean[1], wspd * wind_sin, tol * wspd)
+                << "level " << lev;
+            EXPECT_NEAR(mo_lev.vmag_mean, wspd, tol * wspd) << "level " << lev;
+            EXPECT_NEAR(
+                mo_lev.Su_mean, wspd * wspd * wind_cos, tol * wspd * wspd)
+                << "level " << lev;
+            EXPECT_NEAR(
+                mo_lev.Sv_mean, wspd * wspd * wind_sin, tol * wspd * wspd)
+                << "level " << lev;
+            EXPECT_NEAR(mo_lev.theta_mean, theta, tol * m_theta0)
+                << "level " << lev;
+        }
+    }
+
     //! Level-1 box (xlo ylo zlo xhi yhi zhi), by default over x < 60, all
     //! y and z < 250
     std::string m_refine_box{"0.0 0.0 0.0 60.0 120.0 250.0"};
     std::string m_shear_stress_type{"moeng"};
+    //! Factor on the level-0 cells covered by level 1 (1: plane uniform)
+    amrex::Real m_covered_scale{1.0_rt};
     //! Reference height of the plane averages, first-cell height if <= 0
     amrex::Real m_log_law_height{0.0_rt};
     amrex::Real m_ustar{0.5_rt};
@@ -349,6 +418,11 @@ TEST_F(ABLWallRefinementTest, donelan_wall_model_keeps_reference_height)
     m_log_law_height = 10.0_rt;
     m_ustar = 1.0_rt;
     check_donelan_reference_height();
+}
+
+TEST_F(ABLWallRefinementTest, level_means_exclude_covered_wall_cells)
+{
+    check_covered_cells_excluded();
 }
 
 TEST_F(ABLWallRefinementTest, refinement_aloft_keeps_reference_height)
