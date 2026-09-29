@@ -11,12 +11,16 @@
 using namespace amrex::literals;
 
 namespace kynema_sgf_tests {
-namespace {
+
+// Named (not anonymous) namespace: the device kernels of the source op are
+// instantiated with these types, and nvcc requires external linkage there.
+namespace turbine_disk {
 
 namespace act = kynema_sgf::actuator;
 namespace vs = kynema_sgf::vs;
 namespace utils = kynema_sgf::utils;
 
+//! Turbine actuator without an external solver, to drive the disk source op
 struct DiskTurbine : public act::TurbineType
 {
     using InfoType = act::TurbineInfo;
@@ -26,6 +30,8 @@ struct DiskTurbine : public act::TurbineType
 
     static std::string identifier() { return "TestDiskTurbine"; }
 };
+
+using DiskSrcOp = act::ops::ActSrcOp<DiskTurbine, act::ActSrcDisk>;
 
 constexpr int num_blades = 3;
 constexpr int num_pts_blade = 8;
@@ -98,6 +104,38 @@ void init_disk_turbine(DiskTurbine::DataType& data)
         utils::slice(grid.orientation, tstart, num_pts_tower);
 }
 
+// Spread the actuator forces with an already set up source op
+void spread_source(
+    DiskSrcOp& op, const amrex::Geometry& geom, kynema_sgf::Field& src)
+{
+    src.setVal(0.0_rt);
+    for (amrex::MFIter mfi(src(0)); mfi.isValid(); ++mfi) {
+        op(0, mfi, geom);
+    }
+    amrex::Gpu::streamSynchronize();
+}
+
+// Largest difference between two source fields, per component
+amrex::Real
+max_diff(const amrex::MultiFab& lhs, const amrex::MultiFab& rhs, const int comp)
+{
+    amrex::MultiFab diff(lhs.boxArray(), lhs.DistributionMap(), 1, 0);
+    amrex::MultiFab::Copy(diff, lhs, comp, 0, 1, 0);
+    amrex::MultiFab::Subtract(diff, rhs, comp, 0, 1, 0);
+    return diff.norm0(0);
+}
+
+// Set up a source op for the current actuator data and spread its forces
+void compute_source(DiskTurbine::DataType& data, kynema_sgf::Field& src)
+{
+    DiskSrcOp op(data);
+    op.initialize();
+    op.setup_op();
+    spread_source(op, data.sim().mesh().Geom(0), src);
+}
+
+} // namespace turbine_disk
+
 class TurbineDiskSrcTest : public MeshTest
 {
 protected:
@@ -123,63 +161,107 @@ protected:
     }
 };
 
-void compute_source(DiskTurbine::DataType& data, kynema_sgf::Field& src)
+// The spreading kernel must read only the device copy of the actuator data
+// made in setup_op. The host arrays (and the component views into them) are
+// not accessible from a GPU kernel (kynema/kynema-sgf#1977). Overwriting the
+// host data after setup_op must therefore leave the source unchanged; a
+// kernel that dereferences host pointers picks up the new values on a CPU
+// build and fails here, instead of passing silently as it does on CPU.
+TEST_F(TurbineDiskSrcTest, spreads_device_copy_of_actuator_data)
 {
-    act::ops::ActSrcOp<DiskTurbine, act::ActSrcDisk> op(data);
+    namespace td = turbine_disk;
+    initialize_mesh();
+    auto& src = sim().repo().declare_field("actuator_src_term", 3, 0);
+    const auto& geom = sim().mesh().Geom(0);
+
+    td::DiskTurbine::DataType data(sim(), "disk", 0);
+    td::init_disk_turbine(data);
+
+    auto& grid = data.grid();
+    for (int ip = 0; ip < grid.force.size(); ++ip) {
+        grid.force[ip] =
+            td::vs::Vector(1.0_rt + (0.1_rt * ip), 0.2_rt, -0.1_rt * (ip % 3));
+    }
+
+    td::DiskSrcOp op(data);
     op.initialize();
     op.setup_op();
+    td::spread_source(op, geom, src);
 
-    src.setVal(0.0_rt);
-    const auto& geom = data.sim().mesh().Geom(0);
-    for (amrex::MFIter mfi(src(0)); mfi.isValid(); ++mfi) {
-        op(0, mfi, geom);
+    amrex::MultiFab ref(src(0).boxArray(), src(0).DistributionMap(), 3, 0);
+    amrex::MultiFab::Copy(ref, src(0), 0, 0, 3, 0);
+    ASSERT_FALSE(ref.contains_nan());
+    for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+        ASSERT_GT(ref.norm0(n), 0.0_rt) << "component " << n;
     }
-    amrex::Gpu::streamSynchronize();
-}
 
-} // namespace
+    // Change the host data without copying it to the device again
+    for (int ip = 0; ip < grid.force.size(); ++ip) {
+        grid.force[ip] = td::vs::Vector(-1.0e3_rt, 1.0e3_rt, 1.0e3_rt);
+        grid.epsilon[ip] = td::vs::Vector(0.5_rt, 0.5_rt, 0.5_rt);
+        grid.orientation[ip] = td::vs::Tensor::zero();
+    }
+    td::spread_source(op, geom, src);
+
+    const amrex::Real tol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+    EXPECT_FALSE(src(0).contains_nan());
+    for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+        EXPECT_LE(td::max_diff(src(0), ref, n), tol * ref.norm0(n))
+            << "component " << n;
+    }
+
+    // Once copied to the device the new host data does change the source
+    op.setup_op();
+    td::spread_source(op, geom, src);
+    EXPECT_FALSE(src(0).contains_nan());
+    EXPECT_GT(td::max_diff(src(0), ref, 0), 0.1_rt * ref.norm0(0));
+}
 
 TEST_F(TurbineDiskSrcTest, conserves_total_force)
 {
+    namespace td = turbine_disk;
     initialize_mesh();
     auto& src = sim().repo().declare_field("actuator_src_term", 3, 0);
 
-    DiskTurbine::DataType data(sim(), "disk", 0);
-    init_disk_turbine(data);
+    td::DiskTurbine::DataType data(sim(), "disk", 0);
+    td::init_disk_turbine(data);
 
     auto& grid = data.grid();
-    vs::Vector total_force = vs::Vector::zero();
+    td::vs::Vector total_force = td::vs::Vector::zero();
     for (int ip = 0; ip < grid.force.size(); ++ip) {
         grid.force[ip] =
-            vs::Vector(1.0_rt + (0.1_rt * ip), 0.2_rt, -0.1_rt * (ip % 3));
+            td::vs::Vector(1.0_rt + (0.1_rt * ip), 0.2_rt, -0.1_rt * (ip % 3));
         total_force = total_force + grid.force[ip];
     }
 
-    compute_source(data, src);
+    td::compute_source(data, src);
 
     const auto& dx = sim().mesh().Geom(0).CellSizeArray();
     const amrex::Real vol = dx[0] * dx[1] * dx[2];
     for (int n = 0; n < AMREX_SPACEDIM; ++n) {
         const amrex::Real integral = src(0).sum(n) * vol;
-        EXPECT_NEAR(integral, total_force[n], 5.0e-3_rt * vs::mag(total_force))
+        EXPECT_NEAR(
+            integral, total_force[n], 5.0e-3_rt * td::vs::mag(total_force))
             << "component " << n;
     }
 }
 
 TEST_F(TurbineDiskSrcTest, blade_point_radial_support)
 {
+    namespace td = turbine_disk;
     initialize_mesh();
     auto& src = sim().repo().declare_field("actuator_src_term", 3, 0);
 
-    DiskTurbine::DataType data(sim(), "disk", 0);
-    init_disk_turbine(data);
+    td::DiskTurbine::DataType data(sim(), "disk", 0);
+    td::init_disk_turbine(data);
 
     // Load a single blade point
     const int ipt = 1 + 3;
-    const amrex::Real rpt = blade_dr * 4;
-    data.grid().force[ipt] = vs::Vector(1.0_rt, 0.0_rt, 0.0_rt);
+    const amrex::Real rpt = td::blade_dr * 4;
+    data.grid().force[ipt] = td::vs::Vector(1.0_rt, 0.0_rt, 0.0_rt);
 
-    compute_source(data, src);
+    td::compute_source(data, src);
 
     amrex::MultiFab hsrc(
         src(0).boxArray(), src(0).DistributionMap(), 3, 0,
@@ -189,6 +271,7 @@ TEST_F(TurbineDiskSrcTest, blade_point_radial_support)
     const auto& geom = sim().mesh().Geom(0);
     const auto& problo = geom.ProbLoArray();
     const auto& dx = geom.CellSizeArray();
+    const auto& center = td::rotor_center;
     int ninside = 0;
     int noutside = 0;
     for (amrex::MFIter mfi(hsrc); mfi.isValid(); ++mfi) {
@@ -196,9 +279,8 @@ TEST_F(TurbineDiskSrcTest, blade_point_radial_support)
         amrex::LoopOnCpu(mfi.validbox(), [&](int i, int j, int k) {
             const amrex::Real y = problo[1] + ((j + 0.5_rt) * dx[1]);
             const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
-            const amrex::Real r =
-                std::hypot(y - rotor_center.y(), z - rotor_center.z());
-            if (std::abs(r - rpt) > blade_dr + 1.0e-6_rt) {
+            const amrex::Real r = std::hypot(y - center.y(), z - center.z());
+            if (std::abs(r - rpt) > td::blade_dr + 1.0e-6_rt) {
                 if (sarr(i, j, k, 0) != 0.0_rt) {
                     ++noutside;
                 }
