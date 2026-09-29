@@ -311,26 +311,31 @@ void check_inflow_direction(
     // Flow enters through a low face when the normal component is positive
     const amrex::Real into = is_low ? 1.0_rt : -1.0_rt;
 
-    // Only the part of the column the domain actually reaches matters. An
-    // entry influences that range when the span between its neighbours
-    // overlaps it, and the outermost entries reach beyond the table because
-    // the nearest tabulated value is held outside it
+    // Only the part of the column the domain actually reaches matters. The
+    // profile is linear between entries and held constant beyond the table,
+    // so over [zlo, zhi] its extremes lie at the two ends of that range or at
+    // an entry inside it. Those are evaluated just as the boundary fill does
+    const auto* zbegin = heights.data() + offset;
+    const auto* zend = zbegin + nz;
+    const auto* ybegin =
+        vals.data() + (static_cast<std::ptrdiff_t>(ncomp) * offset);
+
     bool enters = false;
     bool leaves = false;
-    for (int k = 0; k < nz; ++k) {
-        const auto below =
-            (k == 0) ? -constants::LARGE_NUM : heights[offset + k - 1];
-        const auto above =
-            (k == nz - 1) ? constants::LARGE_NUM : heights[offset + k + 1];
-        if ((above < zlo) || (below > zhi)) {
-            continue;
-        }
-        const auto un = into * vals[(ncomp * (offset + k)) + dir];
+    const auto classify = [&](const amrex::Real un) {
         if (un > constants::TIGHT_TOL) {
             enters = true;
         }
         if (un < -constants::TIGHT_TOL) {
             leaves = true;
+        }
+    };
+    classify(into * interp::linear(zbegin, zend, ybegin, zlo, ncomp, dir));
+    classify(into * interp::linear(zbegin, zend, ybegin, zhi, ncomp, dir));
+    for (int k = 0; k < nz; ++k) {
+        const auto zk = heights[offset + k];
+        if ((zk > zlo) && (zk < zhi)) {
+            classify(into * vals[(ncomp * (offset + k)) + dir]);
         }
     }
 

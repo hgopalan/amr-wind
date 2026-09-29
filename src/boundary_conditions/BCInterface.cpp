@@ -98,6 +98,27 @@ void BCIface::read_bctype()
 void BCIface::set_bcfuncs()
 {
     const auto& ibctype = m_field.bc_type();
+
+    // Transported quantities need the outflow part of an inflow-outflow face
+    // filled by extrapolation rather than left at the inflow value. Velocity,
+    // temperature and tke always get it; any other field gets it when its
+    // inflow-outflow faces are driven by a UDF, such as a tabulated profile,
+    // so that scalars held at a constant value keep their behavior
+    const auto& fname = m_field.name();
+    bool extrapolate_outflow =
+        (fname == "velocity") || (fname == "temperature") || (fname == "tke");
+    for (amrex::OrientationIter oit; oit != nullptr; ++oit) {
+        auto ori = oit();
+        std::string udf{"ConstDirichlet"};
+        if (ibctype[ori] == BC::mass_inflow_outflow) {
+            amrex::ParmParse pp(bcnames[ori]);
+            pp.query(fname + ".inflow_outflow_type", udf);
+        }
+        if (udf != "ConstDirichlet") {
+            extrapolate_outflow = true;
+        }
+    }
+
     for (amrex::OrientationIter oit; oit != nullptr; ++oit) {
         auto ori = oit();
         const auto bct = ibctype[ori];
@@ -106,11 +127,7 @@ void BCIface::set_bcfuncs()
             m_field.register_custom_bc<FixedGradientBC>(ori);
         }
 
-        // Transported quantities need the outflow part of an inflow-outflow
-        // face filled by extrapolation rather than left at the inflow value
-        if (((m_field.name() == "velocity") ||
-             (m_field.name() == "temperature") || (m_field.name() == "tke")) &&
-            (bct == BC::mass_inflow_outflow)) {
+        if (extrapolate_outflow && (bct == BC::mass_inflow_outflow)) {
 
             m_field.register_custom_bc<MassInflowOutflowBC>(ori);
         }
