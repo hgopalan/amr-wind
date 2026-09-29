@@ -234,9 +234,9 @@ void MacProjOp::operator()(const FieldState fstate, const amrex::Real dt)
     // this can be removed once the nsolve overset
     // masking is implemented in cell based AMReX poisson solvers
     // Implicit immersed-terrain drag (ImmersedTerrain.implicit_projection):
-    // faces inside the terrain get the coefficient 1/(rho (1 + beta C dt)) and
+    // faces inside the terrain get the coefficient 1/(rho (1 + C dt)) and
     // the predicted face velocities are divided by the same factor, so that
-    // u_mac = (u_mac* - grad phi / rho) / (1 + beta C dt)
+    // u_mac = (u_mac* - grad phi / rho) / (1 + C dt)
     const bool implicit_ib = m_repo.field_exists("terrain_drag_rate");
     std::unique_ptr<ScratchField> rho_eff;
     std::unique_ptr<ScratchField> fac_cc, fac_xf, fac_yf, fac_zf;

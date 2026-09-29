@@ -46,8 +46,9 @@ ImmersedTerrain declares the following fields, each with one ghost cell:
 
    Apply the immersed drag implicitly through the nodal and MAC projections
    instead of as an explicit source term. The terrain then behaves as a fluid of
-   density :math:`\rho (1 + \beta C \Delta t)` in the pressure solve, with
-   :math:`C = C_d / \Delta z` and :math:`C_d` taken from
+   density :math:`\rho (1 + C \Delta t)` in the pressure solve, with
+   :math:`C = w C_d / \Delta z`, the drag weight :math:`w` of
+   :input_param:`ImmersedTerrain.drag_weight` and :math:`C_d` taken from
    :input_param:`ImmersedDragForcing.drag_coefficient`, so that the pressure
    gradient produces no velocity inside the terrain. Without it the projection
    re-injects :math:`\Delta t \nabla p / \rho` inside the body every step and the

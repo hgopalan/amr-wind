@@ -28,7 +28,7 @@ void apply_immersed_interface(
     const kynema_sgf::FieldRepo& repo,
     int lev);
 
-//! Effective density rho (1 + beta C dt) for the implicit diffusion solve
+//! Effective density rho (1 + C dt) for the implicit diffusion solve
 //! when the immersed terrain drag is applied implicitly (ImmersedTerrain
 //! declares terrain_drag_rate). Pins the body cells during the solve so that
 //! they are not filled from the fluid and then emptied by the projection.

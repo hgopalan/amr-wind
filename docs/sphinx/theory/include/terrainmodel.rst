@@ -93,13 +93,13 @@ applies the drag implicitly together with the pressure,
 
 .. math::
 
-   u^{n+1} = \frac{u^{**} - \Delta t \nabla p / \rho}{1 + \beta C \Delta t},
+   u^{n+1} = \frac{u^{**} - \Delta t \nabla p / \rho}{1 + C \Delta t},
    \qquad \nabla \cdot u^{n+1} = 0
    \;\Rightarrow\;
-   \nabla \cdot \left( \frac{\Delta t}{\rho (1 + \beta C \Delta t)} \nabla p \right)
-   = \nabla \cdot \frac{u^{**}}{1 + \beta C \Delta t},
+   \nabla \cdot \left( \frac{\Delta t}{\rho (1 + C \Delta t)} \nabla p \right)
+   = \nabla \cdot \frac{u^{**}}{1 + C \Delta t},
 
-that is, the terrain behaves as a fluid of density :math:`\rho (1 + \beta C \Delta t)` in the
+that is, the terrain behaves as a fluid of density :math:`\rho (1 + C \Delta t)` in the
 nodal and MAC projections. The residual inside the body becomes independent of the time step and
 equal to :math:`\nabla p / (\rho C)`; increasing :math:`C_d` in proportion to :math:`1/\Delta z`
 then gives second-order convergence. On the laminar immersed box case the fitted orders of the
@@ -108,7 +108,7 @@ mean speed inside the body were 1.3 (binary), 1.1 (partial fraction, explicit dr
 
 **Implicit drag in the diffusion solve.** With ``implicit_projection`` the terrain cells must
 also be held at rest inside the implicit diffusion solve: the operator uses the same effective
-density :math:`\rho(1 + \beta C \Delta t)` as the coefficient of the time-derivative term (with the
+density :math:`\rho(1 + C \Delta t)` as the coefficient of the time-derivative term (with the
 right-hand side kept at the plain density), so that momentum diffusing into the terrain is damped
 there rather than accumulated and removed by the projection. Without this the terrain cells float
 to a fraction of the fluid velocity during each solve, the interface flux is reduced, the effective
