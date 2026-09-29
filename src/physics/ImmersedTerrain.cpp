@@ -41,7 +41,16 @@ ImmersedTerrain::ImmersedTerrain(CFDSim& sim)
 
     amrex::ParmParse pp(identifier());
     pp.query("terrain_file", m_terrain_file);
-    pp.query("solid_threshold", m_solid_threshold);
+    // With center weighting a cell is solid when its center is inside the
+    // terrain: the wall distance z_c - h of the fluid cell above it relies on
+    // that, so the threshold is fixed at 0.5 and is not an input
+    if (pp.contains("solid_threshold")) {
+        amrex::Abort(
+            identifier() +
+            ".solid_threshold is not supported: center weighting treats a "
+            "cell as solid when its center is inside the terrain (fraction >= "
+            "0.5)");
+    }
     pp.query("drag_weight", m_drag_weight);
     if (m_drag_weight != "fraction" && m_drag_weight != "center") {
         amrex::Abort(
@@ -146,7 +155,7 @@ void ImmersedTerrain::initialize_fields(int level, const amrex::Geometry& geom)
     const bool solid_only = m_laminar && (m_drag_weight == "fraction");
     const bool center_weight = (m_drag_weight == "center") || solid_only;
     const amrex::Real weight_threshold =
-        solid_only ? 1.0_rt : m_solid_threshold;
+        solid_only ? 1.0_rt : immersed_wall::center_threshold;
     auto surf_arrs = surface.arrays();
 
     // Pass 1: terrain height and volume fraction, including
@@ -204,7 +213,7 @@ void ImmersedTerrain::initialize_fields(int level, const amrex::Geometry& geom)
     // this catches the side walls of steep terrain and buildings that a
     // vertical-only search misses.
     const amrex::Real wall_fraction = immersed_wall::wall_threshold(
-        m_drag_weight == "center", m_solid_threshold);
+        m_drag_weight == "center", immersed_wall::center_threshold);
     amrex::ParallelFor(
         fraction, [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
             const auto& frac = frac_arrs[nbx];

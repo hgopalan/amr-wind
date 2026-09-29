@@ -14,6 +14,12 @@ using namespace amrex::literals;
  */
 namespace kynema_sgf::immersed_wall {
 
+//! Terrain fraction at or above which ``center`` weighting treats a cell as
+//! solid: its center is inside the terrain. The wall distance z_c - h of the
+//! fluid cell above a solid cell is positive and at most one cell only for
+//! this value.
+constexpr amrex::Real center_threshold = 0.5_rt;
+
 //! Weight of the immersed drag in a cell of terrain fraction beta.
 //! ``fraction``: beta itself. ``center``: 1 when the cell center is inside the
 //! terrain (beta >= threshold), else 0, so that mostly fluid partial cells are
@@ -40,11 +46,11 @@ exact_relaxation_rate(const amrex::Real C, const amrex::Real dt)
 
 /** Neighbor terrain fraction from which a face is a wall.
  *
- *  With center weighting a cell that is at least ``solid_threshold`` terrain
- *  is treated as solid, so a face next to it is a wall. With fraction
- *  weighting the partial cell carries its own wall, so only a neighbor that
- *  is entirely terrain makes a face a wall; a lower threshold would model the
- *  same wall again in the cell above the partial cell.
+ *  With center weighting a cell whose center is inside the terrain
+ *  (center_threshold) is treated as solid, so a face next to it is a wall.
+ *  With fraction weighting the partial cell carries its own wall, so only a
+ *  neighbor that is entirely terrain makes a face a wall; a lower threshold
+ *  would model the same wall again in the cell above the partial cell.
  */
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real
 wall_threshold(const bool center_based, const amrex::Real solid_threshold)

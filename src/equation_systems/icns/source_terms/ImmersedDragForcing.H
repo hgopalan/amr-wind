@@ -61,8 +61,6 @@ private:
     amrex::Real m_drag_coefficient{10.0_rt};
     //! ``fraction`` or ``center`` drag weight, read from ImmersedTerrain
     std::string m_drag_weight{"fraction"};
-    //! Terrain fraction at or above which ``center`` treats a cell as solid
-    amrex::Real m_solid_threshold{0.5_rt};
     //! turbulence.model = Laminar
     bool m_is_laminar{false};
 };

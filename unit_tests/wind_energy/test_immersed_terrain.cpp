@@ -137,4 +137,22 @@ TEST_F(ImmersedTerrainTest, mesh_mapping_not_supported)
     EXPECT_THROW({ const Terrain terrain(sim()); }, amrex::RuntimeError);
 }
 
+// Center weighting treats a cell as solid when its center is inside the
+// terrain, which the wall distance z_c - h relies on: the threshold is not an
+// input
+TEST_F(ImmersedTerrainTest, solid_threshold_not_an_input)
+{
+    using Terrain = kynema_sgf::immersedterrain::ImmersedTerrain;
+    write_terrain(m_terrain_fname);
+    populate_parameters();
+    {
+        amrex::ParmParse pp("ImmersedTerrain");
+        pp.add("drag_weight", std::string("center"));
+        pp.add("solid_threshold", 0.7_rt);
+    }
+    initialize_mesh();
+    sim().pde_manager().register_icns();
+    EXPECT_THROW({ const Terrain terrain(sim()); }, amrex::RuntimeError);
+}
+
 } // namespace kynema_sgf_tests

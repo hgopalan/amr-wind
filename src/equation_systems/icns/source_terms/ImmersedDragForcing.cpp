@@ -20,7 +20,6 @@ ImmersedDragForcing::ImmersedDragForcing(const CFDSim& sim)
     pp.query("drag_coefficient", m_drag_coefficient);
 
     amrex::ParmParse pp_terrain(ImmersedTerrain::identifier());
-    pp_terrain.query("solid_threshold", m_solid_threshold);
     pp_terrain.query("drag_weight", m_drag_weight);
 
     std::string turbulence_model = "Laminar";
@@ -69,7 +68,8 @@ void ImmersedDragForcing::operator()(
     const bool center_weight = (m_drag_weight == "center");
     const bool solid_only = m_is_laminar && !center_weight;
     const bool drag_center = center_weight || solid_only;
-    const amrex::Real drag_threshold = solid_only ? 1.0_rt : m_solid_threshold;
+    const amrex::Real drag_threshold =
+        solid_only ? 1.0_rt : kynema_sgf::immersed_wall::center_threshold;
 
     amrex::ParallelFor(
         src_term, [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) noexcept {

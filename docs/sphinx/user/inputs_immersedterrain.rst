@@ -40,15 +40,6 @@ ImmersedTerrain declares the following fields, each with one ghost cell:
    Input file for terrain height data, in the same flat-grid format as
    :input_param:`TerrainDrag.terrain_file`.
 
-.. input_param:: ImmersedTerrain.solid_threshold
-
-   **type:** Real, optional, default = 0.5
-
-   With ``center`` drag weighting, a cell whose terrain fraction is at or above
-   this value is treated as solid, and a face next to it as a wall. With
-   ``fraction`` weighting only a cell entirely inside the terrain makes a face a
-   wall, since the partial cell carries its own wall.
-
 .. input_param:: ImmersedTerrain.implicit_projection
 
    **type:** Boolean, optional, default = false
@@ -70,7 +61,7 @@ ImmersedTerrain declares the following fields, each with one ghost cell:
 
    Weight of the immersed drag in partially filled cells. ``fraction`` uses the terrain
    fraction :math:`\beta`. ``center`` treats a cell whose center is inside the terrain
-   (:math:`\beta \ge` :input_param:`ImmersedTerrain.solid_threshold`) as fully solid and
+   (:math:`\beta \ge 0.5`) as fully solid, with a wall on the faces next to it, and
    any other partial cell as a fluid cell with no drag. With laminar flow and ``fraction``,
    the partial cell takes no drag either: it is a fluid
    cell whose wall is carried by the no-slip flux at its fluid centroid, and only cells

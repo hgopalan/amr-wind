@@ -87,7 +87,7 @@ TEST_F(ImmersedInterfaceDiffusionTest, center)
     const auto& fz = sim().repo().get_field("terrain_diffusion_zf");
     // Lateral wall at the face: dx / (dx/2) = 2
     EXPECT_NEAR(utils::field_probe(fx, 0, 14, 10, 1), 2.0_rt, m_tol);
-    // Bottom face of the partial cell (15,10,3): centre 112 m, terrain
+    // Bottom face of the partial cell (15,10,3): center 112 m, terrain
     // 100 m, so d1 = 12 m and the factor is 32/12
     EXPECT_NEAR(utils::field_probe(fz, 0, 15, 10, 3), 32.0_rt / 12.0_rt, m_tol);
     // Face between the partial cell (a fluid cell with center weighting) and
@@ -108,7 +108,7 @@ TEST_F(ImmersedInterfaceDiffusionTest, fraction)
     // Bottom face of the partial cell (15,10,3): its fluid part spans
     // 100-128 m, centroid 114 m, so d1 = 14 m and the factor is 32/14
     EXPECT_NEAR(utils::field_probe(fz, 0, 15, 10, 3), 32.0_rt / 14.0_rt, m_tol);
-    // Face above the partial cell: centroid 114 m to centre 144 m, 30 m,
+    // Face above the partial cell: centroid 114 m to center 144 m, 30 m,
     // factor 32/30 = 2 / (2 - beta)
     EXPECT_NEAR(utils::field_probe(fz, 0, 15, 10, 4), 32.0_rt / 30.0_rt, m_tol);
     // Solid/solid and fluid/fluid faces untouched
@@ -127,6 +127,18 @@ TEST_F(ImmersedInterfaceDiffusionTest, center_wall_near_cell_center)
     const amrex::Real expected = 32.0_rt / 1.6_rt;
     EXPECT_NEAR(
         utils::field_probe(fz, 0, 15, 10, 3), expected, 2.0e-4_rt * expected);
+}
+
+TEST_F(ImmersedInterfaceDiffusionTest, center_partial_cell_center_inside)
+{
+    // Partial cell k = 3 with beta = 0.6 (terrain at 115.2 m, center 112 m):
+    // center weighting treats it as solid, and the fluid cell above it (center
+    // 144 m) is 28.8 m from the wall
+    setup("center", 115.2);
+    const auto& fz = sim().repo().get_field("terrain_diffusion_zf");
+    EXPECT_NEAR(utils::field_probe(fz, 0, 15, 10, 4), 32.0_rt / 28.8_rt, m_tol);
+    // Solid/solid face below the partial cell untouched
+    EXPECT_NEAR(utils::field_probe(fz, 0, 15, 10, 3), 1.0_rt, m_tol);
 }
 
 TEST_F(ImmersedInterfaceDiffusionTest, fraction_wall_near_cell_top)

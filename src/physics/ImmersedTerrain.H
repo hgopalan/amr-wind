@@ -113,8 +113,6 @@ private:
     //! Terrain file (x, y, h on a flat grid)
     std::string m_terrain_file{"terrain.amrwind"};
 
-    //! With center weighting, a cell is solid at or above this fraction
-    amrex::Real m_solid_threshold{0.5_rt};
     //! ``fraction`` (drag weight beta) or ``center`` (1 when the cell center
     //! is inside the terrain, else 0); shared with the source terms
     std::string m_drag_weight{"fraction"};
