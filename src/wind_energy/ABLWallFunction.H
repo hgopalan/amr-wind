@@ -36,7 +36,8 @@ public:
     //! level holds the plane averages of its own wall-adjacent cells at their
     //! own height, so that the wall
     //! models that combine the local first-cell values with their plane
-    //! averages return the same mean stress and heat flux on every level.
+    //! averages return, on every level, the mean stress and heat flux set by
+    //! the friction velocity and the surface heat flux.
     //! The friction velocity, Obukhov length and surface heat flux are
     //! shared by all levels.
     //!
