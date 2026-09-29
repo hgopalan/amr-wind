@@ -271,7 +271,6 @@ TEST_F(TurbineDiskSrcTest, blade_point_radial_support)
     const auto& geom = sim().mesh().Geom(0);
     const auto& problo = geom.ProbLoArray();
     const auto& dx = geom.CellSizeArray();
-    const auto& center = td::rotor_center;
     int ninside = 0;
     int noutside = 0;
     for (amrex::MFIter mfi(hsrc); mfi.isValid(); ++mfi) {
@@ -279,7 +278,8 @@ TEST_F(TurbineDiskSrcTest, blade_point_radial_support)
         amrex::LoopOnCpu(mfi.validbox(), [&](int i, int j, int k) {
             const amrex::Real y = problo[1] + ((j + 0.5_rt) * dx[1]);
             const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
-            const amrex::Real r = std::hypot(y - center.y(), z - center.z());
+            const amrex::Real r =
+                std::hypot(y - td::rotor_center.y(), z - td::rotor_center.z());
             if (std::abs(r - rpt) > td::blade_dr + 1.0e-6_rt) {
                 if (sarr(i, j, k, 0) != 0.0_rt) {
                     ++noutside;
