@@ -31,9 +31,10 @@ public:
 
     //! Monin-Obukhov data carrying the mean quantities of a given mesh level
     //!
-    //! On a single-level mesh this is the same object as mo(). When more
-    //! than one level touches the wall, every level holds the plane averages
-    //! of its own wall-adjacent cells at their own height, so that the wall
+    //! On a single-level mesh, or when only level 0 touches the wall, this
+    //! is the same object as mo(). When a finer level touches the wall, every
+    //! level holds the plane averages of its own wall-adjacent cells at their
+    //! own height, so that the wall
     //! models that combine the local first-cell values with their plane
     //! averages return the same mean stress and heat flux on every level.
     //! The friction velocity, Obukhov length and surface heat flux are
@@ -59,7 +60,7 @@ public:
     void update_tflux(amrex::Real tflux);
 
     //! Compute the mean quantities of the wall-adjacent cells of every level
-    //! that touches the wall (multi-level meshes only).
+    //! that touches the wall (only when a level finer than level 0 does).
     //! Public because it launches GPU kernels
     void update_level_means();
 

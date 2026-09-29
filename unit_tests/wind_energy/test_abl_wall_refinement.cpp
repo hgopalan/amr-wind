@@ -150,11 +150,10 @@ protected:
             pp.add("wall_shear_stress_type", m_shear_stress_type);
         }
 
-        // Level-1 box over x < 60, all y, z < 250
         std::stringstream ss;
         ss << "1 // Number of levels" << '\n';
         ss << "1 // Number of boxes at this level" << '\n';
-        ss << "0.0 0.0 0.0 60.0 120.0 250.0" << '\n';
+        ss << m_refine_box << '\n';
 
         create_mesh_instance<RefineMesh>();
         auto box_refine =
@@ -166,17 +165,10 @@ protected:
         }
     }
 
-    //! Check that the mean wall stress and heat flux of every level match
-    //! the friction velocity and the surface heat flux of the wall function
-    void check_level_fluxes()
+    //! Set up the two-level mesh with plane-uniform logarithmic profiles and
+    //! fill the wall-model ghost cells of velocity and temperature
+    void init_wall_fields()
     {
-        constexpr amrex::Real tol =
-            std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
-        constexpr amrex::Real ustar = 0.5_rt;
-        constexpr amrex::Real thetastar = -0.05_rt;
-        constexpr amrex::Real wind_angle = 0.5_rt;
-        constexpr amrex::Real theta0 = 300.0_rt;
-
         populate_parameters();
         initialize_mesh();
         ASSERT_EQ(sim().repo().num_active_levels(), 2);
@@ -194,15 +186,16 @@ protected:
         auto& temp_mueff = repo.get_field("temperature_mueff");
 
         // Logarithmic wind and temperature profiles, uniform in every plane
-        const amrex::Real wind_cos = std::cos(wind_angle);
-        const amrex::Real wind_sin = std::sin(wind_angle);
+        const amrex::Real wind_cos = std::cos(m_wind_angle);
+        const amrex::Real wind_sin = std::sin(m_wind_angle);
         init_log_profile(
             velocity, {0.0_rt, 0.0_rt, 0.0_rt},
-            {ustar / m_kappa * wind_cos, ustar / m_kappa * wind_sin, 0.0_rt},
+            {m_ustar / m_kappa * wind_cos, m_ustar / m_kappa * wind_sin,
+             0.0_rt},
             m_z0);
         init_log_profile(
-            temperature, {theta0, 0.0_rt, 0.0_rt},
-            {thetastar / m_kappa, 0.0_rt, 0.0_rt}, m_z0);
+            temperature, {m_theta0, 0.0_rt, 0.0_rt},
+            {m_thetastar / m_kappa, 0.0_rt, 0.0_rt}, m_z0);
         density.setVal(1.0_rt);
         vel_mueff.setVal(m_mu);
         temp_mueff.setVal(m_mu);
@@ -216,6 +209,25 @@ protected:
         // Fill the wall-model ghost cells of velocity and temperature
         velocity.apply_bc_funcs(kynema_sgf::FieldState::Old);
         temperature.apply_bc_funcs(kynema_sgf::FieldState::Old);
+    }
+
+    //! Check that the mean wall stress and heat flux of every level match
+    //! the friction velocity and the surface heat flux of the wall function
+    void check_level_fluxes()
+    {
+        constexpr amrex::Real tol =
+            std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+
+        init_wall_fields();
+
+        auto& repo = sim().repo();
+        const auto& velocity = repo.get_field("velocity");
+        const auto& temperature = repo.get_field("temperature");
+        const auto& density = repo.get_field("density");
+        const auto& vel_mueff = repo.get_field("velocity_mueff");
+        const auto& temp_mueff = repo.get_field("temperature_mueff");
+        const amrex::Real wind_cos = std::cos(m_wind_angle);
+        const amrex::Real wind_sin = std::sin(m_wind_angle);
 
         const auto& abl = sim().physics_manager().get<kynema_sgf::ABL>();
         const auto& mo = abl.abl_wall_function().mo();
@@ -223,7 +235,7 @@ protected:
         const amrex::Real utau2 = mo.utau * mo.utau;
         // The heat flux is a small difference of temperatures of order
         // theta0, so its roundoff scales with theta0
-        const amrex::Real tol_q = tol * theta0 * mo.utau;
+        const amrex::Real tol_q = tol * m_theta0 * mo.utau;
 
         // Every level must return the same mean stress, u_*^2 along the mean
         // wind, and the same mean heat flux, the specified surface flux (the
@@ -244,7 +256,14 @@ protected:
         }
     }
 
+    //! Level-1 box (xlo ylo zlo xhi yhi zhi), by default over x < 60, all
+    //! y and z < 250
+    std::string m_refine_box{"0.0 0.0 0.0 60.0 120.0 250.0"};
     std::string m_shear_stress_type{"moeng"};
+    const amrex::Real m_ustar{0.5_rt};
+    const amrex::Real m_thetastar{-0.05_rt};
+    const amrex::Real m_wind_angle{0.5_rt};
+    const amrex::Real m_theta0{300.0_rt};
     const amrex::Real m_mu{0.01_rt};
     const amrex::Real m_kappa{0.41_rt};
     const amrex::Real m_z0{0.1_rt};
@@ -261,6 +280,26 @@ TEST_F(ABLWallRefinementTest, schumann_wall_model_level_consistent)
 {
     m_shear_stress_type = "schumann";
     check_level_fluxes();
+}
+
+TEST_F(ABLWallRefinementTest, constant_wall_model_level_consistent)
+{
+    m_shear_stress_type = "constant";
+    check_level_fluxes();
+}
+
+TEST_F(ABLWallRefinementTest, refinement_aloft_keeps_reference_height)
+{
+    // Level-1 box that does not reach the wall: level 0 alone owns the
+    // wall and keeps the plane averages at the reference height, as on a
+    // single-level mesh
+    m_refine_box = "0.0 0.0 500.0 60.0 120.0 750.0";
+    init_wall_fields();
+
+    const auto& abl = sim().physics_manager().get<kynema_sgf::ABL>();
+    const auto& wall_func = abl.abl_wall_function();
+    EXPECT_EQ(&wall_func.mo(0), &wall_func.mo());
+    EXPECT_EQ(&wall_func.mo(1), &wall_func.mo());
 }
 
 } // namespace kynema_sgf_tests

@@ -240,14 +240,16 @@ This section is for setting atmospheric boundary layer parameters.
 
    The "Moeng", "Schumann" and "constant" models combine the velocity and
    temperature of the first cell above the wall with their plane averages.
-   On a mesh where more than one level touches the wall-modeled boundary,
+   On a mesh where a refinement level touches the wall-modeled boundary,
    the first cells of the levels sit at different heights, so the plane
    averages entering these models are taken per level from the wall-adjacent
    cells that each level owns, at their own height. The mean surface stress
    is then :math:`u_*^2` and the mean surface heat flux is the specified flux
    on every level. The friction velocity, the Obukhov length and the surface
    heat flux are computed once, from the plane average at
-   :input_param:`ABL.log_law_height`.
+   :input_param:`ABL.log_law_height`. Meshes whose refinement does not reach
+   the wall use the plane averages at :input_param:`ABL.log_law_height` as
+   before.
 
 .. input_param:: ABL.bndry_output_format
 

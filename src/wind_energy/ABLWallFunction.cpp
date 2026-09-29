@@ -228,15 +228,19 @@ void ABLWallFunction::update_level_means()
 
     // The wall models combine the local values of the first cell of each
     // level with the mean values entering the Monin-Obukhov data. On a mesh
-    // where more than one level touches the wall, the first cells of the
-    // levels sit at different heights, so the means must be taken per level
-    // from the wall-adjacent cells that the level owns: the mean stress and
-    // heat flux then match the friction velocity and the surface heat flux
-    // on every level. The friction velocity, the Obukhov length and the
-    // surface heat flux themselves stay those of the reference height.
+    // where a finer level touches the wall, the first cells of the levels
+    // sit at different heights, so the means must be taken per level from
+    // the wall-adjacent cells that the level owns: the mean stress and heat
+    // flux then match the friction velocity and the surface heat flux on
+    // every level. The friction velocity, the Obukhov length and the surface
+    // heat flux themselves stay those of the reference height.
     const auto& velocity = repo.get_field("velocity");
     const auto& temperature = repo.get_field("temperature");
-    const int idim = m_direction;
+    // Same wall as ABLVelWallFunc and ABLTempWallFunc, which apply the wall
+    // models at zlo with u and v as the tangential components
+    constexpr int idim = 2;
+    // Whether a level finer than level 0 owns part of the wall
+    bool fine_level_on_wall = false;
 
     m_mo_lev.resize(nlevels, m_mo);
     for (int lev = 0; lev < nlevels; ++lev) {
@@ -275,8 +279,7 @@ void ABLWallFunction::update_level_means()
                 amrex::Real, amrex::Real>{},
             velocity(lev), amrex::IntVect(0),
             [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) -> SumTuple {
-                const amrex::IntVect iv(i, j, k);
-                if (iv[idim] != kwall) {
+                if (k != kwall) {
                     return {0.0_rt, 0.0_rt, 0.0_rt, 0.0_rt,
                             0.0_rt, 0.0_rt, 0.0_rt};
                 }
@@ -306,6 +309,7 @@ void ABLWallFunction::update_level_means()
             // This level does not touch the wall
             continue;
         }
+        fine_level_on_wall = fine_level_on_wall || (lev > 0);
 
         auto& mo_lev = m_mo_lev[lev];
         mo_lev.zref = 0.5_rt * geom.CellSize(idim);
@@ -323,11 +327,23 @@ void ABLWallFunction::update_level_means()
                                mo_lev.theta_mean;
         }
     }
+
+    // Refinement that does not reach the wall leaves level 0 alone on the
+    // wall, which then keeps the plane averages at the reference height as
+    // on a single-level mesh
+    if (!fine_level_on_wall) {
+        m_mo_lev.clear();
+    }
 }
 
 void ABLWallFunction::update_tflux(const amrex::Real tflux)
 {
     m_mo.surf_temp_flux = tflux;
+    // The per-level data carry the same surface heat flux. Their surface
+    // temperatures, like that of m_mo, stay those of the last update_umean
+    for (auto& mo_lev : m_mo_lev) {
+        mo_lev.surf_temp_flux = tflux;
+    }
 }
 
 ABLVelWallFunc::ABLVelWallFunc(
