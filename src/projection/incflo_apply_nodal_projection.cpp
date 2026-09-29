@@ -177,10 +177,11 @@ void incflo::ApplyProjection(
     bool mesh_mapping = m_sim.has_mesh_mapping();
 
     // Implicit immersed-terrain drag (ImmersedTerrain.implicit_projection):
-    // the terrain acts as a fluid of density rho (1 + beta C dt) so that
-    //   u^{n+1} = (u** - dt grad p / rho) / (1 + beta C dt)
+    // the terrain acts as a fluid of density rho (1 + C dt), with the drag
+    // rate C = w C_d / dz of terrain_drag_rate, so that
+    //   u^{n+1} = (u** - dt grad p / rho) / (1 + C dt)
     // is divergence free. The velocity is divided by the factor below and
-    // sigma carries rho_eff = rho (1 + beta C dt).
+    // sigma carries rho_eff = rho (1 + C dt).
     const bool implicit_ib = m_repo.field_exists("terrain_drag_rate");
     const bool use_sigma = variable_density || mesh_mapping || implicit_ib;
     // The implicit drag factor uses the physical time step. During the initial
@@ -269,9 +270,12 @@ void incflo::ApplyProjection(
         amrex::Gpu::streamSynchronize();
     }
 
-    // Implicit drag: divide u** by (1 + beta C dt) in the full (non-delta)
-    // form of the projection
-    if (implicit_ib && !incremental && !proj_for_small_dt) {
+    // Implicit drag: divide u** by (1 + C dt) in every non-incremental
+    // projection. The small-dt form subtracts u^n after this scaling and adds
+    // it back after the solve, so it gives the same
+    // u^{n+1} = (u** - dt grad p / rho) / (1 + C dt) as the full form and
+    // stays consistent with rho_eff in sigma
+    if (implicit_ib && !incremental) {
         const auto& drag_rate = m_repo.get_field("terrain_drag_rate");
         for (int lev = 0; lev <= finest_level; ++lev) {
             const auto& u_arrs = velocity(lev).arrays();
