@@ -1154,6 +1154,26 @@ TEST_F(TabulatedProfileTest, velocity_needs_no_tke_column)
     EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
 }
 
+// interp::linear takes heights closer than the single-precision epsilon for
+// one, so a profile with such knots would not be interpolated between them
+TEST_F(TabulatedProfileTest, heights_too_close_to_interpolate_are_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_close.txt",
+        "# z u v T\n"
+        "0.0     1.0  0.0  300.0\n"
+        "1.0e-8  2.0  0.0  300.0\n"
+        "8.0     3.0  0.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_close.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "tp_close.txt line 3 has");
+    expect_abort_with(vel, "below which the profile cannot be interpolated");
+}
+
 TEST_F(TabulatedProfileTest, non_monotonic_heights_are_rejected)
 {
     populate_parameters();
@@ -1805,6 +1825,41 @@ TEST_F(TabulatedProfileTest, abl_inputs_without_the_abl_physics_are_unused)
     EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
 }
 
+// The ABL physics reads the default terrain.amrwind for a terrain-aligned
+// profile when no file is named, so that file is checked, and a missing one
+// is an error
+TEST_F(TabulatedProfileTest, the_default_abl_terrain_file_is_checked)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g14.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    amrex::ParmParse("TabulatedProfile")
+        .add("filename", std::string("tp_g14.txt"));
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("initial_wind_profile", true);
+        pp.add("terrain_aligned_profile", true);
+    }
+    amrex::ParmParse("incflo").addarr(
+        "physics", amrex::Vector<std::string>{"ABL"});
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    std::remove("terrain.amrwind");
+    expect_abort_with(
+        vel,
+        "cannot open the ABL terrain-aligned profile terrain file "
+        "terrain.amrwind");
+
+    write_terrain("terrain.amrwind", 0.0_rt, 8.0_rt);
+    expect_abort_with(vel, "the ground along xlo varies between");
+    // The default name is shared with other tests; leave no file behind
+    std::remove("terrain.amrwind");
+}
+
 // With TerrainDrag active, a terrain file that cannot be read is an error
 // rather than a check quietly skipped
 TEST_F(TabulatedProfileTest, a_missing_terrain_drag_file_is_rejected)
@@ -2032,6 +2087,11 @@ TEST_F(
         pp.add("filename", std::string("tp_g12.txt"));
         pp.add("zoffset", 3.0_rt);
     }
+    // The ABL physics reads the terrain for the aligned profile, so the
+    // offset is checked against it
+    write_terrain("tp_terrain_flat3.amrwind", 3.0_rt, 3.0_rt);
+    amrex::ParmParse("TerrainDrag")
+        .add("terrain_file", std::string("tp_terrain_flat3.amrwind"));
     {
         amrex::ParmParse pp("ABL");
         pp.add("initial_wind_profile", true);

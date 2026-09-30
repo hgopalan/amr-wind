@@ -429,6 +429,10 @@ ProfileData read_profile_file(const std::string& fname)
     for (auto& col : prof.cols) {
         col.resize(nz);
     }
+    // interp::linear takes two heights closer than this for one and returns
+    // the upper value between them, in either precision
+    constexpr auto min_spacing =
+        static_cast<amrex::Real>(std::numeric_limits<float>::epsilon());
     for (int k = 0; k < nz; ++k) {
         prof.z[k] = rows[k][0];
         if ((k > 0) && (prof.z[k] <= prof.z[k - 1])) {
@@ -436,6 +440,13 @@ ProfileData read_profile_file(const std::string& fname)
                 "TabulatedProfile: heights must increase strictly, but " +
                 at(fname, row_lines[k]) + " has " + precise(prof.z[k]) +
                 " after " + precise(prof.z[k - 1]));
+        }
+        if ((k > 0) && ((prof.z[k] - prof.z[k - 1]) <= min_spacing)) {
+            amrex::Abort(
+                "TabulatedProfile: " + at(fname, row_lines[k]) + " has " +
+                precise(prof.z[k]) + " after " + precise(prof.z[k - 1]) +
+                ", closer than " + precise(min_spacing) +
+                ", below which the profile cannot be interpolated");
         }
         for (int c = 0; c < ncols - 1; ++c) {
             prof.cols[c][k] = rows[k][c + 1];
@@ -707,8 +718,8 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     //   is built before it and no vof field is (MultiPhase declares vof unless
     //   it captures the interface with a level set), so there is nothing to
     //   check against then;
-    // - without TerrainDrag, TerrainDrag.terrain_file when the ABL physics
-    //   reads it for a terrain-aligned initial profile.
+    // - otherwise, the file the ABL physics reads for a terrain-aligned
+    //   initial profile (TerrainDrag.terrain_file, same default).
     // Decided from the inputs rather than from the physics manager, since the
     // boundary conditions of velocity are set up before any physics is built.
     const auto terrain_drag_pos = std::ranges::find(physics, "TerrainDrag");
@@ -726,15 +737,18 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     const bool terrain_from_waves = terrain_drag &&
                                     built_before_terrain_drag("OceanWaves") &&
                                     !vof_before_terrain_drag;
+    // Both readers default to terrain.amrwind (TerrainDrag::m_terrain_file,
+    // ABLFieldInit::m_terrain_file) and stop the run when the file is missing
     std::string terrain_file;
-    bool terrain_required = false;
+    std::string terrain_user;
     if (terrain_drag && !terrain_from_waves) {
-        // Same default as TerrainDrag::m_terrain_file
-        terrain_file = "terrain.amrwind";
-        terrain_required = true;
+        terrain_user = "TerrainDrag";
+    } else if (init_wind_profile && terrain_aligned) {
+        terrain_user = "ABL terrain-aligned profile";
     }
-    if ((terrain_drag && !terrain_from_waves) ||
-        (init_wind_profile && terrain_aligned)) {
+    const bool terrain_required = !terrain_user.empty();
+    if (terrain_required) {
+        terrain_file = "terrain.amrwind";
         amrex::ParmParse("TerrainDrag").query("terrain_file", terrain_file);
     }
 
@@ -749,8 +763,9 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         terrain_reader.close();
         if (!have_terrain && terrain_required) {
             amrex::Abort(
-                "TabulatedProfile: cannot open the TerrainDrag terrain file " +
-                terrain_file + " to check the ground along the inflow faces");
+                "TabulatedProfile: cannot open the " + terrain_user +
+                " terrain file " + terrain_file +
+                " to check the ground along the inflow faces");
         }
         if (have_terrain) {
             ioutils::read_flat_grid_file(

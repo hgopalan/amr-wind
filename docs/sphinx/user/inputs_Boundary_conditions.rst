@@ -253,7 +253,9 @@ inflow:
 File format
 ^^^^^^^^^^^
 
-One row per height, whitespace separated, with heights strictly increasing.
+One row per height, whitespace separated, with heights strictly increasing
+(adjacent heights more than about :math:`1.2 \times 10^{-7}` apart, below
+which the interpolation cannot tell them apart).
 An optional comment line naming the columns may precede the data (repeated
 ``#`` characters and commas between the names are allowed):
 
@@ -378,11 +380,11 @@ the inflow area with it, and the inflow-outflow solvability correction would
 then rescale the profile that was asked for. The ground is taken from the
 terrain file the run reads: with ``TerrainDrag`` active, its file
 (``TerrainDrag.terrain_file``, default ``terrain.amrwind``); without it,
-``TerrainDrag.terrain_file`` when the ABL physics reads it for a
-terrain-aligned initial profile. The ground along each x or y face that uses a
+the file the ABL physics reads for a terrain-aligned initial profile
+(``TerrainDrag.terrain_file``, with the same default). The ground along each x or y face that uses a
 profile is then checked against the offset, and the run stops if the face is
-not level, if the offset is not the height it stands at, or if the
-``TerrainDrag`` terrain file cannot be read. ``TerrainDrag`` builds its terrain
+not level, if the offset is not the height it stands at, or if the terrain
+file cannot be read. ``TerrainDrag`` builds its terrain
 from the waves, and nothing is checked, when ``OceanWaves`` is listed before it
 in ``incflo.physics`` and no volume fraction is (``MultiPhase`` without a level
 set); physics are built in the order listed.
