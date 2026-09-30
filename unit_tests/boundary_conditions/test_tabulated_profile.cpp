@@ -528,6 +528,27 @@ TEST_F(TabulatedProfileTest, a_header_not_starting_with_z_is_rejected)
         "the data, but a header must start with 'z'");
 }
 
+// One known column is enough: '# height u humidity speed' over four columns
+// would otherwise be read as z u v T, with humidity taken as v
+TEST_F(TabulatedProfileTest, a_header_naming_one_known_column_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_height1.txt",
+        "# height u humidity speed\n"
+        "0.0  0.0  3.0  300.0\n"
+        "8.0 16.0 -5.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_height1.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(
+        vel,
+        "tp_height1.txt line 1 looks like a header for the 4 columns of "
+        "the data, but a header must start with 'z'");
+}
+
 // A note as wide as the data is taken as the header; the error then names
 // its line so that the note can be reworded
 TEST_F(TabulatedProfileTest, a_note_taken_as_header_is_named)
@@ -1692,6 +1713,23 @@ TEST_F(TabulatedProfileTest, a_multicomponent_scalar_is_rejected)
     auto& pair = inflow_field("pair", 2, {m_xlo});
     expect_abort_with(
         pair, "only velocity and single-component scalars can be read");
+}
+
+// Density is not tabulated, even when its column is in the file
+TEST_F(TabulatedProfileTest, a_tabulated_density_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_rho.txt",
+        "# z u v T density\n"
+        "0.0  0.0  3.0  300.0  1.2\n"
+        "8.0 16.0 -5.0  308.0  1.1\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_rho.txt"));
+    initialize_mesh();
+
+    auto& rho = inflow_field("density", 1, {m_xlo});
+    expect_abort_with(rho, "density cannot be read from a profile file");
 }
 
 // The UDF was requested but no face both selects it and has a file

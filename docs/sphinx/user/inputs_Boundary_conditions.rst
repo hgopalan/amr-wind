@@ -235,7 +235,8 @@ inflow:
    file; for a scalar that constant must be given.
 
    ``density`` is not tabulated: every inflow face, of either type, needs a
-   constant ``<face>.density``.
+   constant ``<face>.density``, and the run stops if ``density`` selects
+   ``TabulatedProfile``.
 
    One inflow UDF serves every inflow face of a field, so all its
    ``mass_inflow`` and ``mass_inflow_outflow`` faces must name the same UDF
@@ -263,7 +264,8 @@ that starts with ``z`` (for example ``# z is the height above ground``). The
 run stops, naming the line, rather than guessing the columns when a comment
 that starts with ``z`` names a known column (``u``, ``v``, ``w``, ``T``,
 ``tke``) but does not fit the data, or when a comment as wide as the data names
-known columns but does not start with ``z`` (``# height u v w T``). A note
+a known column but does not start with ``z`` (``# height u v w T``, or
+``# height u humidity speed`` over four columns). A note
 that happens to be as wide as the data is taken as the header; the error that
 follows names its line, so that it can be reworded.
 

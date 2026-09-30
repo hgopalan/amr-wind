@@ -296,7 +296,7 @@ ProfileData read_profile_file(const std::string& fname)
     // line each came from
     amrex::Vector<amrex::Vector<std::string>> headers;
     amrex::Vector<int> header_lines;
-    // Comments ahead of the data that name known columns but do not start
+    // Comments ahead of the data that name a known column but do not start
     // with z, such as '# height u v w T', with their lines
     amrex::Vector<amrex::Vector<std::string>> lookalikes;
     amrex::Vector<int> lookalike_lines;
@@ -323,7 +323,7 @@ ProfileData read_profile_file(const std::string& fname)
                 if (!names.empty() && (names[0] == "z")) {
                     headers.push_back(names);
                     header_lines.push_back(lineno);
-                } else if (known_columns(names) >= 2) {
+                } else if (known_columns(names) > 0) {
                     lookalikes.push_back(names);
                     lookalike_lines.push_back(lineno);
                 }
@@ -408,9 +408,10 @@ ProfileData read_profile_file(const std::string& fname)
         check_unique_names(header, fname, prof.header_line);
         prof.colnames.assign(header.begin() + 1, header.end());
     } else {
-        // A comment as wide as the data that names the columns but does not
-        // start with z ('# height u v w T', '## z u v w T' is fine) would
-        // otherwise be skipped and the columns guessed
+        // A comment as wide as the data that names a known column but does
+        // not start with z ('# height u v w T', or '# height u humidity speed'
+        // with a single one; '## z u v w T' is fine) would otherwise be
+        // skipped and the columns guessed
         for (int i = 0; i < static_cast<int>(lookalikes.size()); ++i) {
             if (static_cast<int>(lookalikes[i].size()) == ncols) {
                 amrex::Abort(
@@ -641,6 +642,13 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     // xlo.type = "mass_inflow"
     // xlo.velocity.inflow_type = TabulatedProfile
     // TabulatedProfile.filename = inflow_profile.txt
+
+    // Density is not tabulated: every inflow face gives it as a constant
+    if (fld.name() == "density") {
+        amrex::Abort(
+            "TabulatedProfile: density cannot be read from a profile file; "
+            "give every inflow face a constant <face>.density instead");
+    }
 
     const int ncomp = fld.num_comp();
     // Velocity reads u, v and w; any other field reads the one column named
