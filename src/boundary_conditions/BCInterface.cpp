@@ -139,10 +139,14 @@ amrex::Array<const std::string, 3> BCIface::get_dirichlet_udfs()
         const auto bct = bctype[ori];
         amrex::ParmParse pp(bcid);
 
+        // An inflow face that names ConstDirichlet is the same as one that
+        // names no UDF: it keeps its constant where the UDF allows it
+        // (TabulatedProfile), and is refused where the UDF would overwrite
+        // it (see bc_udf::check_inflow_udf_faces)
         if (bct == BC::mass_inflow) {
-            if (pp.contains(inflow_key)) {
-                std::string val;
-                pp.get(inflow_key, val);
+            std::string val{"ConstDirichlet"};
+            pp.query(inflow_key, val);
+            if (val != "ConstDirichlet") {
 
                 if (has_inflow_udf && (inflow_udf != val)) {
                     amrex::Abort(
@@ -155,9 +159,9 @@ amrex::Array<const std::string, 3> BCIface::get_dirichlet_udfs()
         }
 
         if (bct == BC::mass_inflow_outflow) {
-            if (pp.contains(inflow_outflow_key)) {
-                std::string val;
-                pp.get(inflow_outflow_key, val);
+            std::string val{"ConstDirichlet"};
+            pp.query(inflow_outflow_key, val);
+            if (val != "ConstDirichlet") {
 
                 if (has_inflow_outflow_udf && (inflow_outflow_udf != val)) {
                     amrex::Abort(

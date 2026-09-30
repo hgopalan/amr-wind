@@ -233,13 +233,14 @@ inflow:
    ``mass_inflow`` face, ``<field>.inflow_outflow_type`` on a
    ``mass_inflow_outflow`` face. The two keys are not interchangeable, and
    each profiled field (velocity, temperature, tke) needs its own key on
-   every face. Any other inflow face of the field takes its constant
-   ``<face>.<field>`` value, even when ``TabulatedProfile.filename`` names a
-   file; for a scalar that constant must be given.
+   every face. Any other inflow face of the field, including one whose key
+   names ``ConstDirichlet``, takes its constant ``<face>.<field>`` value, even
+   when ``TabulatedProfile.filename`` names a file; for a scalar that constant
+   must be given.
 
    ``density`` is not tabulated: every inflow face, of either type, needs a
    constant ``<face>.density``, and the run stops if ``density`` selects
-   ``TabulatedProfile``.
+   ``TabulatedProfile``, whether the density is constant or transported.
 
    One inflow UDF serves every inflow face of a field, so all its
    ``mass_inflow`` and ``mass_inflow_outflow`` faces must name the same UDF

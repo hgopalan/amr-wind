@@ -802,6 +802,112 @@ TEST_F(TabulatedProfileTest, udfs_that_can_fill_their_faces_are_registered)
         "");
 }
 
+// A face that names ConstDirichlet is a face that does not select the
+// profile: it keeps its constant next to a TabulatedProfile face, including
+// through the BC setup, which gathers the UDFs of all faces
+TEST_F(TabulatedProfileTest, an_explicit_constant_face_keeps_its_constant)
+{
+    populate_parameters();
+    set_x_faces("mass_inflow", "mass_inflow");
+    write_profile(
+        "tp_explicit_const.txt",
+        "# z u v T\n"
+        "0.0  1.0  0.0  300.0\n"
+        "8.0  2.0  0.0  308.0\n");
+    amrex::ParmParse("TabulatedProfile")
+        .add("filename", std::string("tp_explicit_const.txt"));
+    amrex::ParmParse("xlo").add(
+        "velocity.inflow_type", std::string("TabulatedProfile"));
+    {
+        amrex::ParmParse pp("xhi");
+        pp.add("velocity.inflow_type", std::string("ConstDirichlet"));
+        amrex::Vector<amrex::Real> uvw{{-1.0_rt, 0.5_rt, 0.0_rt}};
+        pp.addarr("velocity", uvw);
+    }
+    initialize_mesh();
+
+    auto& vel = mesh().field_repo().declare_field("velocity", 3, 1, 1);
+    EXPECT_EQ(
+        register_error<kynema_sgf::BCVelocity>(
+            vel,
+            [&](const auto& udfs) {
+                kynema_sgf::vel_bc::register_velocity_dirichlet(
+                    vel, mesh(), time(), udfs);
+            },
+            true),
+        "");
+
+    const kynema_sgf::udf::TabulatedProfile profile(vel);
+    const amrex::Orientation xhi{0, amrex::Orientation::high};
+    const auto err = max_error(
+        vel, mesh().Geom(0), profile, xhi, {0.0_rt, 0.0_rt, 0.0_rt},
+        {-1.0_rt, 0.5_rt, 0.0_rt});
+    EXPECT_NEAR(err, 0.0_rt, m_tol);
+}
+
+// Next to a UDF that fills every inflow face, a face that names
+// ConstDirichlet is refused like one that names nothing
+TEST_F(TabulatedProfileTest, an_explicit_constant_face_next_to_a_custom_udf)
+{
+    populate_parameters();
+    set_x_faces("mass_inflow", "mass_inflow");
+    amrex::ParmParse("xlo").add(
+        "velocity.inflow_type", std::string("CustomVelocity"));
+    {
+        amrex::ParmParse pp("xhi");
+        pp.add("velocity.inflow_type", std::string("ConstDirichlet"));
+        amrex::Vector<amrex::Real> uvw{{-1.0_rt, 0.0_rt, 0.0_rt}};
+        pp.addarr("velocity", uvw);
+    }
+    initialize_mesh();
+
+    auto& vel = mesh().field_repo().declare_field("velocity", 3, 1, 1);
+    const auto verr = register_error<kynema_sgf::BCVelocity>(
+        vel,
+        [&](const auto& udfs) {
+            kynema_sgf::vel_bc::register_velocity_dirichlet(
+                vel, mesh(), time(), udfs);
+        },
+        true);
+    EXPECT_NE(
+        verr.find(
+            "xhi.velocity.inflow_type is ConstDirichlet, but "
+            "CustomVelocity fills every inflow face"),
+        std::string::npos)
+        << verr;
+}
+
+// The constant density of ICNS registers no inflow UDF, so selecting the
+// profile for it is refused in its BC setup rather than ignored
+TEST_F(TabulatedProfileTest, a_tabulated_constant_density_is_rejected)
+{
+    populate_parameters();
+    for (const auto& face : {"ylo", "zlo", "xhi", "yhi", "zhi"}) {
+        amrex::ParmParse pp(face);
+        pp.add("type", std::string("slip_wall"));
+    }
+    {
+        amrex::ParmParse pp("xlo");
+        pp.add("type", std::string("mass_inflow"));
+        amrex::Vector<amrex::Real> uvw{{1.0_rt, 0.0_rt, 0.0_rt}};
+        pp.addarr("velocity", uvw);
+        pp.add("density", 1.0_rt);
+        pp.add("density.inflow_type", std::string("TabulatedProfile"));
+    }
+    initialize_mesh();
+
+    try {
+        sim().pde_manager().register_icns();
+        ADD_FAILURE() << "expected the tabulated density to be refused";
+    } catch (const amrex::RuntimeError& err) {
+        EXPECT_NE(
+            std::string(err.what())
+                .find("density cannot be read from a profile file"),
+            std::string::npos)
+            << err.what();
+    }
+}
+
 // A PDE records the fill interpolation of its field, so that an inflow UDF
 // registered later uses it too (TKE.interpolation = PiecewiseConstant)
 TEST_F(TabulatedProfileTest, a_pde_field_records_its_fill_interpolation)
