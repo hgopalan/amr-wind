@@ -102,8 +102,8 @@ void BCIface::set_bcfuncs()
     // Transported quantities need the outflow part of an inflow-outflow face
     // filled by extrapolation rather than left at the inflow value. Velocity,
     // temperature and tke always get it; any other field gets it when its
-    // inflow-outflow faces are driven by a UDF, such as a tabulated profile,
-    // so that scalars held at a constant value keep their behavior
+    // inflow-outflow faces are driven by a tabulated profile, so that scalars
+    // held at a constant value or set by another UDF keep their behavior
     const auto& fname = m_field.name();
     bool extrapolate_outflow =
         (fname == "velocity") || (fname == "temperature") || (fname == "tke");
@@ -114,7 +114,7 @@ void BCIface::set_bcfuncs()
             amrex::ParmParse pp(bcnames[ori]);
             pp.query(fname + ".inflow_outflow_type", udf);
         }
-        if (udf != "ConstDirichlet") {
+        if (udf == "TabulatedProfile") {
             extrapolate_outflow = true;
         }
     }

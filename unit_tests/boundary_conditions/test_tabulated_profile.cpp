@@ -271,6 +271,50 @@ protected:
     const amrex::Orientation m_ylo{1, amrex::Orientation::low};
 };
 
+// A note that starts with z is not the header, before or after the real one.
+// The header swaps u and v, so only the real header gives u = 2z, v = 3 - z
+TEST_F(TabulatedProfileTest, a_note_before_the_header_is_not_the_header)
+{
+    populate_parameters();
+    write_profile(
+        "tp_note1.txt",
+        "# z is the height above ground in meters\n"
+        "# z v u T\n"
+        "0.0  3.0  0.0  300.0\n"
+        "8.0 -5.0 16.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_note1.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    const kynema_sgf::udf::TabulatedProfile profile(vel);
+    const auto err = max_error(
+        vel, mesh().Geom(0), profile, m_xlo, {2.0_rt, -1.0_rt, 0.0_rt},
+        {0.0_rt, 3.0_rt, 0.0_rt});
+    EXPECT_NEAR(err, 0.0_rt, m_tol);
+}
+
+TEST_F(TabulatedProfileTest, a_note_after_the_header_is_not_the_header)
+{
+    populate_parameters();
+    write_profile(
+        "tp_note2.txt",
+        "# z v u T\n"
+        "# z values are in meters\n"
+        "0.0  3.0  0.0  300.0\n"
+        "8.0 -5.0 16.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_note2.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    const kynema_sgf::udf::TabulatedProfile profile(vel);
+    const auto err = max_error(
+        vel, mesh().Geom(0), profile, m_xlo, {2.0_rt, -1.0_rt, 0.0_rt},
+        {0.0_rt, 3.0_rt, 0.0_rt});
+    EXPECT_NEAR(err, 0.0_rt, m_tol);
+}
+
 TEST_F(TabulatedProfileTest, velocity_from_header)
 {
     populate_parameters();
@@ -415,7 +459,8 @@ TEST_F(TabulatedProfileTest, ambiguous_column_count_is_rejected)
     EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
 }
 
-TEST_F(TabulatedProfileTest, klaxell_without_a_tke_column_is_rejected)
+// The tke boundary condition needs a tke column wherever tke is profiled
+TEST_F(TabulatedProfileTest, tke_without_a_tke_column_is_rejected)
 {
     populate_parameters();
     write_profile(
@@ -432,8 +477,31 @@ TEST_F(TabulatedProfileTest, klaxell_without_a_tke_column_is_rejected)
     }
     initialize_mesh();
 
+    auto& tke = inflow_field("tke", 1, {m_xlo});
+    expect_abort_with(tke, "tp_no_tke.txt has no tke column");
+}
+
+// With KLAxell, velocity may be profiled from a file without tke, for
+// example when tke is held at a constant on the inflow face
+TEST_F(TabulatedProfileTest, klaxell_velocity_needs_no_tke_column)
+{
+    populate_parameters();
+    write_profile(
+        "tp_no_tke2.txt",
+        "0.0  0.0  3.0  300.0\n"
+        "8.0 16.0 -5.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_no_tke2.txt"));
+    }
+    {
+        amrex::ParmParse pp("turbulence");
+        pp.add("model", std::string("KLAxell"));
+    }
+    initialize_mesh();
+
     auto& vel = inflow_field("velocity", 3, {m_xlo});
-    EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
 }
 
 TEST_F(TabulatedProfileTest, non_monotonic_heights_are_rejected)
@@ -541,6 +609,45 @@ TEST_F(TabulatedProfileTest, outflow_part_of_a_scalar_face_is_extrapolated)
     // The profile is held where the flow enters and the interior value is
     // extrapolated where it leaves
     const auto err = xlo_ghost_error(tracer, kmid, 2.0_rt, interior);
+    constexpr amrex::Real tol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+    EXPECT_NEAR(err, 0.0_rt, tol);
+}
+
+// A scalar set by another UDF keeps that UDF's value on the whole face,
+// where the flow leaves too
+TEST_F(TabulatedProfileTest, outflow_of_a_scalar_set_by_another_udf_is_kept)
+{
+    populate_parameters();
+    for (const auto& face : {"ylo", "zlo", "xhi", "yhi", "zhi"}) {
+        amrex::ParmParse pp(face);
+        pp.add("type", std::string("slip_wall"));
+    }
+    {
+        amrex::ParmParse pp("xlo");
+        pp.add("type", std::string("mass_inflow_outflow"));
+        pp.add("tracer.inflow_outflow_type", std::string("CustomScalar"));
+    }
+    initialize_mesh();
+
+    // Flow enters through the lower half of xlo and leaves through the upper
+    const int kmid = 4;
+    const amrex::Real interior = 100.0_rt;
+    auto& frepo = mesh().field_repo();
+    auto& vel = frepo.declare_field("velocity", 3, 1, 1);
+    set_inflow_outflow_velocity(vel, kmid);
+
+    // Ghost cells hold what the UDF would put there, 1, and the interior 100.
+    // CustomScalar itself is a template to be filled in by the user, so only
+    // the outflow treatment is exercised: it must leave the ghosts alone
+    auto& tracer = frepo.declare_field("tracer", 1, 1, 1);
+    tracer.setVal(1.0_rt);
+    tracer(0).setVal(interior, 0, 1, 0);
+    kynema_sgf::BCScalar bc(tracer);
+    bc(0.0_rt);
+    tracer.apply_bc_funcs(kynema_sgf::FieldState::New);
+
+    const auto err = xlo_ghost_error(tracer, 0, 0.0_rt, 1.0_rt);
     constexpr amrex::Real tol =
         std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
     EXPECT_NEAR(err, 0.0_rt, tol);

@@ -242,6 +242,11 @@ An optional comment line naming the columns may precede the data:
    200.0    9.0   1.0  300.0  0.30
    1000.0  -3.0   8.0  308.0  0.05
 
+The header is a comment line ahead of the data whose first entry is ``z``.
+Other comment lines are notes. If a note also starts with ``z`` (for example
+``# z is the height above ground``), the header is the one that names as many
+columns as the data holds.
+
 Without such a header the column count decides the layout: four columns are
 ``z u v T`` and five are ``z u v T tke``. Any other width must carry a header.
 The assumed names are echoed at startup so the choice is visible in the log.
@@ -256,7 +261,8 @@ error rather than something quietly ignored.
 Each field takes the column named after it, so ``temperature`` reads ``T``
 (``theta`` and ``temperature`` are also accepted) and ``tke`` reads ``tke``.
 Velocity takes ``u``, ``v`` and ``w``; a missing ``w`` column is zero, but a
-missing ``u`` or ``v`` is an error. Outside the tabulated range the nearest
+missing ``u`` or ``v`` is an error. A ``tke`` column is only needed where tke
+itself is filled from the profile. Outside the tabulated range the nearest
 value is held rather than extrapolated.
 
 .. note::

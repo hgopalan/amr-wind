@@ -114,26 +114,40 @@ assumed_columns(const int ncols, const std::string& fname)
     return {};
 }
 
-/** Read the header of a profile file, if it has one
+/** Read a comment line as a header, if it can be one
  *
- *  A leading comment line whose first entry is the height is taken as the list
- *  of column names. Any other comment line is skipped.
+ *  A comment line whose first entry is the height is a candidate list of
+ *  column names, height included. Any other comment line is not.
+ *
+ *  \param line Comment line, starting with '#'
+ *  \param names Column names of the candidate header, height first
+ *  \return True when the line can be the header
  */
-bool parse_header(
-    const std::string& line,
-    amrex::Vector<std::string>& colnames,
-    const std::string& fname)
+bool parse_header(const std::string& line, amrex::Vector<std::string>& names)
 {
     std::istringstream iss(line.substr(line.find('#') + 1));
-    amrex::Vector<std::string> names;
+    amrex::Vector<std::string> candidate;
     std::string name;
     while (iss >> name) {
-        names.push_back(canonical_name(name));
+        candidate.push_back(canonical_name(name));
     }
-    if (names.empty() || (names[0] != "z")) {
+    if (candidate.empty() || (candidate[0] != "z")) {
         return false;
     }
-    // The height column counts too: '# z z u v T' names z twice
+    names = candidate;
+    return true;
+}
+
+/** Reject a header that names a column more than once
+ *
+ *  The height column counts too: '# z z u v T' names z twice.
+ *
+ *  \param names Column names of the header, height first
+ *  \param fname Profile file, for the message
+ */
+void check_unique_names(
+    const amrex::Vector<std::string>& names, const std::string& fname)
+{
     for (int i = 0; i < static_cast<int>(names.size()); ++i) {
         for (int j = i + 1; j < static_cast<int>(names.size()); ++j) {
             if (names[i] == names[j]) {
@@ -143,8 +157,6 @@ bool parse_header(
             }
         }
     }
-    colnames.assign(names.begin() + 1, names.end());
-    return true;
 }
 
 /** Where a problem was found, for a message the reader can act on
@@ -215,6 +227,7 @@ ProfileData read_profile_file(const std::string& fname)
     ProfileData prof;
     amrex::Vector<amrex::Vector<amrex::Real>> rows;
     amrex::Vector<int> row_lines;
+    amrex::Vector<amrex::Vector<std::string>> headers;
     std::string line;
     int lineno = 0;
 
@@ -225,9 +238,13 @@ ProfileData read_profile_file(const std::string& fname)
             continue;
         }
         if (line[first] == '#') {
-            // Only a header ahead of the data names the columns
-            if (rows.empty() && !prof.has_header) {
-                prof.has_header = parse_header(line, prof.colnames, fname);
+            // Only a header ahead of the data names the columns. Every
+            // comment there that could be one is kept, and the choice waits
+            // until the width of the data is known
+            amrex::Vector<std::string> names;
+            if (rows.empty() && parse_header(line, names)) {
+                headers.push_back(names);
+                prof.has_header = true;
             }
             continue;
         }
@@ -276,6 +293,17 @@ ProfileData read_profile_file(const std::string& fname)
 
     const int ncols = static_cast<int>(rows[0].size());
     if (prof.has_header) {
+        // A note such as '# z is the height above ground' can look like a
+        // header too. Take the last candidate as wide as the data, or the last
+        // one when none is, so that the width error below names a header
+        auto header = headers.back();
+        for (const auto& candidate : headers) {
+            if (static_cast<int>(candidate.size()) == ncols) {
+                header = candidate;
+            }
+        }
+        check_unique_names(header, fname);
+        prof.colnames.assign(header.begin() + 1, header.end());
         if (static_cast<int>(prof.colnames.size()) != ncols - 1) {
             amrex::Abort(
                 "TabulatedProfile: the header of " + fname + " names " +
@@ -400,9 +428,19 @@ void check_inflow_direction(
  *  be flat, and the offset has to be the height it sits at. Ground that varies
  *  along the face would vary the inflow area with it, and the inflow-outflow
  *  solvability correction would then rescale the profile that was asked for.
+ *
+ *  \param xterrain Terrain grid x coordinates
+ *  \param yterrain Terrain grid y coordinates
+ *  \param zterrain Terrain heights, indexed [i * ny + j]
+ *  \param geom Level-0 geometry
+ *  \param face Face index, in amrex::Orientation order
+ *  \param zoffset Ground height the profile on this face was given
+ *  \param tol Tolerance on the ground variation and on the offset
  */
 void check_ground_height(
-    const std::string& terrain_file,
+    const amrex::Vector<amrex::Real>& xterrain,
+    const amrex::Vector<amrex::Real>& yterrain,
+    const amrex::Vector<amrex::Real>& zterrain,
     const amrex::Geometry& geom,
     const int face,
     const amrex::Real zoffset,
@@ -412,11 +450,6 @@ void check_ground_height(
     if (dir == AMREX_SPACEDIM - 1) {
         return;
     }
-
-    amrex::Vector<amrex::Real> xterrain;
-    amrex::Vector<amrex::Real> yterrain;
-    amrex::Vector<amrex::Real> zterrain;
-    ioutils::read_flat_grid_file(terrain_file, xterrain, yterrain, zterrain);
 
     const auto problo = geom.ProbLoArray();
     const auto probhi = geom.ProbHiArray();
@@ -508,6 +541,20 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         0) {
         amrex::ParmParse("ImmersedTerrain").query("terrain_file", terrain_file);
     }
+    // Read the terrain once for every face that is checked against it
+    amrex::Vector<amrex::Real> xterrain;
+    amrex::Vector<amrex::Real> yterrain;
+    amrex::Vector<amrex::Real> zterrain;
+    bool have_terrain = false;
+    if (!terrain_file.empty()) {
+        std::ifstream terrain_reader(terrain_file, std::ios::in);
+        have_terrain = terrain_reader.good();
+        terrain_reader.close();
+        if (have_terrain) {
+            ioutils::read_flat_grid_file(
+                terrain_file, xterrain, yterrain, zterrain);
+        }
+    }
     const auto& geom = fld.repo().mesh().Geom(0);
     amrex::Real ground_tol = geom.CellSize(AMREX_SPACEDIM - 1);
     pp.query("ground_tolerance", ground_tol);
@@ -516,10 +563,6 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     // this one puts temperature, so the two cannot be read the same way
     std::string rans_file;
     amrex::ParmParse("ABL").query("rans_1dprofile_file", rans_file);
-
-    std::string turbulence_model;
-    amrex::ParmParse("turbulence").query("model", turbulence_model);
-    const bool needs_tke = (amrex::toLower(turbulence_model) == "klaxell");
 
     const auto want = wanted_columns(fld.name(), ncomp);
     const auto& bctype = fld.bc_type();
@@ -567,14 +610,9 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
                 " is offset to raised ground. Either align the initial profile "
                 "with the terrain or drop the offset.");
         }
-        if (!terrain_file.empty()) {
-            std::ifstream terrain_reader(terrain_file, std::ios::in);
-            const bool have_terrain = terrain_reader.good();
-            terrain_reader.close();
-            if (have_terrain) {
-                check_ground_height(
-                    terrain_file, geom, face, zoffset, ground_tol);
-            }
+        if (have_terrain) {
+            check_ground_height(
+                xterrain, yterrain, zterrain, geom, face, zoffset, ground_tol);
         }
 
         if (!cache.contains(fname)) {
@@ -592,13 +630,6 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
                     << "TabulatedProfile: " << fname
                     << " has no header, assuming columns z u v T"
                     << ((prof.colnames.size() > 3) ? " tke" : "") << "\n";
-            }
-
-            if (needs_tke && (prof.column_index("tke") < 0)) {
-                amrex::Abort(
-                    "TabulatedProfile: the KLAxell model solves a TKE equation "
-                    "but " +
-                    fname + " has no tke column");
             }
 
             cache[fname] = prof;

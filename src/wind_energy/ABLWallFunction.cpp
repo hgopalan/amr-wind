@@ -424,6 +424,9 @@ void ABLTempWallFunc::wall_model(
     }
 
     BL_PROFILE("kynema-sgf::ABLTempWallFunc");
+    // The heat flux divides by the effective diffusivity, which is zero when
+    // the lower boundary is filled before the turbulence model has run. No
+    // flux can be carried then, so it is left out, as for the wall stress.
     auto& velocity = repo.get_field("velocity");
     const auto& density = repo.get_field("density", rho_state);
     const auto& alpha = repo.get_field("temperature_mueff");
@@ -489,8 +492,11 @@ void ABLTempWallFunc::wall_model(
                             const amrex::Real blankTerrain =
                                 (has_terrain) ? 1 - blank_arr(i, j, k, 0)
                                               : 1.0_rt;
-                            tarr(i, j, k - 1) = blankTerrain * den(i, j, k) *
-                                                surf_temp_flux / alphaT;
+                            tarr(i, j, k - 1) =
+                                (alphaT > 0.0_rt)
+                                    ? (blankTerrain * den(i, j, k) *
+                                       surf_temp_flux / alphaT)
+                                    : 0.0_rt;
                         });
                 } else {
                     amrex::ParallelFor(
@@ -505,9 +511,11 @@ void ABLTempWallFunc::wall_model(
                             const amrex::Real blankTerrain =
                                 (has_terrain) ? 1 - blank_arr(i, j, k, 0)
                                               : 1.0_rt;
-                            tarr(i, j, k - 1) = blankTerrain * den(i, j, k) *
-                                                tau.calc_theta(wspd, theta2) /
-                                                alphaT;
+                            tarr(i, j, k - 1) =
+                                (alphaT > 0.0_rt)
+                                    ? (blankTerrain * den(i, j, k) *
+                                       tau.calc_theta(wspd, theta2) / alphaT)
+                                    : 0.0_rt;
                         });
                 }
             }
