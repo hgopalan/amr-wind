@@ -29,10 +29,11 @@ void register_scalar_dirichlet(
         (inflow_outflow_udf != "ConstDirichlet") &&
         (inflow_udf != inflow_outflow_udf)) {
         amrex::Abort(
-            "Scalar BC: inflow_type " + inflow_udf +
-            " and inflow_outflow_type " + inflow_outflow_udf + " of " +
-            field.name() +
-            " differ, but one inflow UDF serves every inflow face");
+            "Scalar BC: " + field.name() + ".inflow_type = " + inflow_udf +
+            " (mass_inflow faces) and " + field.name() +
+            ".inflow_outflow_type = " + inflow_outflow_udf +
+            " (mass_inflow_outflow faces) differ; one UDF fills every "
+            "inflow face, so use the same one on both");
     }
     if (inflow_udf != "ConstDirichlet") {
         register_inflow_scalar_dirichlet<ConstDirichlet>(

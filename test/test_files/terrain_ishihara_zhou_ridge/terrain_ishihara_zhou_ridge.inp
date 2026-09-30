@@ -1,8 +1,9 @@
 # Rough ridge of the Ishihara-Zhou wind-tunnel dataset on a coarse grid.
 #
 # Full scale (tunnel x1000): a cosine-squared ridge 40 m high with a 100 m
-# half-width and its crest at x = 800 m, under the measured rough-surface
-# approach flow (Ishihara & Zhou, Data in Brief 63 (2025) 112260, CC BY 4.0).
+# base half-length and its crest at x = 800 m, under the measured rough-surface
+# approach flow (Ishihara & Zhou, Data in Brief 63 (2025) 112260, CC BY 4.0,
+# https://creativecommons.org/licenses/by/4.0/).
 # The profile supplies velocity, temperature and tke at the inflow face.
 # KLAxell reads the same atmosphere from rans_1d.info, whose fourth column is w
 # rather than temperature. The files are derived from

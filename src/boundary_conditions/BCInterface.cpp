@@ -109,9 +109,10 @@ void BCIface::set_bcfuncs()
 
         // On a mass_inflow_outflow face, a transported field keeps its inflow
         // value (constant or UDF) where the flow enters and takes the interior
-        // value where it leaves. This holds for every transported field and on
-        // every such face, whatever sets its inflow value, so the choice of
-        // one face never changes another.
+        // value where it leaves. This holds for every field marked by
+        // set_transported() (velocity and the scalar transport equations;
+        // VOF keeps its own treatment) and on every such face, whatever sets
+        // its inflow value, so the choice of one face never changes another.
         if (m_transported && (bct == BC::mass_inflow_outflow)) {
             m_field.register_custom_bc<MassInflowOutflowBC>(ori);
         }

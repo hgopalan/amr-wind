@@ -11,9 +11,13 @@
 # when any case failed, so that a caller can tell.
 set -u
 EXE=${EXE:?set EXE to the kynema-sgf executable}
-# Each case runs from its own folder, so a relative path to the executable is
-# made absolute first
-EXE=$(cd "$(dirname "$EXE")" && pwd)/$(basename "$EXE")
+# Each case runs from its own folder, so the executable is made an absolute
+# path first: a bare name is looked up on PATH, a relative path is resolved
+if [[ "$EXE" == */* ]]; then
+    EXE=$(cd "$(dirname "$EXE")" && pwd)/$(basename "$EXE")
+else
+    EXE=$(command -v "$EXE") || { echo "EXE not found on PATH" >&2; exit 1; }
+fi
 NP=${NP:-4}
 MPIRUN=${MPIRUN:-mpirun}
 ARGS=${ARGS:-}

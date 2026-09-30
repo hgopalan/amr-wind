@@ -16,21 +16,27 @@ The cases use the `TabulatedProfile` inflow boundary condition and KLAxell.
 
 ## Data
 
-The measurements are CC BY 4.0 supplementary files of the paper and are not
+The measurements are CC BY 4.0
+(<https://creativecommons.org/licenses/by/4.0/>) supplementary files of the
+paper and are not
 stored in this repository. Download them into `data/`:
+
+The scripts read `mmc1` to `mmc4`, which are `.xls` files read with `xlrd`:
 
 ```bash
 mkdir -p data
-for n in 1 2 3 4 5 6; do curl -L -o data/mmc$n.xls https://ars.els-cdn.com/content/image/1-s2.0-S2352340925009813-mmc$n.xls; done
-for n in 7 8; do curl -L -o data/mmc$n.xlsx https://ars.els-cdn.com/content/image/1-s2.0-S2352340925009813-mmc$n.xlsx; done
+for n in 1 2 3 4; do curl -L -o data/mmc$n.xls https://ars.els-cdn.com/content/image/1-s2.0-S2352340925009813-mmc$n.xls; done
 ```
 
 | File | Contents |
 |---|---|
 | mmc1.xls / mmc2.xls | Approach flow, smooth / rough surface (used to build the inflow) |
-| mmc3.xls / mmc4.xls | 2D ridge, smooth / rough, vertical plane y = 0 |
-| mmc5.xls / mmc6.xls | 3D hill, smooth / rough, vertical plane y = 0 |
-| mmc7.xlsx / mmc8.xlsx | 3D hill horizontal planes: smooth z/h = 0.125 and 1.0, rough z/h = 0.25 and 1.0 |
+| mmc3.xls / mmc4.xls | 2D ridge, smooth / rough, vertical plane y = 0 (used by `compare_ridge.py`) |
+
+The dataset also holds the 3D hill measurements, which these scripts do not
+read: `mmc5.xls` / `mmc6.xls` (smooth / rough, vertical plane y = 0) and
+`mmc7.xlsx` / `mmc8.xlsx` (horizontal planes; `.xlsx` needs `openpyxl` rather
+than `xlrd`).
 
 ## Generating the cases
 
@@ -53,7 +59,7 @@ This writes `cases/`, which git ignores. Each folder holds `case.inp`,
 
 Surfaces are `smooth` (z0 = 0.01 m, u* = 0.21 m/s) and `rough` (z0 = 0.3 m,
 u* = 0.32 m/s, 5 mm artificial grass). Cases are at full scale (tunnel ×1000):
-the ridge or hill is 40 m high with a 100 m half-width.
+the ridge or hill is 40 m high with a 100 m base half-length.
 
 - **Domain:** x from 0 to 2400 m with the crest or hill center at x = 800 m;
   z from 0 to 896 m under a slip top, standing in for the tunnel ceiling.
@@ -81,7 +87,8 @@ python3 compare_ridge.py cases/approach/rough_4m rough empty
 python3 compare_ridge.py cases/ridge2d/rough_klaxell_4m rough ridge rough_klaxell_4m.png
 ```
 
-This needs `yt`, `xlrd`, `numpy` and `matplotlib`. For each measurement station
+This needs `yt`, `xlrd` and `numpy`, and `matplotlib` when a plot file is
+asked for. For each measurement station
 it prints the rms U and k differences and the lowest-point velocity, then the
 reversed-flow extent at the first cell above the surface.
 

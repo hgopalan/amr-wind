@@ -1,3 +1,4 @@
+# Derived from Ishihara & Zhou, Data in Brief 63 (2025) 112260, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
 # z u v temperature tke
 0.500 0.39869 0.0 300.0 0.271475
 1.000 0.93969 0.0 300.0 0.271475

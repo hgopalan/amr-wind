@@ -3,12 +3,17 @@
 #include "src/boundary_conditions/BCInterface.H"
 #include "src/boundary_conditions/scalar_bcs.H"
 #include "src/core/FieldBCOps.H"
+#include "src/boundary_conditions/velocity_bcs.H"
+#include "src/equation_systems/PDEHelpers.H"
+#include "src/equation_systems/SchemeTraits.H"
+#include "src/equation_systems/tke/TKE.H"
 #include "src/core/FieldRepo.H"
 #include "src/physics/udfs/TabulatedProfile.H"
 
 #include "AMReX_ParmParse.H"
 #include "AMReX_REAL.H"
 
+#include <cstdio>
 #include <fstream>
 #include <limits>
 
@@ -105,6 +110,37 @@ amrex::Real xlo_ghost_error(
         });
     amrex::ParallelDescriptor::ReduceRealMax(error);
     return error;
+}
+
+/** Value the profile operator puts at one index of one face
+ *
+ *  \param profile Profile under test
+ *  \param geom Geometry of the level
+ *  \param ori Face being filled
+ *  \param iv Index filled
+ *  \param comp Component filled
+ *  \param face_dir Face direction of a face-centered field, or -1
+ *  \return The value
+ */
+amrex::Real value_at(
+    const kynema_sgf::udf::TabulatedProfile& profile,
+    const amrex::Geometry& geom,
+    const amrex::Orientation ori,
+    const amrex::IntVect& iv,
+    const int comp,
+    const int face_dir = -1)
+{
+    const auto op = profile.device_instance(face_dir);
+    const auto geomdata = geom.data();
+    const amrex::Box bx(iv, iv);
+    amrex::FArrayBox fab(bx, 1, amrex::The_Pinned_Arena());
+    const auto& arr = fab.array();
+    // Component comp of the field, written to component 0 of the box
+    amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+        op(amrex::IntVect{i, j, k}, arr, geomdata, 0.0_rt, ori, 0, 0, comp);
+    });
+    amrex::Gpu::streamSynchronize();
+    return fab(iv, 0);
 }
 
 /** Fill a field using the tabulated profile and return the largest departure
@@ -371,6 +407,27 @@ TEST_F(TabulatedProfileTest, a_header_too_wide_for_the_data_is_rejected)
         "has 4");
 }
 
+// Nor with a header: the RANS readers take none, so sharing is refused
+TEST_F(TabulatedProfileTest, a_header_does_not_allow_sharing_the_rans_file)
+{
+    populate_parameters();
+    write_profile(
+        "tp_rans3.txt",
+        "# z u v T tke\n"
+        "0.0 1.0 2.0 300.0 0.5\n"
+        "8.0 3.0 4.0 308.0 0.4\n");
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("rans_1dprofile_file", std::string("tp_rans3.txt"));
+    }
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_rans3.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "Use a separate file for the inflow profile");
+}
+
 // A note alone does not hide that the file is the RANS profile
 TEST_F(TabulatedProfileTest, a_note_does_not_hide_the_rans_file)
 {
@@ -427,7 +484,160 @@ TEST_F(TabulatedProfileTest, header_names_ignore_case_and_accept_aliases)
     EXPECT_NEAR(err, 0.0_rt, m_tol * 300.0_rt);
 }
 
-TEST_F(TabulatedProfileTest, velocity_from_header)
+// '## z ...' and '# z, u, ...' are headers too: leading '#' characters and
+// commas are not part of the names. T is in the fifth column, where a
+// headerless file would have tke, so only the header gives T = 300 + z
+TEST_F(TabulatedProfileTest, headers_with_extra_hashes_or_commas_are_read)
+{
+    populate_parameters();
+    write_profile(
+        "tp_hash.txt",
+        "## z, u, v, w, T\n"
+        "0.0  0.0  3.0  0.0  300.0\n"
+        "8.0 16.0 -5.0  0.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_hash.txt"));
+    initialize_mesh();
+
+    auto& temp = inflow_field("temperature", 1, {m_xlo});
+    const kynema_sgf::udf::TabulatedProfile profile(temp);
+    const auto err = max_error(
+        temp, mesh().Geom(0), profile, m_xlo, {1.0_rt, 0.0_rt, 0.0_rt},
+        {300.0_rt, 0.0_rt, 0.0_rt});
+    EXPECT_NEAR(err, 0.0_rt, m_tol * 300.0_rt);
+}
+
+// A comment that names the columns but does not start with z is reported
+// rather than skipped, which would have the columns guessed
+TEST_F(TabulatedProfileTest, a_header_not_starting_with_z_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_height.txt",
+        "# height u v w T\n"
+        "0.0  0.0  3.0  0.0  300.0\n"
+        "8.0 16.0 -5.0  0.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_height.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(
+        vel,
+        "tp_height.txt line 1 looks like a header for the 5 columns of "
+        "the data, but a header must start with 'z'");
+}
+
+// A note as wide as the data is taken as the header; the error then names
+// its line so that the note can be reworded
+TEST_F(TabulatedProfileTest, a_note_taken_as_header_is_named)
+{
+    populate_parameters();
+    write_profile(
+        "tp_note5.txt",
+        "# z is height above ground\n"
+        "0.0  0.0  3.0  300.0  0.1\n"
+        "8.0 16.0 -5.0  308.0  0.1\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_note5.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(
+        vel,
+        "has no u column, needed for the velocity boundary condition on "
+        "xlo (columns named by line 1");
+}
+
+// The BC setup refuses different UDFs on the mass_inflow and the
+// mass_inflow_outflow faces of a field, since one fill operator serves both
+TEST_F(TabulatedProfileTest, different_udfs_on_the_two_face_types_are_rejected)
+{
+    populate_parameters();
+    for (const auto& face : {"ylo", "zlo", "yhi", "zhi"}) {
+        amrex::ParmParse pp(face);
+        pp.add("type", std::string("slip_wall"));
+    }
+    {
+        amrex::ParmParse pp("xlo");
+        pp.add("type", std::string("mass_inflow"));
+        pp.add("velocity.inflow_type", std::string("CustomVelocity"));
+        pp.add("tracer.inflow_type", std::string("CustomScalar"));
+        pp.add("tracer", 0.0_rt);
+    }
+    {
+        // Read by CustomVelocity, so that a missing check fails the test
+        // rather than stopping on an input error
+        amrex::ParmParse pp("CustomVelocity");
+        amrex::Vector<amrex::Real> uvw{{1.0_rt, 0.0_rt, 0.0_rt}};
+        pp.addarr("velocity", uvw);
+    }
+    {
+        amrex::ParmParse pp("xhi");
+        pp.add("type", std::string("mass_inflow_outflow"));
+        pp.add("velocity.inflow_outflow_type", std::string("TabulatedProfile"));
+        pp.add("tracer.inflow_outflow_type", std::string("TabulatedProfile"));
+        pp.add("tracer", 0.0_rt);
+    }
+    initialize_mesh();
+
+    auto& frepo = mesh().field_repo();
+    auto& vel = frepo.declare_field("velocity", 3, 1, 1);
+    kynema_sgf::BCVelocity vbc(vel);
+    vbc();
+    try {
+        kynema_sgf::vel_bc::register_velocity_dirichlet(
+            vel, mesh(), time(), vbc.get_dirichlet_udfs());
+        ADD_FAILURE() << "expected the velocity UDFs to be refused";
+    } catch (const amrex::RuntimeError& err) {
+        EXPECT_NE(
+            std::string(err.what())
+                .find(
+                    "differ; one UDF fills every inflow "
+                    "face"),
+            std::string::npos)
+            << err.what();
+    }
+
+    auto& tracer = frepo.declare_field("tracer", 1, 1, 1);
+    kynema_sgf::BCScalar sbc(tracer);
+    sbc(0.0_rt);
+    try {
+        kynema_sgf::scalar_bc::register_scalar_dirichlet(
+            tracer, mesh(), time(), sbc.get_dirichlet_udfs());
+        ADD_FAILURE() << "expected the tracer UDFs to be refused";
+    } catch (const amrex::RuntimeError& err) {
+        EXPECT_NE(
+            std::string(err.what())
+                .find(
+                    "differ; one UDF fills every inflow "
+                    "face"),
+            std::string::npos)
+            << err.what();
+    }
+}
+
+// A PDE records the fill interpolation of its field, so that an inflow UDF
+// registered later uses it too (TKE.interpolation = PiecewiseConstant)
+TEST_F(TabulatedProfileTest, a_pde_field_records_its_fill_interpolation)
+{
+    populate_parameters();
+    for (const auto& face : {"xlo", "ylo", "zlo", "xhi", "yhi", "zhi"}) {
+        amrex::ParmParse pp(face);
+        pp.add("type", std::string("slip_wall"));
+    }
+    initialize_mesh();
+
+    auto fields = kynema_sgf::pde::create_fields_instance<
+        kynema_sgf::pde::TKE, kynema_sgf::fvm::Godunov>(
+        time(), mesh().field_repo(),
+        kynema_sgf::FieldInterpolator::PiecewiseConstant);
+    EXPECT_EQ(
+        fields.field.fillpatch_interpolator(),
+        kynema_sgf::FieldInterpolator::PiecewiseConstant);
+}
+
+TEST_F(TabulatedProfileTest, a_missing_w_column_is_zero)
 {
     populate_parameters();
     write_profile(
@@ -634,8 +844,8 @@ TEST_F(TabulatedProfileTest, tke_without_a_tke_column_is_rejected)
     expect_abort_with(tke, "tp_no_tke.txt has no tke column");
 }
 
-// Velocity may be profiled from a file without tke, even when the
-// turbulence model solves for tke and holds it at a constant on the inflow face
+// Velocity may be profiled from a file without tke: only a tke field filled
+// from the profile needs that column
 TEST_F(TabulatedProfileTest, velocity_needs_no_tke_column)
 {
     populate_parameters();
@@ -1165,6 +1375,8 @@ TEST_F(TabulatedProfileTest, the_default_terrain_drag_file_is_checked)
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
     expect_abort_with(vel, "the ground along xlo varies between");
+    // The default name is shared with other tests; leave no file behind
+    std::remove("terrain.amrwind");
 }
 
 // With TerrainDrag active, a terrain file that cannot be read is an error
@@ -1356,12 +1568,13 @@ TEST_F(TabulatedProfileTest, the_ground_tolerance_can_be_raised)
         "# z u v T\n"
         "0.0   4.0  0.0  300.0\n"
         "8.0   4.0  0.0  308.0\n");
-    // The xlo ground rises from 0 to 1 along y; its mean is 0.5
-    write_terrain("tp_terrain_gentle.amrwind", 0.0_rt, 1.0_rt);
+    // The xlo ground rises from 0 to 1.5 along y, more than the default
+    // tolerance (dz = 1); its mean is 0.75
+    write_terrain("tp_terrain_gentle.amrwind", 0.0_rt, 1.5_rt);
     {
         amrex::ParmParse pp("TabulatedProfile");
         pp.add("filename", std::string("tp_g11.txt"));
-        pp.add("zoffset", 0.5_rt);
+        pp.add("zoffset", 0.75_rt);
         pp.add("ground_tolerance", 2.0_rt);
     }
     {
@@ -1398,6 +1611,96 @@ TEST_F(
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
     EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+}
+
+// A top face the flow leaves through at the top is refused as mass_inflow
+TEST_F(TabulatedProfileTest, a_top_face_leaving_at_the_top_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_top2.txt",
+        "# z u v w T\n"
+        "0.0   0.0  0.0  -1.0  300.0\n"
+        "8.0   0.0  0.0   1.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_top2.txt"));
+    }
+    initialize_mesh();
+
+    const amrex::Orientation zhi{2, amrex::Orientation::high};
+    auto& vel = inflow_field("velocity", 3, {zhi});
+    expect_abort_with(vel, "is directed out of the domain everywhere on zhi");
+}
+
+// Only velocity and single-component scalars can be read from a profile
+TEST_F(TabulatedProfileTest, a_multicomponent_scalar_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_mc.txt",
+        "# z u v T\n"
+        "0.0  0.0  3.0  300.0\n"
+        "8.0 16.0 -5.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_mc.txt"));
+    initialize_mesh();
+
+    auto& pair = inflow_field("pair", 2, {m_xlo});
+    expect_abort_with(
+        pair, "only velocity and single-component scalars can be read");
+}
+
+// The UDF was requested but no face both selects it and has a file
+TEST_F(TabulatedProfileTest, a_profile_with_no_file_is_rejected)
+{
+    populate_parameters();
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "but no inflow face uses it with a profile file");
+}
+
+// A bottom or top face holds the value at its own height: a ghost cell of a
+// cell-centered field and the face node of w both take the profile there
+TEST_F(TabulatedProfileTest, bottom_and_top_faces_are_read_at_their_height)
+{
+    populate_parameters();
+    write_profile(
+        "tp_ztop.txt",
+        "# z u v w T\n"
+        "-8.0  0.0  0.0  0.0  292.0\n"
+        "16.0  0.0  0.0  3.0  316.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_ztop.txt"));
+    }
+    initialize_mesh();
+
+    const amrex::Orientation zlo{2, amrex::Orientation::low};
+    const amrex::Orientation zhi{2, amrex::Orientation::high};
+    const auto& geom = mesh().Geom(0);
+    constexpr amrex::Real tol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+
+    // T = 300 + z, tabulated beyond the domain: 300 at the bottom face and
+    // 308 at the top face (the domain is 8 high), not 299.5 and 308.5 at the
+    // ghost cell centers
+    auto& temp = inflow_field("temperature", 1, {zlo, zhi});
+    const kynema_sgf::udf::TabulatedProfile tprof(temp);
+    EXPECT_NEAR(
+        value_at(tprof, geom, zlo, amrex::IntVect{2, 2, -1}, 0), 300.0_rt,
+        tol * 300.0_rt);
+    EXPECT_NEAR(
+        value_at(tprof, geom, zhi, amrex::IntVect{2, 2, 8}, 0), 308.0_rt,
+        tol * 300.0_rt);
+
+    // w = 1 + z/8 as set on the bottom face (index 0, the fill of the MAC
+    // inflow) is 1, not 1.0625 half a cell up
+    auto& vel = inflow_field("velocity", 3, {zlo});
+    const kynema_sgf::udf::TabulatedProfile vprof(vel);
+    EXPECT_NEAR(
+        value_at(vprof, geom, zlo, amrex::IntVect{2, 2, 0}, 2), 1.0_rt, tol);
 }
 
 // A bump between two cell centers (3.5 and 4.5) is still ground that varies
@@ -1706,8 +2009,9 @@ TEST_F(TabulatedProfileTest, a_number_too_small_for_real_is_rejected)
     }
 }
 
-// The same file under two spellings of its name is still the RANS file
-TEST_F(TabulatedProfileTest, the_rans_profile_file_needs_a_header)
+// The same file under two spellings of its name is still the RANS file, and
+// the two inputs cannot share it
+TEST_F(TabulatedProfileTest, the_rans_profile_file_cannot_be_shared)
 {
     populate_parameters();
     write_profile(

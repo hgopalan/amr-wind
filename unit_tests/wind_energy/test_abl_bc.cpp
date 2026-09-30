@@ -347,6 +347,58 @@ TEST_F(ABLMeshTest, abl_mol_velocity_wall_model_with_zero_viscosity)
     EXPECT_EQ(max_abs_below_zlo(velocity, 1), 0.0_rt);
 }
 
+// A cell at rest carries no stress: the MOL model must not divide 0 by a zero
+// wind speed once the viscosity is positive
+TEST_F(ABLMeshTest, abl_mol_velocity_wall_model_at_rest)
+{
+    populate_parameters();
+    {
+        amrex::ParmParse pp("geometry");
+        amrex::Vector<int> periodic{{1, 1, 0}};
+        pp.addarr("is_periodic", periodic);
+    }
+    {
+        amrex::ParmParse pp("zlo");
+        pp.add("type", (std::string) "wall_model");
+    }
+    {
+        amrex::ParmParse pp("zhi");
+        pp.add("type", (std::string) "slip_wall");
+    }
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("surface_temp_flux", 0.1_rt);
+        pp.add("wall_het_model", std::string("mol"));
+        pp.add("monin_obukhov_length", -100.0_rt);
+    }
+    initialize_mesh();
+
+    auto& pde_mgr = sim().pde_manager();
+    pde_mgr.register_icns();
+    sim().create_turbulence_model();
+    sim().init_physics();
+
+    auto& velocity = sim().repo().get_field("velocity");
+    init_velocity(velocity, 5.0_rt, 0);
+    sim().repo().get_field("density").setVal(1.0_rt);
+    for (auto& pp : sim().physics()) {
+        pp->post_init_actions();
+    }
+    pde_mgr.advance_states();
+
+    // The flow is at rest and the ghost cells start at 5 m/s, so they only
+    // read 0 if the wall model ran and wrote a zero stress
+    velocity.setVal(0.0_rt);
+    velocity.state(kynema_sgf::FieldState::Old).setVal(0.0_rt);
+    velocity(0).setVal(5.0_rt, 0, 2, velocity.num_grow());
+    velocity(0).setVal(0.0_rt, 0, 2, 0);
+    sim().repo().get_field("velocity_mueff").setVal(1.0_rt);
+    velocity.apply_bc_funcs(kynema_sgf::FieldState::New);
+
+    EXPECT_EQ(max_abs_below_zlo(velocity, 0), 0.0_rt);
+    EXPECT_EQ(max_abs_below_zlo(velocity, 1), 0.0_rt);
+}
+
 // Same for the heat flux set from a specified Monin-Obukhov length
 TEST_F(ABLMeshTest, abl_mol_temperature_wall_model_with_zero_diffusivity)
 {

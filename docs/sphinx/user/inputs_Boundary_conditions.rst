@@ -234,31 +234,35 @@ inflow:
    ``density`` is not tabulated: every inflow face, of either type, needs a
    constant ``<face>.density``.
 
-   One inflow UDF serves every inflow face of a field, so another UDF (for
-   example ``PowerLawProfile``) cannot be combined with ``TabulatedProfile``
-   on a different face; the run stops if it is.
+   One inflow UDF serves every inflow face of a field, so all its
+   ``mass_inflow`` and ``mass_inflow_outflow`` faces must name the same UDF
+   (this holds for any UDF, not only this one); the run stops if they
+   differ.
 
 File format
 ^^^^^^^^^^^
 
 One row per height, whitespace separated, with heights strictly increasing.
-An optional comment line naming the columns, also whitespace separated, may
-precede the data:
+An optional comment line naming the columns may precede the data (repeated
+``#`` characters and commas between the names are allowed):
 
 .. code-block:: none
 
    # z u v T tke
    0.0      8.0  -1.0  300.0  0.40
    200.0    9.0   1.0  300.0  0.30
-   1000.0  -3.0   8.0  308.0  0.05
+   1000.0  10.0   8.0  308.0  0.05
 
 The header is a comment line ahead of the data whose first entry is ``z``
-and that names as many columns as the data holds. Other comment lines are
-notes, including one that starts with ``z`` (for example ``# z is the height
-above ground``). A comment that starts with ``z`` and names a known column
-(``u``, ``v``, ``w``, ``T``, ``tke``) but does not fit the data is taken as a
-wrong header, and the run stops naming its line rather than guessing the
-columns.
+and that names as many columns as the data holds; when several do, the last
+one ahead of the data is used. Other comment lines are notes, including one
+that starts with ``z`` (for example ``# z is the height above ground``). The
+run stops, naming the line, rather than guessing the columns when a comment
+that starts with ``z`` names a known column (``u``, ``v``, ``w``, ``T``,
+``tke``) but does not fit the data, or when a comment as wide as the data names
+known columns but does not start with ``z`` (``# height u v w T``). A note
+that happens to be as wide as the data is taken as the header; the error that
+follows names its line, so that it can be reworded.
 
 Without such a header the column count decides the layout: four columns are
 ``z u v T`` and five are ``z u v T tke``. Any other width must carry a header.
@@ -280,14 +284,16 @@ supported.
 Velocity takes ``u``, ``v`` and ``w``; a missing ``w`` column is zero, but a
 missing ``u`` or ``v`` is an error. A ``tke`` column is only needed where tke
 itself is filled from the profile. Outside the tabulated range the nearest
-value is held rather than extrapolated. Face-centered velocity is read at its
-own position, so ``w`` on a z face uses the height of that face.
+value is held rather than extrapolated. On a bottom or top face the profile
+is read at the height of the face; on the other faces at the height of the
+point filled, a cell center or, for ``w`` in the ghost cells of the x and y
+faces, a node.
 
 .. note::
    ``ABL.rans_1dprofile_file`` is a different five column format, ``z u v w
-   tke``, holding vertical velocity where this one holds temperature. Pointing
-   both inputs at the same file is refused unless it carries a header saying
-   which it is.
+   tke``, holding vertical velocity where this one holds temperature, and its
+   readers take no header. Pointing both inputs at the same file is refused:
+   give the inflow profile its own file.
 
 Wind direction and veer
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -312,14 +318,17 @@ picked from the surface wind will be wrong higher up.
    xhi.type = mass_inflow_outflow
    ylo.type = mass_inflow_outflow
    yhi.type = mass_inflow_outflow
-   xlo.density = 1.0                                     # and on the other three
-   xlo.velocity.inflow_outflow_type = TabulatedProfile   # and on the other three
-   TabulatedProfile.filename        = veer_profile.txt
+   # on each of the four faces
+   xlo.density                         = 1.0
+   xlo.velocity.inflow_outflow_type    = TabulatedProfile
+   xlo.temperature.inflow_outflow_type = TabulatedProfile
+   xlo.tke.inflow_outflow_type         = TabulatedProfile   # with a TKE model
+   TabulatedProfile.filename           = veer_profile.txt
 
 .. input_param:: TabulatedProfile.filename
 
-   **type:** String, required unless every face that selects the UDF names
-   its own file
+   **type:** String, optional; at least one face that selects the UDF needs
+   a file, from here or from ``<face>.tabulated_profile_file``
 
    The profile file used on every face that selects ``TabulatedProfile``.
 
@@ -371,7 +380,8 @@ starts from its own initial condition.
 
 .. note::
    Heights are measured in the domain coordinate, so this profile does not
-   follow a stretched mesh set up through ``geometry.mesh_mapping``.
+   follow a stretched mesh set up through ``geometry.mesh_mapping``; do not
+   combine the two.
 
 Custom boundary conditions
 """"""""""""""""""""""""""
@@ -403,7 +413,8 @@ to enforce the Neumann type behavior. This applies to velocity and to the
 fields of the scalar transport equations (``temperature``, ``tke``, ``sdr``,
 passive scalars, and ``density`` or the level set when they are solved), on
 every ``mass_inflow_outflow`` face, whether its inflow value is a constant or
-a UDF, and it is applied before the diffusion solve and the projection. Other
+a UDF. It is applied before the diffusion solve (and, for velocity, the
+projection). Other
 fields, such as pressure, keep the specified value on the whole face, and the
 volume fraction of the multiphase solver keeps its own treatment.
 See the ``freestream_godunov_inout`` test for an example that uses the TwoLayer UDF.

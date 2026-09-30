@@ -48,6 +48,9 @@ struct ProfileData
     //! Whether the column names came from a header rather than being assumed
     bool has_header{false};
 
+    //! Line of the file the header was taken from, when there is one
+    int header_line{0};
+
     [[nodiscard]] int column_index(const std::string& name) const
     {
         for (int i = 0; i < static_cast<int>(colnames.size()); ++i) {
@@ -85,6 +88,9 @@ bool same_file(const std::string& a, const std::string& b)
 }
 
 /** Map the spellings accepted in a header onto the field names used internally
+ *
+ *  \param name Name as written
+ *  \return Lower-case name, with T, theta and temp mapped to temperature
  */
 std::string canonical_name(const std::string& name)
 {
@@ -99,6 +105,10 @@ std::string canonical_name(const std::string& name)
  *
  *  Four columns are ``z u v T`` and five are ``z u v T tke``; any other width
  *  is ambiguous and must be labeled by a header instead.
+ *
+ *  \param ncols Number of columns of the data, height included
+ *  \param fname Profile file, for the message
+ *  \return Names of the columns after the height
  */
 amrex::Vector<std::string>
 assumed_columns(const int ncols, const std::string& fname)
@@ -117,28 +127,26 @@ assumed_columns(const int ncols, const std::string& fname)
     return {};
 }
 
-/** Read a comment line as a header, if it can be one
+/** The words of a comment line, as column names
  *
- *  A comment line whose first entry is the height is a candidate list of
- *  column names, height included. Any other comment line is not.
+ *  Leading '#' characters are dropped and commas count as spaces, so that
+ *  '## z u v T' and '# z, u, v, T' read like '# z u v T'.
  *
  *  \param line Comment line, starting with '#'
- *  \param names Column names of the candidate header, height first
- *  \return True when the line can be the header
+ *  \return Its words, in canonical form
  */
-bool parse_header(const std::string& line, amrex::Vector<std::string>& names)
+amrex::Vector<std::string> comment_names(std::string line)
 {
-    std::istringstream iss(line.substr(line.find('#') + 1));
-    amrex::Vector<std::string> candidate;
+    std::replace(line.begin(), line.end(), ',', ' ');
+    const auto start = line.find_first_not_of("# \t");
+    std::istringstream iss(
+        (start == std::string::npos) ? std::string() : line.substr(start));
+    amrex::Vector<std::string> names;
     std::string name;
     while (iss >> name) {
-        candidate.push_back(canonical_name(name));
+        names.push_back(canonical_name(name));
     }
-    if (candidate.empty() || (candidate[0] != "z")) {
-        return false;
-    }
-    names = candidate;
-    return true;
+    return names;
 }
 
 /** Reject a header that names a column more than once
@@ -147,39 +155,45 @@ bool parse_header(const std::string& line, amrex::Vector<std::string>& names)
  *
  *  \param names Column names of the header, height first
  *  \param fname Profile file, for the message
+ *  \param lineno Line the header was read from
  */
 void check_unique_names(
-    const amrex::Vector<std::string>& names, const std::string& fname)
+    const amrex::Vector<std::string>& names,
+    const std::string& fname,
+    const int lineno)
 {
     for (int i = 0; i < static_cast<int>(names.size()); ++i) {
         for (int j = i + 1; j < static_cast<int>(names.size()); ++j) {
             if (names[i] == names[j]) {
                 amrex::Abort(
                     "TabulatedProfile: the header of " + fname + " names '" +
-                    names[i] + "' more than once");
+                    names[i] + "' more than once (line " +
+                    std::to_string(lineno) +
+                    "; if that line is a note, reword it so that it does not "
+                    "start with 'z')");
             }
         }
     }
 }
 
-/** Whether a candidate header names a column this reader knows
+/** How many column names this reader knows a comment holds
  *
- *  Used to tell a header that does not fit the data from a note that happens
- *  to start with z.
+ *  Used to tell a header from a note: a header names u, v, w, temperature or
+ *  tke, a note rarely does.
  *
- *  \param names Column names of the candidate, height first
- *  \return True when a name after the height is u, v, w, temperature or tke
+ *  \param names Words of the comment, in canonical form
+ *  \return Number of words that are u, v, w, temperature or tke
  */
-bool names_known_column(const amrex::Vector<std::string>& names)
+int known_columns(const amrex::Vector<std::string>& names)
 {
-    for (int i = 1; i < static_cast<int>(names.size()); ++i) {
-        const auto& n = names[i];
+    int count = 0;
+    for (const auto& n : names) {
         if ((n == "u") || (n == "v") || (n == "w") || (n == "temperature") ||
             (n == "tke")) {
-            return true;
+            ++count;
         }
     }
-    return false;
+    return count;
 }
 
 /** A value written with every digit it holds, so that two close heights do
@@ -197,6 +211,11 @@ std::string precise(const amrex::Real val)
 }
 
 /** Where a problem was found, for a message the reader can act on
+ *
+ *  \param fname Profile file
+ *  \param lineno Line number
+ *  \param col Column number, or 0 for the whole line
+ *  \return Text such as "file line 3, column 2"
  */
 std::string at(const std::string& fname, const int lineno, const int col = 0)
 {
@@ -212,6 +231,12 @@ std::string at(const std::string& fname, const int lineno, const int col = 0)
  *  Stream extraction stops at the first character it cannot use, which quietly
  *  drops the rest of a line and turns a typo into a puzzling complaint about
  *  the number of columns. Parse the whole token instead.
+ *
+ *  \param tok Token to read
+ *  \param fname Profile file, for the message
+ *  \param lineno Line of the token
+ *  \param col Column of the token
+ *  \return The value
  */
 amrex::Real parse_value(
     const std::string& tok,
@@ -253,6 +278,9 @@ amrex::Real parse_value(
 }
 
 /** Read a whitespace-separated profile file
+ *
+ *  \param fname Profile file
+ *  \return Heights, column names and columns of the profile
  */
 ProfileData read_profile_file(const std::string& fname)
 {
@@ -268,11 +296,19 @@ ProfileData read_profile_file(const std::string& fname)
     // line each came from
     amrex::Vector<amrex::Vector<std::string>> headers;
     amrex::Vector<int> header_lines;
+    // Comments ahead of the data that name known columns but do not start
+    // with z, such as '# height u v w T', with their lines
+    amrex::Vector<amrex::Vector<std::string>> lookalikes;
+    amrex::Vector<int> lookalike_lines;
     std::string line;
     int lineno = 0;
 
     while (std::getline(infile, line)) {
         ++lineno;
+        // A UTF-8 byte order mark ahead of the first line is not content
+        if ((lineno == 1) && (line.rfind("\xEF\xBB\xBF", 0) == 0)) {
+            line.erase(0, 3);
+        }
         const auto first = line.find_first_not_of(" \t\r\n");
         if (first == std::string::npos) {
             continue;
@@ -282,10 +318,15 @@ ProfileData read_profile_file(const std::string& fname)
             // comment there that could be one is kept, and whether the file
             // has a header at all is decided once the width of the data is
             // known, since a note can also start with z
-            amrex::Vector<std::string> names;
-            if (rows.empty() && parse_header(line, names)) {
-                headers.push_back(names);
-                header_lines.push_back(lineno);
+            if (rows.empty()) {
+                const auto names = comment_names(line);
+                if (!names.empty() && (names[0] == "z")) {
+                    headers.push_back(names);
+                    header_lines.push_back(lineno);
+                } else if (known_columns(names) >= 2) {
+                    lookalikes.push_back(names);
+                    lookalike_lines.push_back(lineno);
+                }
             }
             continue;
         }
@@ -348,7 +389,7 @@ ProfileData read_profile_file(const std::string& fname)
     }
     if (header_idx < 0) {
         for (int i = 0; i < static_cast<int>(headers.size()); ++i) {
-            if (names_known_column(headers[i])) {
+            if (known_columns(headers[i]) > 0) {
                 amrex::Abort(
                     "TabulatedProfile: " + at(fname, header_lines[i]) +
                     " reads as a header naming " +
@@ -363,9 +404,21 @@ ProfileData read_profile_file(const std::string& fname)
     prof.has_header = (header_idx >= 0);
     if (prof.has_header) {
         const auto& header = headers[header_idx];
-        check_unique_names(header, fname);
+        prof.header_line = header_lines[header_idx];
+        check_unique_names(header, fname, prof.header_line);
         prof.colnames.assign(header.begin() + 1, header.end());
     } else {
+        // A comment as wide as the data that names the columns but does not
+        // start with z ('# height u v w T', '## z u v w T' is fine) would
+        // otherwise be skipped and the columns guessed
+        for (int i = 0; i < static_cast<int>(lookalikes.size()); ++i) {
+            if (static_cast<int>(lookalikes[i].size()) == ncols) {
+                amrex::Abort(
+                    "TabulatedProfile: " + at(fname, lookalike_lines[i]) +
+                    " looks like a header for the " + std::to_string(ncols) +
+                    " columns of the data, but a header must start with 'z'");
+            }
+        }
         prof.colnames = assumed_columns(ncols, fname);
     }
 
@@ -396,6 +449,10 @@ ProfileData read_profile_file(const std::string& fname)
  *  Velocity draws on ``u``, ``v`` and ``w``; every other field draws on a
  *  column named after the field itself, so that scalars added later are picked
  *  up without touching the reader.
+ *
+ *  \param field_name Name of the field
+ *  \param ncomp Number of components of the field
+ *  \return Column name for each component
  */
 amrex::Vector<std::string>
 wanted_columns(const std::string& field_name, const int ncomp)
@@ -415,6 +472,16 @@ wanted_columns(const std::string& field_name, const int ncomp)
  *  which leaves part of a ``mass_inflow`` face acting as an outflow. That is
  *  what ``mass_inflow_outflow`` is for, so say so rather than injecting flow
  *  backwards through the boundary.
+ *
+ *  \param heights Heights of every face profile, concatenated
+ *  \param vals Values of every face profile, concatenated and interleaved
+ *  \param offset Index at which this face profile begins
+ *  \param nz Number of heights of this face profile
+ *  \param ncomp Number of components of the field
+ *  \param face Face index, in amrex::Orientation order
+ *  \param zlo Bottom of the domain, measured from the ground of the face
+ *  \param zhi Top of the domain, measured from the ground of the face
+ *  \param fname Profile file, for the message
  */
 void check_inflow_direction(
     const amrex::Vector<amrex::Real>& heights,
@@ -547,8 +614,7 @@ void check_ground_height(
     if ((zmax - zmin) > tol) {
         amrex::Abort(
             "TabulatedProfile: the ground along " + face_names[face] +
-            " varies between " + std::to_string(zmin) + " and " +
-            std::to_string(zmax) +
+            " varies between " + precise(zmin) + " and " + precise(zmax) +
             ", and only a uniform lift is supported. Raise "
             "TabulatedProfile.ground_tolerance to accept this face, or drive "
             "it with a boundary plane instead.");
@@ -558,10 +624,10 @@ void check_ground_height(
     if (std::abs(zground - zoffset) > tol) {
         amrex::Abort(
             "TabulatedProfile: the ground on " + face_names[face] + " is at " +
-            std::to_string(zground) +
+            precise(zground) +
             " but the profile is offset "
             "by " +
-            std::to_string(zoffset) +
+            precise(zoffset) +
             ". Set the offset to the ground height so that the profile and the "
             "interior are measured from the same place.");
     }
@@ -625,8 +691,16 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         return std::ranges::find(physics, name) != physics.end();
     };
     const bool terrain_drag = has_physics("TerrainDrag");
-    const bool terrain_from_waves =
-        has_physics("OceanWaves") && !fld.repo().field_exists("vof");
+    // TerrainDrag builds its terrain from the waves when OceanWaves runs
+    // without a VOF field. Decided from the inputs rather than from the field
+    // repository, since the boundary conditions of velocity are set up before
+    // MultiPhase declares vof.
+    std::string interface_model{"vof"};
+    amrex::ParmParse("MultiPhase")
+        .query("interface_capturing_method", interface_model);
+    const bool has_vof =
+        has_physics("MultiPhase") && (amrex::toLower(interface_model) == "vof");
+    const bool terrain_from_waves = has_physics("OceanWaves") && !has_vof;
     std::string terrain_file;
     bool terrain_required = false;
     if (terrain_drag && !terrain_from_waves) {
@@ -663,7 +737,8 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     }
 
     // The existing 1-D RANS profile file puts w in the fourth column where
-    // this one puts temperature, so the two cannot be read the same way
+    // this one puts temperature, and its readers take no header, so the two
+    // cannot share a file
     std::string rans_file;
     amrex::ParmParse("ABL").query("rans_1dprofile_file", rans_file);
 
@@ -695,7 +770,9 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         // One fill operator serves every inflow face of a field, so a face
         // cannot use another UDF alongside this one: it would silently get
         // the constant instead (or, the other way round, the profile would be
-        // dropped). Say so instead.
+        // dropped). In a run the BC setup already refuses such a mix (see
+        // register_velocity_dirichlet); this is kept as a defensive check for
+        // direct construction.
         if ((udf_type != identifier()) && (udf_type != "ConstDirichlet")) {
             amrex::Abort(
                 "TabulatedProfile: " + face_names[face] + "." + udf_key +
@@ -756,14 +833,17 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         if (!cache.contains(fname)) {
             auto prof = read_profile_file(fname);
 
+            // The RANS profile readers take no comment lines, so a header
+            // that would tell the two layouts apart would empty the RANS
+            // profile; the two inputs need separate files
+            if (!rans_file.empty() && same_file(fname, rans_file)) {
+                amrex::Abort(
+                    "TabulatedProfile: " + fname +
+                    " is also used as ABL.rans_1dprofile_file, whose fourth "
+                    "column is w rather than T and whose readers take no "
+                    "header. Use a separate file for the inflow profile.");
+            }
             if (!prof.has_header) {
-                if (!rans_file.empty() && same_file(fname, rans_file)) {
-                    amrex::Abort(
-                        "TabulatedProfile: " + fname +
-                        " is also used as ABL.rans_1dprofile_file, whose "
-                        "fourth column is w rather than T. Add a header line "
-                        "to say which columns the file actually holds.");
-                }
                 amrex::Print()
                     << "TabulatedProfile: " << fname
                     << " has no header, assuming columns z u v T"
@@ -790,7 +870,13 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
                 amrex::Abort(
                     "TabulatedProfile: " + fname + " has no " + want[n] +
                     " column, needed for the " + fld.name() +
-                    " boundary condition on " + face_names[face]);
+                    " boundary condition on " + face_names[face] +
+                    (prof.has_header
+                         ? " (columns named by line " +
+                               std::to_string(prof.header_line) +
+                               "; if that line is a note, reword it so that "
+                               "it does not start with 'z')"
+                         : std::string()));
             }
             for (int k = 0; k < nz; ++k) {
                 vals_all[(ncomp * (offset + k)) + n] =

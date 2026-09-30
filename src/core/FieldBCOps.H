@@ -224,6 +224,18 @@ struct FieldBCDirichlet
     const Field& m_field;
 };
 
+/** An inflow UDF that takes the face direction of the field it fills
+ *
+ *  Opt-in (a static uses_face_dir member set to true), so that a UDF whose
+ *  device_instance happens to accept an argument is not handed one by
+ *  accident.
+ */
+template <typename T>
+concept UsesFaceDir = requires(const T& op, int face_dir) {
+    requires T::uses_face_dir;
+    op.device_instance(face_dir);
+};
+
 template <typename InflowOp, typename WallOp>
 struct BCOpCreator
 {
@@ -244,9 +256,9 @@ struct BCOpCreator
     {
         // An inflow UDF that evaluates a height (such as TabulatedProfile)
         // needs to know whether the field is face-centered, since a face
-        // field sits on the nodes of its face direction. UDFs that do not ask
-        // for it are built exactly as before.
-        if constexpr (requires { m_inflow_op.device_instance(face_dir); }) {
+        // field sits on the nodes of its face direction. Only a UDF that opts
+        // in (UsesFaceDir) receives it; the others are built as before.
+        if constexpr (UsesFaceDir<InflowOp>) {
             return FunctorType{
                 m_field, m_inflow_op.device_instance(face_dir),
                 m_wall_op.device_instance(), face_dir};

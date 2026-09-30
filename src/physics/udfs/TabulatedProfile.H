@@ -9,8 +9,7 @@
 #include "AMReX_REAL.H"
 
 #include <cstddef>
-
-using namespace amrex::literals;
+#include <string>
 
 namespace kynema_sgf {
 
@@ -52,11 +51,11 @@ struct TabulatedProfile
 
         //! Constant value used on faces without a profile
         amrex::GpuArray<amrex::Real, nfaces * AMREX_SPACEDIM> constval = {
-            0.0_rt};
+            amrex::Real(0)};
 
         //! Ground height at each face, so that a profile tabulated above
         //! ground can be used on a boundary sitting on raised ground
-        amrex::GpuArray<amrex::Real, nfaces> zoffset = {0.0_rt};
+        amrex::GpuArray<amrex::Real, nfaces> zoffset = {amrex::Real(0)};
 
         //! Number of components of the field being filled
         int ncomp{1};
@@ -67,7 +66,8 @@ struct TabulatedProfile
         //! Direction in which the field being filled is face-centered, or -1
         //! for a cell-centered field. A face-centered field sits on the nodes
         //! of that direction, so its height there is k dz rather than
-        //! (k + 1/2) dz; this matters for w on its z faces.
+        //! (k + 1/2) dz; this matters for w in the ghost cells of the x and y
+        //! faces.
         int face_dir{-1};
 
         AMREX_GPU_DEVICE
@@ -89,9 +89,21 @@ struct TabulatedProfile
                 val = constval[(face * AMREX_SPACEDIM) + fcomp];
             } else {
                 const auto* problo = geom.ProbLo();
+                const auto* probhi = geom.ProbHi();
                 const auto* dx = geom.CellSize();
-                const amrex::Real shift = (face_dir == idir) ? 0.0_rt : 0.5_rt;
-                const auto zco = problo[idir] + ((iv[idir] + shift) * dx[idir]);
+                // A Dirichlet value on a face whose normal is the profile
+                // direction (a bottom or top face) belongs to that face, so
+                // the profile is read at the face height. On the other faces
+                // it is read at the height of the point filled: a cell center,
+                // or a node for a field face-centered in that direction.
+                amrex::Real zco;
+                if (ori.coordDir() == idir) {
+                    zco = ori.isLow() ? problo[idir] : probhi[idir];
+                } else {
+                    const amrex::Real shift =
+                        (face_dir == idir) ? amrex::Real(0) : amrex::Real(0.5);
+                    zco = problo[idir] + ((iv[idir] + shift) * dx[idir]);
+                }
                 const auto zeff = zco - zoffset[face];
 
                 const auto* zbegin = z + offset[face];
@@ -107,6 +119,10 @@ struct TabulatedProfile
     using DeviceType = DeviceOp;
 
     static std::string identifier() { return "TabulatedProfile"; }
+
+    //! Opt in to receive the face direction from BCOpCreator (see
+    //! device_instance)
+    static constexpr bool uses_face_dir = true;
 
     explicit TabulatedProfile(const Field& fld);
 

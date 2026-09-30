@@ -55,7 +55,7 @@ void register_inflow_vel_dirichlet(
     }
 }
 
-void register_velocity_dirichlet(
+inline void register_velocity_dirichlet(
     Field& field,
     const amrex::AmrCore& mesh,
     const SimTime& time,
@@ -83,9 +83,11 @@ void register_velocity_dirichlet(
         (inflow_outflow_udf != "ConstDirichlet") &&
         (inflow_udf != inflow_outflow_udf)) {
         amrex::Abort(
-            "Velocity BC: inflow_type " + inflow_udf +
-            " and inflow_outflow_type " + inflow_outflow_udf +
-            " differ, but one inflow UDF serves every inflow face");
+            "Velocity BC: velocity.inflow_type = " + inflow_udf +
+            " (mass_inflow faces) and velocity.inflow_outflow_type = " +
+            inflow_outflow_udf +
+            " (mass_inflow_outflow faces) differ; one UDF fills every "
+            "inflow face, so use the same one on both");
     }
     if (inflow_udf != "ConstDirichlet") {
         register_inflow_vel_dirichlet<ConstDirichlet>(

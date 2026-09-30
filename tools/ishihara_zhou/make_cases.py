@@ -26,7 +26,8 @@ Cases, one folder each with case.inp, terrain.amrwind, inflow_profile.txt
                                      the fetch, compare with mmc1 / mmc2
   ridge2d/<surface>_<model>_<grid>   2D ridge, 4 periodic cells in y (mmc3 / mmc4)
   hill3d/<surface>_<model>_<grid>    3D hill, periodic in y over 1152 m, close
-                                     to the 1.1 m tunnel width (mmc5-mmc8)
+                                     to the 1.1 m tunnel width (reference
+                                     data mmc5-mmc8; no comparison script yet)
 
 Grids (dx = dy, dz): 2D 4x4, 2x2 and 8x1 m; 3D 8x8 and 4x4 m. A grid is named
 "4m" when dx = dz and "8x1m" otherwise. Anisotropic grids get 16 pre- and
@@ -116,6 +117,12 @@ def write_case(out, kind, surface, model, model_keys, dx, dz):
     dest.mkdir(parents=True, exist_ok=True)
     profile = approach_profile(surface)
     with open(dest / "inflow_profile.txt", "w") as f:
+        # Attribution required by the licence of the dataset; the note does
+        # not start with z, so it is not taken as the header
+        f.write(
+            "# Derived from Ishihara & Zhou, Data in Brief 63 (2025) 112260, "
+            "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)\n"
+        )
         f.write("# z u v temperature tke\n")
         f.writelines(f"{z:.3f} {u:.5f} 0.0 {T0:.1f} {k:.6f}\n" for z, u, k in profile)
     with open(dest / "rans_1d.info", "w") as f:

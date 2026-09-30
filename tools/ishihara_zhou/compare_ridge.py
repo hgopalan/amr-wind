@@ -104,7 +104,7 @@ def main():
     rms_u, rms_k = [], []
     for xs in stations:
         sel = d[:, 0] == xs
-        zd, ud, wd = d[sel, 1], d[sel, 2], d[sel, 3]
+        zd, ud = d[sel, 1], d[sel, 2]
         kd = 0.5 * (d[sel, 4] ** 2 + d[sel, 5] ** 2 + d[sel, 6] ** 2)
         _, zsurf, zm, v = column(f, XC + xs)
         um = interp(zm, zd, v["velocityx"])
@@ -156,7 +156,7 @@ def main():
             kd = 0.5 * (d[sel, 4] ** 2 + d[sel, 5] ** 2 + d[sel, 6] ** 2)
             _, zsurf, zm, v = column(f, XC + xs)
             axes[0, a].plot(d[sel, 2], zd, "ko", ms=3, label="tunnel")
-            axes[0, a].plot(v["velocityx"], zm, "b-", label="KLAxell")
+            axes[0, a].plot(v["velocityx"], zm, "b-", label=pathlib.Path(run).name)
             axes[0, a].axvline(0, color="0.7", lw=0.5)
             axes[0, a].set_title(f"x = {xs:.0f} mm")
             axes[1, a].plot(kd, zd, "ko", ms=3)
