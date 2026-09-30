@@ -190,7 +190,10 @@ normal component reverses within the domain on a ``mass_inflow`` face is
 refused at startup, naming the face and the type to use instead, because it
 would otherwise drive flow backwards through the boundary with no solvability
 correction to absorb it. A profile pointing out of the domain everywhere on
-such a face is refused for the same reason.
+such a face is refused for the same reason. Both are checked only over the
+part of the column that is in the domain and above the ground of the face
+(see ``TabulatedProfile.zoffset``), so a reversal above the domain top or
+buried in the terrain is not grounds for refusing the run.
 
 Input keys
 ^^^^^^^^^^
