@@ -1613,6 +1613,49 @@ TEST_F(
     EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
 }
 
+// On raised ground the part of the column below the ground is buried in the
+// terrain: a profile pointing out of the domain only there is accepted
+TEST_F(TabulatedProfileTest, the_buried_part_of_a_raised_face_is_not_checked)
+{
+    populate_parameters();
+    write_profile(
+        "tp_buried.txt",
+        "# z u v T\n"
+        "-3.0  -1.0  0.0  300.0\n"
+        "-1.0  -1.0  0.0  300.0\n"
+        "0.0    1.0  0.0  300.0\n"
+        "5.0    1.0  0.0  305.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_buried.txt"));
+        pp.add("zoffset", 3.0_rt);
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+}
+
+// Above the ground the check still applies
+TEST_F(TabulatedProfileTest, a_raised_face_reversing_above_ground_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_buried2.txt",
+        "# z u v T\n"
+        "0.0    1.0  0.0  300.0\n"
+        "5.0   -1.0  0.0  305.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_buried2.txt"));
+        pp.add("zoffset", 3.0_rt);
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "changes sign over the column");
+}
+
 // A top face the flow leaves through at the top is refused as mass_inflow
 TEST_F(TabulatedProfileTest, a_top_face_leaving_at_the_top_is_rejected)
 {

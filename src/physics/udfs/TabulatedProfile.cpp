@@ -887,9 +887,22 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
 
         if ((bct == BC::mass_inflow) && (fld.name() == "velocity")) {
             const auto& probdom = fld.repo().mesh().Geom(0).ProbDomain();
-            check_inflow_direction(
-                z_all, vals_all, offset, nz, ncomp, face,
-                probdom.lo(2) - zoffset, probdom.hi(2) - zoffset, fname);
+            // Heights measured from the ground of this face. On an x or y
+            // face standing on raised ground the part below the ground is
+            // buried in the terrain and carries no flow, so only the column
+            // from the ground up is checked (none when the ground is above
+            // the domain top). A bottom or top face is checked at its height.
+            const bool lateral =
+                (face % AMREX_SPACEDIM) != (AMREX_SPACEDIM - 1);
+            const amrex::Real zbottom =
+                (lateral ? amrex::max(probdom.lo(2), zoffset) : probdom.lo(2)) -
+                zoffset;
+            const amrex::Real ztop = probdom.hi(2) - zoffset;
+            if (!lateral || (ztop > zbottom)) {
+                check_inflow_direction(
+                    z_all, vals_all, offset, nz, ncomp, face, zbottom, ztop,
+                    fname);
+            }
         }
 
         amrex::Print() << "TabulatedProfile: " << fld.name() << " on "
