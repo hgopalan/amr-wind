@@ -93,7 +93,10 @@ def main():
             for z, a, b, c, e in zip(zd, ud, um, kd, km):
                 print(f"  z {z:5.0f}  U data {a:.3f} model {b:.3f} ({b / a - 1:+.1%})  k data {c:.4f} model {e:.4f}")
             ok = ~np.isnan(um)
-            print(f"  U rms rel error {np.sqrt(np.mean((um[ok] / ud[ok] - 1) ** 2)):.1%}")
+            print(
+                f"  U rms rel error {np.sqrt(np.mean((um[ok] / ud[ok] - 1) ** 2)):.1%}, "
+                f"k rms {np.sqrt(np.mean((km[ok] - kd[ok]) ** 2)):.4f}"
+            )
         return
 
     _, d = read_sheet(FILES[(surface, "ridge")])

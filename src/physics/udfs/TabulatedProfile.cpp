@@ -420,18 +420,25 @@ void check_ground_height(
 
     const auto problo = geom.ProbLoArray();
     const auto probhi = geom.ProbHiArray();
-    const auto dx = geom.CellSizeArray();
 
-    // Sample where the boundary cells sit, along the face and at its own edge
+    // Along the face the bilinear ground is linear between terrain knots, so
+    // its extremes are at the ends of the face or at the knots on it. Sampling
+    // those, rather than cell centers, does not depend on the mesh or on how
+    // the boundary is refined.
     const int tdir = (dir == 0) ? 1 : 0;
     const amrex::Real ncoord =
         (face < AMREX_SPACEDIM) ? problo[dir] : probhi[dir];
-    const int npts = geom.Domain().length(tdir);
+    const auto& tknots = (tdir == 0) ? xterrain : yterrain;
+    amrex::Vector<amrex::Real> tcoords{problo[tdir], probhi[tdir]};
+    for (const auto t : tknots) {
+        if ((t > problo[tdir]) && (t < probhi[tdir])) {
+            tcoords.push_back(t);
+        }
+    }
 
     amrex::Real zmin = constants::LARGE_NUM;
     amrex::Real zmax = -constants::LARGE_NUM;
-    for (int n = 0; n < npts; ++n) {
-        const auto tcoord = problo[tdir] + ((n + 0.5_rt) * dx[tdir]);
+    for (const auto tcoord : tcoords) {
         const auto xco = (dir == 0) ? ncoord : tcoord;
         const auto yco = (dir == 0) ? tcoord : ncoord;
         const auto zg = interp::bilinear(

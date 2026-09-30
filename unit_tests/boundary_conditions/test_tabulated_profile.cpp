@@ -187,6 +187,30 @@ void write_terrain(
     outfile.close();
 }
 
+//! Write a flat grid file whose ground varies along y only, knot by knot
+void write_terrain_along_y(
+    const std::string& fname,
+    const amrex::Vector<amrex::Real>& ys,
+    const amrex::Vector<amrex::Real>& zs)
+{
+    std::ofstream outfile(fname);
+    const amrex::Vector<amrex::Real> xs{{0.0_rt, 8.0_rt}};
+    outfile << xs.size() << "\n" << ys.size() << "\n";
+    for (const auto& x : xs) {
+        outfile << x << "\n";
+    }
+    for (const auto& y : ys) {
+        outfile << y << "\n";
+    }
+    // Indexed [i * ny + j], so x varies slowest
+    for (int i = 0; i < xs.size(); ++i) {
+        for (const auto& z : zs) {
+            outfile << z << "\n";
+        }
+    }
+    outfile.close();
+}
+
 } // namespace
 
 class TabulatedProfileTest : public MeshTest
@@ -702,6 +726,32 @@ TEST_F(TabulatedProfileTest, ground_varying_along_the_face_is_rejected)
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
     EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+}
+
+// A bump between two cell centers (3.5 and 4.5) is still ground that varies
+TEST_F(TabulatedProfileTest, ground_varying_between_cell_centers_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g5.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    write_terrain_along_y(
+        "tp_terrain_bump.amrwind", {0.0_rt, 3.5_rt, 4.0_rt, 4.5_rt, 8.0_rt},
+        {0.0_rt, 0.0_rt, 8.0_rt, 0.0_rt, 0.0_rt});
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_g5.txt"));
+    }
+    {
+        amrex::ParmParse pp("TerrainDrag");
+        pp.add("terrain_file", std::string("tp_terrain_bump.amrwind"));
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "the ground along xlo varies between");
 }
 
 TEST_F(TabulatedProfileTest, an_offset_conflicts_with_an_unaligned_interior)

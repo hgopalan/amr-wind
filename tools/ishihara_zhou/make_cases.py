@@ -173,8 +173,8 @@ def write_case(out, kind, surface, model, model_keys, dx, dz):
         "transport.laminar_prandtl": "0.7",
         "transport.turbulent_prandtl": "0.3333",
         "transport.reference_temperature": f"{T0:g}",
+        # The turbulence model injects its own TKE source (KLAxell: KransAxell)
         "turbulence.model": "KLAxell",
-        "TKE.source_terms": "KransAxell",
         "ABL.kappa": f"{KAPPA}",
         "ABL.normal_direction": "2",
         "ABL.surface_roughness_z0": f"{z0:g}",
