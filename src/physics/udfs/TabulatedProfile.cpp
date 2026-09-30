@@ -587,7 +587,14 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         amrex::ParmParse pp_face(face_names[face]);
         std::string fname = default_file;
         pp_face.query("tabulated_profile_file", fname);
-
+        const std::string udf_key =
+            fld.name() + ((bct == BC::mass_inflow) ? ".inflow_type"
+                                                  : ".inflow_outflow_type");
+        std::string udf_type{"ConstDirichlet"};
+        pp_face.query(udf_key, udf_type);
+        if (udf_type != identifier()) {
+            fname.clear();
+        }
         amrex::Real zoffset = default_zoffset;
         pp_face.query("tabulated_profile_zoffset", zoffset);
         m_op.zoffset[face] = zoffset;
