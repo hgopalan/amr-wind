@@ -239,12 +239,11 @@ void ABLVelWallFunc::wall_model(
     BL_PROFILE("kynema-sgf::ABLVelWallFunc");
 
     constexpr int idim = 2;
-    // The wall stress divides by the wind speed and by the effective
-    // viscosity. Both are zero when the lower boundary is filled ahead of the
-    // initial projection, before the turbulence model has run, and no viscous
-    // flux can be carried then, so the stress is left out rather than divided
-    // by. Matches the guard ShearStress already applies to the wind speed.
-    constexpr amrex::Real small_vel = 1.0e-6_rt;
+    // The wall stress divides by the effective viscosity, which is zero when
+    // the lower boundary is filled ahead of the initial projection, before
+    // the turbulence model has run. No viscous flux can be carried then, so
+    // the stress is left out rather than divided by zero. Results are
+    // unchanged whenever the viscosity is positive.
     const auto& repo = velocity.repo();
     const auto& density = repo.get_field("density", rho_state);
     const auto& viscosity = repo.get_field("velocity_mueff");
@@ -313,17 +312,20 @@ void ABLVelWallFunc::wall_model(
                             // Blank Terrain added to keep the boundary
                             // condition backward compatible while adding
                             // terrain sensitive BC
-                            const amrex::Real wspd_lim =
-                                amrex::max(wspd, small_vel);
+                            // A cell at rest (e.g. blanked by terrain) has
+                            // uu = vv = 0 and no stress; dividing by 1 there
+                            // avoids 0/0, and any other speed is used as is
+                            const amrex::Real wspd_safe =
+                                (wspd > 0.0_rt) ? wspd : 1.0_rt;
                             varr(i, j, k - 1, 0) =
                                 (mu > 0.0_rt)
                                     ? (blankTerrain * ustar * ustar * uu /
-                                       wspd_lim * den(i, j, k) / mu)
+                                       wspd_safe * den(i, j, k) / mu)
                                     : 0.0_rt;
                             varr(i, j, k - 1, 1) =
                                 (mu > 0.0_rt)
                                     ? (blankTerrain * ustar * ustar * vv /
-                                       wspd_lim * den(i, j, k) / mu)
+                                       wspd_safe * den(i, j, k) / mu)
                                     : 0.0_rt;
                         });
                 } else {
@@ -424,9 +426,6 @@ void ABLTempWallFunc::wall_model(
     }
 
     BL_PROFILE("kynema-sgf::ABLTempWallFunc");
-    // The heat flux divides by the effective diffusivity, which is zero when
-    // the lower boundary is filled before the turbulence model has run. No
-    // flux can be carried then, so it is left out, as for the wall stress.
     auto& velocity = repo.get_field("velocity");
     const auto& density = repo.get_field("density", rho_state);
     const auto& alpha = repo.get_field("temperature_mueff");
@@ -492,6 +491,8 @@ void ABLTempWallFunc::wall_model(
                             const amrex::Real blankTerrain =
                                 (has_terrain) ? 1 - blank_arr(i, j, k, 0)
                                               : 1.0_rt;
+                            // The diffusivity is zero before the turbulence
+                            // model has run; no flux can be carried then
                             tarr(i, j, k - 1) =
                                 (alphaT > 0.0_rt)
                                     ? (blankTerrain * den(i, j, k) *
@@ -511,6 +512,8 @@ void ABLTempWallFunc::wall_model(
                             const amrex::Real blankTerrain =
                                 (has_terrain) ? 1 - blank_arr(i, j, k, 0)
                                               : 1.0_rt;
+                            // The diffusivity is zero before the turbulence
+                            // model has run; no flux can be carried then
                             tarr(i, j, k - 1) =
                                 (alphaT > 0.0_rt)
                                     ? (blankTerrain * den(i, j, k) *

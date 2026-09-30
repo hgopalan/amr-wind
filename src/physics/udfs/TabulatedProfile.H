@@ -64,6 +64,12 @@ struct TabulatedProfile
         //! Direction along which the profile is tabulated
         int idir{2};
 
+        //! Direction in which the field being filled is face-centered, or -1
+        //! for a cell-centered field. A face-centered field sits on the nodes
+        //! of that direction, so its height there is k dz rather than
+        //! (k + 1/2) dz; this matters for w on its z faces.
+        int face_dir{-1};
+
         AMREX_GPU_DEVICE
         void operator()(
             const amrex::IntVect& iv,
@@ -84,8 +90,8 @@ struct TabulatedProfile
             } else {
                 const auto* problo = geom.ProbLo();
                 const auto* dx = geom.CellSize();
-                const auto zco =
-                    problo[idir] + ((iv[idir] + 0.5_rt) * dx[idir]);
+                const amrex::Real shift = (face_dir == idir) ? 0.0_rt : 0.5_rt;
+                const auto zco = problo[idir] + ((iv[idir] + shift) * dx[idir]);
                 const auto zeff = zco - zoffset[face];
 
                 const auto* zbegin = z + offset[face];
@@ -109,12 +115,16 @@ struct TabulatedProfile
      *  The pointers cannot be set once and for all in the constructor: this
      *  object is copied into the fill patch operator, and each copy owns its
      *  own device buffers.
+     *
+     *  \param face_dir Direction in which the field being filled is
+     *  face-centered, or -1 (the default) for a cell-centered field
      */
-    [[nodiscard]] DeviceType device_instance() const
+    [[nodiscard]] DeviceType device_instance(const int face_dir = -1) const
     {
         DeviceType op = m_op;
         op.z = m_z_d.data();
         op.vals = m_vals_d.data();
+        op.face_dir = face_dir;
         return op;
     }
 

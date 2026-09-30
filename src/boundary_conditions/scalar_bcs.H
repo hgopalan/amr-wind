@@ -20,11 +20,11 @@ void register_inflow_scalar_dirichlet(
     if (inflow_udf == "CustomScalar") {
         using InflowOp = BCOpCreator<udf::CustomScalar, WallOp>;
         field.register_fill_patch_op<FieldFillPatchOps<InflowOp>>(
-            mesh, time, InflowOp(field));
+            mesh, time, InflowOp(field), field.fillpatch_interpolator());
     } else if (inflow_udf == "TabulatedProfile") {
         using InflowOp = BCOpCreator<udf::TabulatedProfile, WallOp>;
         field.register_fill_patch_op<FieldFillPatchOps<InflowOp>>(
-            mesh, time, InflowOp(field));
+            mesh, time, InflowOp(field), field.fillpatch_interpolator());
     } else {
         amrex::Abort("Scalar BC: Invalid dirichlet BC type = " + inflow_udf);
     }

@@ -2,6 +2,7 @@
 #include "ks_test_utils/MeshTest.H"
 #include "src/boundary_conditions/BCInterface.H"
 #include "src/boundary_conditions/scalar_bcs.H"
+#include "src/core/FieldBCOps.H"
 #include "src/core/FieldRepo.H"
 #include "src/physics/udfs/TabulatedProfile.H"
 
@@ -111,7 +112,8 @@ amrex::Real xlo_ghost_error(
  *
  *  The profile operator only needs the cell index to determine the height, so
  *  it can be exercised over the interior of the domain rather than in the
- *  ghost cells alone.
+ *  ghost cells alone. With face_dir = 2 the indices are taken as the z nodes
+ *  of a face-centered field, as for w on its z faces.
  */
 amrex::Real max_error(
     kynema_sgf::Field& field,
@@ -120,11 +122,14 @@ amrex::Real max_error(
     const amrex::Orientation ori,
     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& slope,
     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& intercept,
-    const amrex::Real zground = 0.0_rt)
+    const amrex::Real zground = 0.0_rt,
+    const int face_dir = -1)
 {
     const int lev = 0;
     const int ncomp = field.num_comp();
-    const auto op = profile.device_instance();
+    const auto op = profile.device_instance(face_dir);
+    // A face-centered field is evaluated on the nodes of its face direction
+    const amrex::Real shift = (face_dir == 2) ? 0.0_rt : 0.5_rt;
     const auto geomdata = geom.data();
     auto& mfab = field(lev);
 
@@ -147,7 +152,7 @@ amrex::Real max_error(
             amrex::Array4<amrex::Real const> const& arr) -> amrex::Real {
             amrex::Real err = 0.0_rt;
             amrex::Loop(bx, [=, &err](int i, int j, int k) {
-                const auto zco = problo[2] + ((k + 0.5_rt) * dx[2]);
+                const auto zco = problo[2] + ((k + shift) * dx[2]);
                 for (int n = 0; n < ncomp; ++n) {
                     // Below the ground the lowest tabulated value is held
                     const auto zex = amrex::max(zco, zground);
@@ -250,7 +255,8 @@ protected:
         pp.addarr("is_periodic", periodic);
     }
 
-    //! Declare a field and mark the given faces as inflow
+    //! Declare a field, mark the given faces as inflow and select the
+    //! tabulated profile on them (<face>.<field>.inflow_type)
     kynema_sgf::Field& inflow_field(
         const std::string& name,
         const int ncomp,
@@ -268,7 +274,10 @@ protected:
     }
 
     // The default mesh is 8 cells over [0, 8], so heights are 0.5 ... 7.5
-    const amrex::Real m_tol = 1.0e-12_rt;
+    // Relative to machine precision so it holds in single precision too; the
+    // profiles are linear, so the interpolation itself is exact
+    const amrex::Real m_tol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
     const amrex::Orientation m_xlo{0, amrex::Orientation::low};
     const amrex::Orientation m_ylo{1, amrex::Orientation::low};
 };
@@ -317,6 +326,107 @@ TEST_F(TabulatedProfileTest, a_note_after_the_header_is_not_the_header)
     EXPECT_NEAR(err, 0.0_rt, m_tol);
 }
 
+// Notes that start with z do not make a headerless file need a header: with
+// no candidate as wide as the data and none naming a known column, the file
+// is read as z u v T
+TEST_F(TabulatedProfileTest, a_note_alone_leaves_the_file_headerless)
+{
+    populate_parameters();
+    write_profile(
+        "tp_note3.txt",
+        "# z is the height above ground\n"
+        "# z is the z coordinate\n"
+        "0.0  0.0  3.0  300.0\n"
+        "8.0 16.0 -5.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_note3.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    const kynema_sgf::udf::TabulatedProfile profile(vel);
+    const auto err = max_error(
+        vel, mesh().Geom(0), profile, m_xlo, {2.0_rt, -1.0_rt, 0.0_rt},
+        {0.0_rt, 3.0_rt, 0.0_rt});
+    EXPECT_NEAR(err, 0.0_rt, m_tol);
+}
+
+// A header that names known columns but does not fit the data is a mistake,
+// reported with its line, rather than a note to skip
+TEST_F(TabulatedProfileTest, a_header_too_wide_for_the_data_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_note4.txt",
+        "# z u v T tke\n"
+        "0.0  0.0  3.0  300.0\n"
+        "8.0 16.0 -5.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_note4.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(
+        vel,
+        "tp_note4.txt line 1 reads as a header naming 5 columns, but the data "
+        "has 4");
+}
+
+// A note alone does not hide that the file is the RANS profile
+TEST_F(TabulatedProfileTest, a_note_does_not_hide_the_rans_file)
+{
+    populate_parameters();
+    write_profile(
+        "tp_rans2.txt",
+        "# z is the height above ground\n"
+        "0.0 1.0 2.0 0.0 0.5\n"
+        "8.0 3.0 4.0 0.0 0.4\n");
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("rans_1dprofile_file", std::string("tp_rans2.txt"));
+    }
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_rans2.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "is also used as ABL.rans_1dprofile_file");
+}
+
+TEST_F(TabulatedProfileTest, a_missing_profile_file_is_rejected)
+{
+    populate_parameters();
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_no_such_profile.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "cannot open profile file tp_no_such_profile.txt");
+}
+
+// Header names are matched without regard to case, and T, theta, temp and
+// temperature all name the temperature column
+TEST_F(TabulatedProfileTest, header_names_ignore_case_and_accept_aliases)
+{
+    populate_parameters();
+    write_profile(
+        "tp_alias.txt",
+        "# Z Theta U V\n"
+        "0.0  300.0  0.0  3.0\n"
+        "8.0  308.0 16.0 -5.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_alias.txt"));
+    initialize_mesh();
+
+    auto& temp = inflow_field("temperature", 1, {m_xlo});
+    const kynema_sgf::udf::TabulatedProfile profile(temp);
+    // T = 300 + z comes from the second column, so only the header gives it:
+    // read as headerless z u v T, the fourth column would be taken instead
+    const auto err = max_error(
+        temp, mesh().Geom(0), profile, m_xlo, {1.0_rt, 0.0_rt, 0.0_rt},
+        {300.0_rt, 0.0_rt, 0.0_rt});
+    EXPECT_NEAR(err, 0.0_rt, m_tol * 300.0_rt);
+}
+
 TEST_F(TabulatedProfileTest, velocity_from_header)
 {
     populate_parameters();
@@ -337,6 +447,51 @@ TEST_F(TabulatedProfileTest, velocity_from_header)
         vel, mesh().Geom(0), profile, m_xlo, {2.0_rt, -1.0_rt, 0.0_rt},
         {0.0_rt, 3.0_rt, 0.0_rt});
     EXPECT_NEAR(err, 0.0_rt, m_tol);
+}
+
+// w on its z faces sits on the z nodes, so the profile is read at k dz
+TEST_F(TabulatedProfileTest, w_on_z_faces_is_read_at_the_nodes)
+{
+    populate_parameters();
+    write_profile(
+        "tp_w.txt",
+        "# z u v w T\n"
+        "0.0  0.0  3.0  0.0  300.0\n"
+        "8.0 16.0 -5.0  8.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_w.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    const kynema_sgf::udf::TabulatedProfile profile(vel);
+
+    // u = 2z, v = 3 - z and w = z, all read at the node heights k dz
+    const auto err = max_error(
+        vel, mesh().Geom(0), profile, m_xlo, {2.0_rt, -1.0_rt, 1.0_rt},
+        {0.0_rt, 3.0_rt, 0.0_rt}, 0.0_rt, 2);
+    EXPECT_NEAR(err, 0.0_rt, m_tol);
+}
+
+// The fill operator of a face-centered field hands its face direction to the
+// profile, so that the fill above reads w at the nodes
+TEST_F(TabulatedProfileTest, face_fills_pass_their_direction_to_the_profile)
+{
+    populate_parameters();
+    write_profile(
+        "tp_w2.txt",
+        "# z u v w T\n"
+        "0.0  0.0  3.0  0.0  300.0\n"
+        "8.0 16.0 -5.0  8.0  308.0\n");
+    amrex::ParmParse pp("TabulatedProfile");
+    pp.add("filename", std::string("tp_w2.txt"));
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    const kynema_sgf::BCOpCreator<
+        kynema_sgf::udf::TabulatedProfile, kynema_sgf::ConstDirichlet>
+        creator(vel);
+    EXPECT_EQ(creator(2).m_inflow_op.face_dir, 2);
+    EXPECT_EQ(creator().m_inflow_op.face_dir, -1);
 }
 
 TEST_F(TabulatedProfileTest, temperature_from_headerless_file)
@@ -458,7 +613,7 @@ TEST_F(TabulatedProfileTest, ambiguous_column_count_is_rejected)
     initialize_mesh();
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
-    EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+    expect_abort_with(vel, "has 3 columns. Without a header");
 }
 
 // The tke boundary condition needs a tke column wherever tke is profiled
@@ -473,19 +628,15 @@ TEST_F(TabulatedProfileTest, tke_without_a_tke_column_is_rejected)
         amrex::ParmParse pp("TabulatedProfile");
         pp.add("filename", std::string("tp_no_tke.txt"));
     }
-    {
-        amrex::ParmParse pp("turbulence");
-        pp.add("model", std::string("KLAxell"));
-    }
     initialize_mesh();
 
     auto& tke = inflow_field("tke", 1, {m_xlo});
     expect_abort_with(tke, "tp_no_tke.txt has no tke column");
 }
 
-// With KLAxell, velocity may be profiled from a file without tke, for
-// example when tke is held at a constant on the inflow face
-TEST_F(TabulatedProfileTest, klaxell_velocity_needs_no_tke_column)
+// Velocity may be profiled from a file without tke, even when the
+// turbulence model solves for tke and holds it at a constant on the inflow face
+TEST_F(TabulatedProfileTest, velocity_needs_no_tke_column)
 {
     populate_parameters();
     write_profile(
@@ -495,10 +646,6 @@ TEST_F(TabulatedProfileTest, klaxell_velocity_needs_no_tke_column)
     {
         amrex::ParmParse pp("TabulatedProfile");
         pp.add("filename", std::string("tp_no_tke2.txt"));
-    }
-    {
-        amrex::ParmParse pp("turbulence");
-        pp.add("model", std::string("KLAxell"));
     }
     initialize_mesh();
 
@@ -519,7 +666,7 @@ TEST_F(TabulatedProfileTest, non_monotonic_heights_are_rejected)
     initialize_mesh();
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
-    EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+    expect_abort_with(vel, "heights must increase strictly");
 }
 
 TEST_F(TabulatedProfileTest, reversing_normal_velocity_needs_inflow_outflow)
@@ -553,6 +700,13 @@ TEST_F(TabulatedProfileTest, reversing_normal_velocity_is_allowed_on_mixed_face)
     amrex::ParmParse pp("TabulatedProfile");
     pp.add("filename", std::string("tp_veer_mio.txt"));
     initialize_mesh();
+
+    {
+        // An inflow-outflow face asks for the UDF with its own key
+        amrex::ParmParse ppx("xlo");
+        ppx.add(
+            "velocity.inflow_outflow_type", std::string("TabulatedProfile"));
+    }
 
     auto& frepo = mesh().field_repo();
     auto& vel = frepo.declare_field("velocity", 3, 1, 1);
@@ -659,6 +813,52 @@ TEST_F(
     constexpr amrex::Real tol =
         std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
     EXPECT_NEAR(err, 0.0_rt, tol);
+}
+
+// The BC setup of a transport equation marks its field as transported (the
+// production path, not set_transported() called by hand): a passive scalar on
+// a mass_inflow_outflow face is extrapolated where the flow leaves, while the
+// constant density of ICNS, which is not transported, keeps its value
+TEST_F(TabulatedProfileTest, a_transport_equation_marks_its_field)
+{
+    populate_parameters();
+    for (const auto& face : {"ylo", "zlo", "xhi", "yhi", "zhi"}) {
+        amrex::ParmParse pp(face);
+        pp.add("type", std::string("slip_wall"));
+    }
+    {
+        amrex::ParmParse pp("xlo");
+        pp.add("type", std::string("mass_inflow_outflow"));
+        amrex::Vector<amrex::Real> uvw{{0.0_rt, 0.0_rt, 0.0_rt}};
+        pp.addarr("velocity", uvw);
+        pp.add("density", 0.0_rt);
+        pp.add("passive_scalar", 0.0_rt);
+    }
+    initialize_mesh();
+
+    auto& pde_mgr = sim().pde_manager();
+    pde_mgr.register_icns();
+    pde_mgr.register_transport_pde("PassiveScalar");
+
+    // Flow enters through the lower half of xlo and leaves through the upper
+    const int kmid = 4;
+    const amrex::Real interior = 100.0_rt;
+    set_inflow_outflow_velocity(sim().repo().get_field("velocity"), kmid);
+    constexpr amrex::Real tol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+
+    // Ghost cells start at the inflow constant 0 and the interior is 100
+    auto& scalar = sim().repo().get_field("passive_scalar");
+    scalar.setVal(0.0_rt);
+    scalar(0).setVal(interior, 0, 1, 0);
+    scalar.apply_bc_funcs(kynema_sgf::FieldState::New);
+    EXPECT_NEAR(xlo_ghost_error(scalar, kmid, 0.0_rt, interior), 0.0_rt, tol);
+
+    auto& density = sim().repo().get_field("density");
+    density.setVal(0.0_rt);
+    density(0).setVal(interior, 0, 1, 0);
+    density.apply_bc_funcs(kynema_sgf::FieldState::New);
+    EXPECT_NEAR(xlo_ghost_error(density, 0, 0.0_rt, 0.0_rt), 0.0_rt, tol);
 }
 
 // A field that is not transported, such as pressure or a source term, keeps
@@ -854,7 +1054,7 @@ TEST_F(TabulatedProfileTest, offset_must_match_the_ground_it_stands_on)
 
     // The ground is at 3 but no offset was given
     auto& vel = inflow_field("velocity", 3, {m_xlo});
-    EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+    expect_abort_with(vel, "the ground on xlo is at");
 }
 
 TEST_F(TabulatedProfileTest, offset_matching_the_ground_is_accepted)
@@ -903,7 +1103,7 @@ TEST_F(TabulatedProfileTest, ground_varying_along_the_face_is_rejected)
     initialize_mesh();
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
-    EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+    expect_abort_with(vel, "the ground along xlo varies between");
 }
 
 // The ground checks concern profiles only: a constant ylo face may stand on
@@ -939,6 +1139,265 @@ TEST_F(TabulatedProfileTest, a_constant_face_may_stand_on_varying_ground)
         vel, mesh().Geom(0), profile, m_ylo, {0.0_rt, 0.0_rt, 0.0_rt},
         {7.0_rt, 8.0_rt, 9.0_rt});
     EXPECT_NEAR(err, 0.0_rt, m_tol);
+}
+
+// With TerrainDrag active and no TerrainDrag.terrain_file, the ground is the
+// TerrainDrag default terrain.amrwind, and it is checked like any other file
+TEST_F(TabulatedProfileTest, the_default_terrain_drag_file_is_checked)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g8.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    // Rising across the span, so the xlo face does not stand on level ground
+    write_terrain("terrain.amrwind", 0.0_rt, 8.0_rt);
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_g8.txt"));
+    }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"ABL", "TerrainDrag"});
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "the ground along xlo varies between");
+}
+
+// With TerrainDrag active, a terrain file that cannot be read is an error
+// rather than a check quietly skipped
+TEST_F(TabulatedProfileTest, a_missing_terrain_drag_file_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g9.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_g9.txt"));
+    }
+    {
+        amrex::ParmParse pp("TerrainDrag");
+        pp.add("terrain_file", std::string("tp_no_such_terrain.amrwind"));
+    }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"ABL", "TerrainDrag"});
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(
+        vel,
+        "cannot open the TerrainDrag terrain file "
+        "tp_no_such_terrain.amrwind");
+}
+
+TEST_F(TabulatedProfileTest, a_negative_ground_tolerance_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g10.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_g10.txt"));
+        pp.add("ground_tolerance", -1.0_rt);
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "ground_tolerance must not be negative");
+}
+
+// One fill operator serves every inflow face of a field, so another UDF on
+// one face cannot be combined with the profile on another
+TEST_F(TabulatedProfileTest, another_inflow_udf_on_a_face_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_mix.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_mix.txt"));
+    }
+    {
+        amrex::ParmParse pp("xlo");
+        pp.add("velocity.inflow_type", std::string("PowerLawProfile"));
+    }
+    initialize_mesh();
+
+    // ylo asks for the profile; xlo, also an inflow face, for a power law
+    auto& vel = inflow_field("velocity", 3, {m_ylo});
+    vel.bc_type()[m_xlo] = BC::mass_inflow;
+    expect_abort_with(
+        vel,
+        "xlo.velocity.inflow_type = PowerLawProfile cannot be combined "
+        "with TabulatedProfile");
+}
+
+// A top face sits at one height: w changing sign lower down does not make it
+// an outflow as long as the flow enters at the top
+TEST_F(TabulatedProfileTest, a_top_face_is_checked_at_its_own_height)
+{
+    populate_parameters();
+    write_profile(
+        "tp_top.txt",
+        "# z u v w T\n"
+        "0.0   0.0  0.0   1.0  300.0\n"
+        "8.0   0.0  0.0  -1.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_top.txt"));
+    }
+    initialize_mesh();
+
+    const amrex::Orientation zhi{2, amrex::Orientation::high};
+    auto& vel = inflow_field("velocity", 3, {zhi});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+}
+
+// A face uses the profile only when it selects the UDF with the key of its own
+// boundary type; other inflow faces take their constant even though
+// TabulatedProfile.filename names a profile for every face
+TEST_F(
+    TabulatedProfileTest, a_face_that_does_not_select_the_profile_is_constant)
+{
+    populate_parameters();
+    write_profile(
+        "tp_sel.txt",
+        "# z u v T\n"
+        "0.0  0.0  3.0  300.0\n"
+        "8.0 16.0 -5.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_sel.txt"));
+    }
+    {
+        // ylo is a mass_inflow face without velocity.inflow_type
+        amrex::ParmParse pp("ylo");
+        amrex::Vector<amrex::Real> uvw{{7.0_rt, 8.0_rt, 9.0_rt}};
+        pp.addarr("velocity", uvw);
+    }
+    {
+        // yhi is a mass_inflow_outflow face that sets the mass_inflow key,
+        // which does not apply to it
+        amrex::ParmParse pp("yhi");
+        pp.add("velocity.inflow_type", std::string("TabulatedProfile"));
+        amrex::Vector<amrex::Real> uvw{{1.0_rt, 2.0_rt, 3.0_rt}};
+        pp.addarr("velocity", uvw);
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    vel.bc_type()[m_ylo] = BC::mass_inflow;
+    const amrex::Orientation yhi{1, amrex::Orientation::high};
+    vel.bc_type()[yhi] = BC::mass_inflow_outflow;
+    const kynema_sgf::udf::TabulatedProfile profile(vel);
+
+    const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> zero{
+        0.0_rt, 0.0_rt, 0.0_rt};
+    EXPECT_NEAR(
+        max_error(
+            vel, mesh().Geom(0), profile, m_xlo, {2.0_rt, -1.0_rt, 0.0_rt},
+            {0.0_rt, 3.0_rt, 0.0_rt}),
+        0.0_rt, m_tol);
+    EXPECT_NEAR(
+        max_error(
+            vel, mesh().Geom(0), profile, m_ylo, zero,
+            {7.0_rt, 8.0_rt, 9.0_rt}),
+        0.0_rt, m_tol);
+    EXPECT_NEAR(
+        max_error(
+            vel, mesh().Geom(0), profile, yhi, zero, {1.0_rt, 2.0_rt, 3.0_rt}),
+        0.0_rt, m_tol);
+}
+
+// A scalar face that does not use the profile needs its constant: there is
+// no sensible default (0 K for temperature)
+TEST_F(TabulatedProfileTest, a_scalar_face_without_a_constant_is_rejected)
+{
+    populate_parameters();
+    write_profile(
+        "tp_sc.txt",
+        "# z u v T\n"
+        "0.0  0.0  3.0  300.0\n"
+        "8.0 16.0 -5.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_sc.txt"));
+    }
+    initialize_mesh();
+
+    auto& temp = inflow_field("temperature", 1, {m_xlo});
+    temp.bc_type()[m_ylo] = BC::mass_inflow;
+    expect_abort_with(
+        temp,
+        "ylo does not use the profile for temperature, so it needs the "
+        "constant value ylo.temperature");
+}
+
+// A raised ground tolerance accepts a face whose ground varies within it
+TEST_F(TabulatedProfileTest, the_ground_tolerance_can_be_raised)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g11.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    // The xlo ground rises from 0 to 1 along y; its mean is 0.5
+    write_terrain("tp_terrain_gentle.amrwind", 0.0_rt, 1.0_rt);
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_g11.txt"));
+        pp.add("zoffset", 0.5_rt);
+        pp.add("ground_tolerance", 2.0_rt);
+    }
+    {
+        amrex::ParmParse pp("TerrainDrag");
+        pp.add("terrain_file", std::string("tp_terrain_gentle.amrwind"));
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+}
+
+// With the initial profile aligned with the terrain, an offset is consistent
+TEST_F(
+    TabulatedProfileTest, an_offset_with_a_terrain_aligned_interior_is_accepted)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g12.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_g12.txt"));
+        pp.add("zoffset", 3.0_rt);
+    }
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("initial_wind_profile", true);
+        pp.add("terrain_aligned_profile", true);
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
 }
 
 // A bump between two cell centers (3.5 and 4.5) is still ground that varies
@@ -989,7 +1448,7 @@ TEST_F(TabulatedProfileTest, an_offset_conflicts_with_an_unaligned_interior)
     initialize_mesh();
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
-    EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+    expect_abort_with(vel, "ABL.terrain_aligned_profile is off");
 }
 
 // ABL.initial_wind_profile only sets velocity, temperature and tke, so the

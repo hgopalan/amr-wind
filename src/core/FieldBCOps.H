@@ -242,9 +242,19 @@ struct BCOpCreator
 
     FunctorType operator()(const int face_dir = -1) const
     {
-        return FunctorType{
-            m_field, m_inflow_op.device_instance(), m_wall_op.device_instance(),
-            face_dir};
+        // An inflow UDF that evaluates a height (such as TabulatedProfile)
+        // needs to know whether the field is face-centered, since a face
+        // field sits on the nodes of its face direction. UDFs that do not ask
+        // for it are built exactly as before.
+        if constexpr (requires { m_inflow_op.device_instance(face_dir); }) {
+            return FunctorType{
+                m_field, m_inflow_op.device_instance(face_dir),
+                m_wall_op.device_instance(), face_dir};
+        } else {
+            return FunctorType{
+                m_field, m_inflow_op.device_instance(),
+                m_wall_op.device_instance(), face_dir};
+        }
     }
 
     const Field& m_field;

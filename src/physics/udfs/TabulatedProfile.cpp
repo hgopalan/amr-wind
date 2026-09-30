@@ -10,15 +10,18 @@
 #include "AMReX_REAL.H"
 #include "AMReX_Utility.H"
 
+#include <algorithm>
 #include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <limits>
 #include <map>
 #include <sstream>
 #include <system_error>
+#include <utility>
 
 using namespace amrex::literals;
 
@@ -159,6 +162,40 @@ void check_unique_names(
     }
 }
 
+/** Whether a candidate header names a column this reader knows
+ *
+ *  Used to tell a header that does not fit the data from a note that happens
+ *  to start with z.
+ *
+ *  \param names Column names of the candidate, height first
+ *  \return True when a name after the height is u, v, w, temperature or tke
+ */
+bool names_known_column(const amrex::Vector<std::string>& names)
+{
+    for (int i = 1; i < static_cast<int>(names.size()); ++i) {
+        const auto& n = names[i];
+        if ((n == "u") || (n == "v") || (n == "w") || (n == "temperature") ||
+            (n == "tke")) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** A value written with every digit it holds, so that two close heights do
+ *  not print the same in a message
+ *
+ *  \param val Value to write
+ *  \return The value as text
+ */
+std::string precise(const amrex::Real val)
+{
+    std::ostringstream oss;
+    oss << std::setprecision(std::numeric_limits<amrex::Real>::max_digits10)
+        << val;
+    return oss.str();
+}
+
 /** Where a problem was found, for a message the reader can act on
  */
 std::string at(const std::string& fname, const int lineno, const int col = 0)
@@ -205,9 +242,9 @@ amrex::Real parse_value(
     // strtod checks the range of a double; in single precision a finite
     // double such as 1e40 or 1e-40 still overflows or underflows amrex::Real
     const double mag = std::abs(val);
-    if ((mag > static_cast<double>(std::numeric_limits<amrex::Real>::max())) ||
-        ((mag > 0.0) && (mag < static_cast<double>(
-                                   std::numeric_limits<amrex::Real>::min())))) {
+    constexpr double real_max = std::numeric_limits<amrex::Real>::max();
+    constexpr double real_min = std::numeric_limits<amrex::Real>::min();
+    if ((mag > real_max) || ((mag > 0.0) && (mag < real_min))) {
         amrex::Abort(
             "TabulatedProfile: " + at(fname, lineno, col) + ": '" + tok +
             "' is too large or too small to represent");
@@ -227,7 +264,10 @@ ProfileData read_profile_file(const std::string& fname)
     ProfileData prof;
     amrex::Vector<amrex::Vector<amrex::Real>> rows;
     amrex::Vector<int> row_lines;
+    // Comment lines ahead of the data that could be the header, with the
+    // line each came from
     amrex::Vector<amrex::Vector<std::string>> headers;
+    amrex::Vector<int> header_lines;
     std::string line;
     int lineno = 0;
 
@@ -239,12 +279,13 @@ ProfileData read_profile_file(const std::string& fname)
         }
         if (line[first] == '#') {
             // Only a header ahead of the data names the columns. Every
-            // comment there that could be one is kept, and the choice waits
-            // until the width of the data is known
+            // comment there that could be one is kept, and whether the file
+            // has a header at all is decided once the width of the data is
+            // known, since a note can also start with z
             amrex::Vector<std::string> names;
             if (rows.empty() && parse_header(line, names)) {
                 headers.push_back(names);
-                prof.has_header = true;
+                header_lines.push_back(lineno);
             }
             continue;
         }
@@ -292,24 +333,38 @@ ProfileData read_profile_file(const std::string& fname)
     }
 
     const int ncols = static_cast<int>(rows[0].size());
-    if (prof.has_header) {
-        // A note such as '# z is the height above ground' can look like a
-        // header too. Take the last candidate as wide as the data, or the last
-        // one when none is, so that the width error below names a header
-        auto header = headers.back();
-        for (const auto& candidate : headers) {
-            if (static_cast<int>(candidate.size()) == ncols) {
-                header = candidate;
+
+    // The header is the last candidate as wide as the data. A candidate that
+    // is not can be a note ('# z is the height above ground') or a header that
+    // does not fit the data. It is taken as a wrong header when it names a
+    // column this reader knows, so that a mistake is reported rather than the
+    // columns being guessed; otherwise it is a note and the file is read as
+    // headerless.
+    int header_idx = -1;
+    for (int i = 0; i < static_cast<int>(headers.size()); ++i) {
+        if (static_cast<int>(headers[i].size()) == ncols) {
+            header_idx = i;
+        }
+    }
+    if (header_idx < 0) {
+        for (int i = 0; i < static_cast<int>(headers.size()); ++i) {
+            if (names_known_column(headers[i])) {
+                amrex::Abort(
+                    "TabulatedProfile: " + at(fname, header_lines[i]) +
+                    " reads as a header naming " +
+                    std::to_string(headers[i].size()) +
+                    " columns, but the data has " + std::to_string(ncols) +
+                    ". Fix the header, or reword the comment so that it does "
+                    "not start with 'z'.");
             }
         }
+    }
+
+    prof.has_header = (header_idx >= 0);
+    if (prof.has_header) {
+        const auto& header = headers[header_idx];
         check_unique_names(header, fname);
         prof.colnames.assign(header.begin() + 1, header.end());
-        if (static_cast<int>(prof.colnames.size()) != ncols - 1) {
-            amrex::Abort(
-                "TabulatedProfile: the header of " + fname + " names " +
-                std::to_string(prof.colnames.size() + 1) +
-                " columns but the data has " + std::to_string(ncols));
-        }
     } else {
         prof.colnames = assumed_columns(ncols, fname);
     }
@@ -325,8 +380,8 @@ ProfileData read_profile_file(const std::string& fname)
         if ((k > 0) && (prof.z[k] <= prof.z[k - 1])) {
             amrex::Abort(
                 "TabulatedProfile: heights must increase strictly, but " +
-                at(fname, row_lines[k]) + " has " + std::to_string(prof.z[k]) +
-                " after " + std::to_string(prof.z[k - 1]));
+                at(fname, row_lines[k]) + " has " + precise(prof.z[k]) +
+                " after " + precise(prof.z[k - 1]));
         }
         for (int c = 0; c < ncols - 1; ++c) {
             prof.cols[c][k] = rows[k][c + 1];
@@ -397,12 +452,20 @@ void check_inflow_direction(
             leaves = true;
         }
     };
-    classify(into * interp::linear(zbegin, zend, ybegin, zlo, ncomp, dir));
-    classify(into * interp::linear(zbegin, zend, ybegin, zhi, ncomp, dir));
-    for (int k = 0; k < nz; ++k) {
-        const auto zk = heights[offset + k];
-        if ((zk > zlo) && (zk < zhi)) {
-            classify(into * vals[(ncomp * (offset + k)) + dir]);
+    if (dir == AMREX_SPACEDIM - 1) {
+        // A bottom or top face sits at one height, so only the profile there
+        // decides whether the flow enters through it
+        classify(
+            into * interp::linear(
+                       zbegin, zend, ybegin, is_low ? zlo : zhi, ncomp, dir));
+    } else {
+        classify(into * interp::linear(zbegin, zend, ybegin, zlo, ncomp, dir));
+        classify(into * interp::linear(zbegin, zend, ybegin, zhi, ncomp, dir));
+        for (int k = 0; k < nz; ++k) {
+            const auto zk = heights[offset + k];
+            if ((zk > zlo) && (zk < zhi)) {
+                classify(into * vals[(ncomp * (offset + k)) + dir]);
+            }
         }
     }
 
@@ -514,6 +577,15 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     // TabulatedProfile.filename = inflow_profile.txt
 
     const int ncomp = fld.num_comp();
+    // Velocity reads u, v and w; any other field reads the one column named
+    // after it, so it must be a single-component scalar
+    if ((fld.name() != "velocity") && (ncomp != 1)) {
+        amrex::Abort(
+            "TabulatedProfile: " + fld.name() + " has " +
+            std::to_string(ncomp) +
+            " components, but only velocity and single-component scalars can "
+            "be read from a profile file");
+    }
     AMREX_ALWAYS_ASSERT(ncomp <= AMREX_SPACEDIM);
     m_op.ncomp = ncomp;
 
@@ -541,21 +613,43 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
                                  (fld.name() == "temperature") ||
                                  (fld.name() == "tke");
 
-    // Terrain lets the offset be checked against the ground it stands on
+    // Terrain lets the offset be checked against the ground it stands on. With
+    // TerrainDrag active the file is the one it reads, including its default
+    // name; TerrainDrag ignores the file when the terrain comes from single
+    // phase ocean waves, so there is nothing to check against then. Without
+    // TerrainDrag, a TerrainDrag.terrain_file given for the terrain-aligned
+    // initial profile is used when present.
+    amrex::Vector<std::string> physics;
+    amrex::ParmParse("incflo").queryarr("physics", physics);
+    const auto has_physics = [&physics](const std::string& name) {
+        return std::ranges::find(physics, name) != physics.end();
+    };
+    const bool terrain_drag = has_physics("TerrainDrag");
+    const bool terrain_from_waves =
+        has_physics("OceanWaves") && !fld.repo().field_exists("vof");
     std::string terrain_file;
-    if (amrex::ParmParse("TerrainDrag").query("terrain_file", terrain_file) ==
-        0) {
-        amrex::ParmParse("ImmersedTerrain").query("terrain_file", terrain_file);
+    bool terrain_required = false;
+    if (terrain_drag && !terrain_from_waves) {
+        // Same default as TerrainDrag::m_terrain_file
+        terrain_file = "terrain.amrwind";
+        terrain_required = true;
     }
+    amrex::ParmParse("TerrainDrag").query("terrain_file", terrain_file);
+
     // Read the terrain once for every face that is checked against it
     amrex::Vector<amrex::Real> xterrain;
     amrex::Vector<amrex::Real> yterrain;
     amrex::Vector<amrex::Real> zterrain;
     bool have_terrain = false;
-    if (!terrain_file.empty()) {
+    if (!terrain_file.empty() && !terrain_from_waves) {
         std::ifstream terrain_reader(terrain_file, std::ios::in);
         have_terrain = terrain_reader.good();
         terrain_reader.close();
+        if (!have_terrain && terrain_required) {
+            amrex::Abort(
+                "TabulatedProfile: cannot open the TerrainDrag terrain file " +
+                terrain_file + " to check the ground along the inflow faces");
+        }
         if (have_terrain) {
             ioutils::read_flat_grid_file(
                 terrain_file, xterrain, yterrain, zterrain);
@@ -564,6 +658,9 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     const auto& geom = fld.repo().mesh().Geom(0);
     amrex::Real ground_tol = geom.CellSize(AMREX_SPACEDIM - 1);
     pp.query("ground_tolerance", ground_tol);
+    if (ground_tol < 0.0_rt) {
+        amrex::Abort("TabulatedProfile.ground_tolerance must not be negative");
+    }
 
     // The existing 1-D RANS profile file puts w in the fourth column where
     // this one puts temperature, so the two cannot be read the same way
@@ -587,30 +684,57 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         amrex::ParmParse pp_face(face_names[face]);
         std::string fname = default_file;
         pp_face.query("tabulated_profile_file", fname);
+        // A face takes the profile only when it asks for this UDF through the
+        // key of its own boundary type
         const std::string udf_key =
             fld.name() + ((bct == BC::mass_inflow) ? ".inflow_type"
-                                                  : ".inflow_outflow_type");
+                                                   : ".inflow_outflow_type");
         std::string udf_type{"ConstDirichlet"};
         pp_face.query(udf_key, udf_type);
-        if (udf_type != identifier()) {
-            fname.clear();
+
+        // One fill operator serves every inflow face of a field, so a face
+        // cannot use another UDF alongside this one: it would silently get
+        // the constant instead (or, the other way round, the profile would be
+        // dropped). Say so instead.
+        if ((udf_type != identifier()) && (udf_type != "ConstDirichlet")) {
+            amrex::Abort(
+                "TabulatedProfile: " + face_names[face] + "." + udf_key +
+                " = " + udf_type +
+                " cannot be combined with TabulatedProfile on another face, "
+                "since one inflow UDF serves every inflow face of " +
+                fld.name());
         }
+
         amrex::Real zoffset = default_zoffset;
         pp_face.query("tabulated_profile_zoffset", zoffset);
         m_op.zoffset[face] = zoffset;
 
-        if (fname.empty()) {
+        if ((udf_type != identifier()) || fname.empty()) {
             // Fall back to the constant value given for this face. The offset
             // and ground checks below only concern a profile, so a constant
             // face may stand on any ground.
+            // Velocity defaults to zero on a face without a value, as for
+            // ConstDirichlet; a scalar has no sensible default (0 K for
+            // temperature), so its constant must be given
+            if ((fld.name() != "velocity") && !pp_face.contains(fld.name())) {
+                amrex::Abort(
+                    "TabulatedProfile: " + face_names[face] +
+                    " does not use the profile for " + fld.name() +
+                    ", so it needs the constant value " + face_names[face] +
+                    "." + fld.name());
+            }
             amrex::Vector<amrex::Real> cval(ncomp, 0.0_rt);
             pp_face.queryarr(fld.name(), cval, 0, ncomp);
             for (int n = 0; n < ncomp; ++n) {
                 m_op.constval[(face * AMREX_SPACEDIM) + n] = cval[n];
             }
             amrex::Print() << "TabulatedProfile: " << fld.name() << " on "
-                           << face_names[face]
-                           << " has no profile, using the constant value\n";
+                           << face_names[face] << " uses the constant value ("
+                           << ((udf_type != identifier())
+                                   ? (face_names[face] + "." + udf_key +
+                                      " is not TabulatedProfile")
+                                   : std::string("no profile file"))
+                           << ")\n";
             continue;
         }
 
@@ -646,7 +770,7 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
                     << ((prof.colnames.size() > 3) ? " tke" : "") << "\n";
             }
 
-            cache[fname] = prof;
+            cache[fname] = std::move(prof);
         }
         const auto& prof = cache[fname];
 
@@ -693,8 +817,12 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     if (!any_profile) {
         amrex::Abort(
             "TabulatedProfile was requested for " + fld.name() +
-            " but no profile file was given. Set TabulatedProfile.filename, "
-            "or <face>.tabulated_profile_file on an inflow face.");
+            " but no inflow face uses it with a profile file. Set "
+            "<face>." +
+            fld.name() +
+            ".inflow_type (or .inflow_outflow_type) = TabulatedProfile on an "
+            "inflow face, and TabulatedProfile.filename or "
+            "<face>.tabulated_profile_file.");
     }
 
     m_z_d.resize(z_all.size());

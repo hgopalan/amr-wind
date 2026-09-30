@@ -5,8 +5,9 @@
 # approach flow (Ishihara & Zhou, Data in Brief 63 (2025) 112260, CC BY 4.0).
 # The profile supplies velocity, temperature and tke at the inflow face.
 # KLAxell reads the same atmosphere from rans_1d.info, whose fourth column is w
-# rather than temperature. The files come from tools/ishihara_zhou/make_cases.py
-# at dx = dz = 16 m.
+# rather than temperature. The files are derived from
+# tools/ishihara_zhou/make_cases.py with a 16 m grid (not one of its GRIDS) and
+# solver settings sized for a regression test.
 
 # Geometry
 geometry.prob_lo                            = 0.0 0.0 0.0

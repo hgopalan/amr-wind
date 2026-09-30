@@ -34,6 +34,9 @@ for n in 7 8; do curl -L -o data/mmc$n.xlsx https://ars.els-cdn.com/content/imag
 
 ## Generating the cases
 
+The commands below run from `tools/ishihara_zhou`, where `data/` and `cases/`
+live.
+
 ```bash
 python3 -m pip install xlrd
 python3 make_cases.py

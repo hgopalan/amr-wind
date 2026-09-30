@@ -22,12 +22,22 @@ void register_scalar_dirichlet(
             "Scalar BC: Only constant dirichlet supported for Wall BC");
     }
 
+    // One fill operator serves every inflow and inflow-outflow face, so the
+    // two kinds of face cannot use different UDFs; when they use the same one
+    // it is registered once
+    if ((inflow_udf != "ConstDirichlet") &&
+        (inflow_outflow_udf != "ConstDirichlet") &&
+        (inflow_udf != inflow_outflow_udf)) {
+        amrex::Abort(
+            "Scalar BC: inflow_type " + inflow_udf +
+            " and inflow_outflow_type " + inflow_outflow_udf + " of " +
+            field.name() +
+            " differ, but one inflow UDF serves every inflow face");
+    }
     if (inflow_udf != "ConstDirichlet") {
         register_inflow_scalar_dirichlet<ConstDirichlet>(
             field, inflow_udf, mesh, time);
-    }
-
-    if (inflow_outflow_udf != "ConstDirichlet") {
+    } else if (inflow_outflow_udf != "ConstDirichlet") {
         register_inflow_scalar_dirichlet<ConstDirichlet>(
             field, inflow_outflow_udf, mesh, time);
     }

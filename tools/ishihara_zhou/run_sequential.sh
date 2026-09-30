@@ -11,6 +11,9 @@
 # when any case failed, so that a caller can tell.
 set -u
 EXE=${EXE:?set EXE to the kynema-sgf executable}
+# Each case runs from its own folder, so a relative path to the executable is
+# made absolute first
+EXE=$(cd "$(dirname "$EXE")" && pwd)/$(basename "$EXE")
 NP=${NP:-4}
 MPIRUN=${MPIRUN:-mpirun}
 ARGS=${ARGS:-}
