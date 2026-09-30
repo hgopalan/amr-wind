@@ -450,7 +450,6 @@ public:
         const auto& bctype = m_field.bc_type();
         const auto& geom = m_mesh.Geom(lev);
         const auto& gdata = geom.data();
-        const auto& bcfunc = bc_functor();
 
         for (amrex::OrientationIter oit; oit != nullptr; ++oit) {
             const auto ori = oit();
@@ -470,6 +469,9 @@ public:
                 }
                 const auto& dbx = ori.isLow() ? amrex::bdryLo(domain_box, idir)
                                               : amrex::bdryHi(domain_box, idir);
+                // The sibling field is face-centered in fdir, as in
+                // fillpatch_sibling_fields
+                const auto bcfunc = bc_functor_face(fdir);
 
                 auto& mfab = *mfabs[fdir];
 #ifdef AMREX_USE_OMP
