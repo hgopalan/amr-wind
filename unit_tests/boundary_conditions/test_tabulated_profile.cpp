@@ -211,6 +211,32 @@ void write_terrain_along_y(
     outfile.close();
 }
 
+//! Write a flat grid file whose ground rises linearly along x only
+void write_terrain_along_x(
+    const std::string& fname,
+    const amrex::Real z_at_xlo,
+    const amrex::Real z_at_xhi)
+{
+    std::ofstream outfile(fname);
+    const amrex::Vector<amrex::Real> xs{{0.0_rt, 8.0_rt}};
+    const amrex::Vector<amrex::Real> ys{{0.0_rt, 8.0_rt}};
+    outfile << "2\n"
+               "2\n";
+    for (const auto& x : xs) {
+        outfile << x << "\n";
+    }
+    for (const auto& y : ys) {
+        outfile << y << "\n";
+    }
+    // Indexed [i * ny + j], so x varies slowest
+    for (const auto& x : xs) {
+        for (int j = 0; j < ys.size(); ++j) {
+            outfile << z_at_xlo + ((z_at_xhi - z_at_xlo) * x / 8.0_rt) << "\n";
+        }
+    }
+    outfile.close();
+}
+
 } // namespace
 
 class TabulatedProfileTest : public MeshTest
@@ -726,6 +752,41 @@ TEST_F(TabulatedProfileTest, ground_varying_along_the_face_is_rejected)
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
     EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+}
+
+// The ground checks concern profiles only: a constant ylo face may stand on
+// ground that rises along it while the profiled xlo face stands level
+TEST_F(TabulatedProfileTest, a_constant_face_may_stand_on_varying_ground)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g6.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    write_terrain_along_x("tp_terrain_xslope.amrwind", 0.0_rt, 4.0_rt);
+    {
+        amrex::ParmParse pp("xlo");
+        pp.add("tabulated_profile_file", std::string("tp_g6.txt"));
+    }
+    {
+        amrex::ParmParse pp("ylo");
+        amrex::Vector<amrex::Real> uvw{{7.0_rt, 8.0_rt, 9.0_rt}};
+        pp.addarr("velocity", uvw);
+    }
+    {
+        amrex::ParmParse pp("TerrainDrag");
+        pp.add("terrain_file", std::string("tp_terrain_xslope.amrwind"));
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo, m_ylo});
+    const kynema_sgf::udf::TabulatedProfile profile(vel);
+
+    const auto err = max_error(
+        vel, mesh().Geom(0), profile, m_ylo, {0.0_rt, 0.0_rt, 0.0_rt},
+        {7.0_rt, 8.0_rt, 9.0_rt});
+    EXPECT_NEAR(err, 0.0_rt, m_tol);
 }
 
 // A bump between two cell centers (3.5 and 4.5) is still ground that varies

@@ -543,6 +543,21 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         pp_face.query("tabulated_profile_zoffset", zoffset);
         m_op.zoffset[face] = zoffset;
 
+        if (fname.empty()) {
+            // Fall back to the constant value given for this face. The offset
+            // and ground checks below only concern a profile, so a constant
+            // face may stand on any ground.
+            amrex::Vector<amrex::Real> cval(ncomp, 0.0_rt);
+            pp_face.queryarr(fld.name(), cval, 0, ncomp);
+            for (int n = 0; n < ncomp; ++n) {
+                m_op.constval[(face * AMREX_SPACEDIM) + n] = cval[n];
+            }
+            amrex::Print() << "TabulatedProfile: " << fld.name() << " on "
+                           << face_names[face]
+                           << " has no profile, using the constant value\n";
+            continue;
+        }
+
         if (init_wind_profile && !terrain_aligned && (zoffset != 0.0_rt)) {
             amrex::Abort(
                 "TabulatedProfile: the interior is initialized from a profile "
@@ -560,19 +575,6 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
                 check_ground_height(
                     terrain_file, geom, face, zoffset, ground_tol);
             }
-        }
-
-        if (fname.empty()) {
-            // Fall back to the constant value given for this face
-            amrex::Vector<amrex::Real> cval(ncomp, 0.0_rt);
-            pp_face.queryarr(fld.name(), cval, 0, ncomp);
-            for (int n = 0; n < ncomp; ++n) {
-                m_op.constval[(face * AMREX_SPACEDIM) + n] = cval[n];
-            }
-            amrex::Print() << "TabulatedProfile: " << fld.name() << " on "
-                           << face_names[face]
-                           << " has no profile, using the constant value\n";
-            continue;
         }
 
         if (!cache.contains(fname)) {
