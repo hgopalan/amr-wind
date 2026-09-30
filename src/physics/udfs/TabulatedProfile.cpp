@@ -137,7 +137,7 @@ assumed_columns(const int ncols, const std::string& fname)
  */
 amrex::Vector<std::string> comment_names(std::string line)
 {
-    std::replace(line.begin(), line.end(), ',', ' ');
+    std::ranges::replace(line, ',', ' ');
     const auto start = line.find_first_not_of("# \t");
     std::istringstream iss(
         (start == std::string::npos) ? std::string() : line.substr(start));
@@ -306,7 +306,7 @@ ProfileData read_profile_file(const std::string& fname)
     while (std::getline(infile, line)) {
         ++lineno;
         // A UTF-8 byte order mark ahead of the first line is not content
-        if ((lineno == 1) && (line.rfind("\xEF\xBB\xBF", 0) == 0)) {
+        if ((lineno == 1) && line.starts_with("\xEF\xBB\xBF")) {
             line.erase(0, 3);
         }
         const auto first = line.find_first_not_of(" \t\r\n");
@@ -673,13 +673,26 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     amrex::Real default_zoffset = 0.0_rt;
     pp.query("zoffset", default_zoffset);
 
+    // The checks below follow what the run does with its inputs, so they are
+    // decided from the physics it builds, in the order they are listed
+    amrex::Vector<std::string> physics;
+    amrex::ParmParse("incflo").queryarr("physics", physics);
+    const auto has_physics = [&physics](const std::string& name) {
+        return std::ranges::find(physics, name) != physics.end();
+    };
+
     // The interior profile and the boundary have to be measured from the same
-    // place, or the inflow fights the interior at the boundary
+    // place, or the inflow fights the interior at the boundary. The ABL
+    // physics sets the interior from ABL.initial_wind_profile; without it
+    // the ABL inputs are not used.
+    const bool abl = has_physics("ABL");
     amrex::ParmParse pp_abl("ABL");
     bool init_wind_profile = false;
     bool terrain_aligned = false;
-    pp_abl.query("initial_wind_profile", init_wind_profile);
-    pp_abl.query("terrain_aligned_profile", terrain_aligned);
+    if (abl) {
+        pp_abl.query("initial_wind_profile", init_wind_profile);
+        pp_abl.query("terrain_aligned_profile", terrain_aligned);
+    }
     // ABL.initial_wind_profile only sets these fields in the interior; any
     // other scalar starts from its own initial condition, so an offset on its
     // boundary cannot conflict with the ABL profile
@@ -687,44 +700,50 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
                                  (fld.name() == "temperature") ||
                                  (fld.name() == "tke");
 
-    // Terrain lets the offset be checked against the ground it stands on. With
-    // TerrainDrag active the file is the one it reads, including its default
-    // name; TerrainDrag ignores the file when the terrain comes from single
-    // phase ocean waves, so there is nothing to check against then. Without
-    // TerrainDrag, a TerrainDrag.terrain_file given for the terrain-aligned
-    // initial profile is used when present.
-    amrex::Vector<std::string> physics;
-    amrex::ParmParse("incflo").queryarr("physics", physics);
-    const auto has_physics = [&physics](const std::string& name) {
-        return std::ranges::find(physics, name) != physics.end();
+    // Terrain lets the offset be checked against the ground it stands on,
+    // using the terrain file the run reads:
+    // - with TerrainDrag, its file, including its default name. TerrainDrag
+    //   ignores the file and builds its terrain from the waves when OceanWaves
+    //   is built before it and no vof field is (MultiPhase declares vof unless
+    //   it captures the interface with a level set), so there is nothing to
+    //   check against then;
+    // - without TerrainDrag, TerrainDrag.terrain_file when the ABL physics
+    //   reads it for a terrain-aligned initial profile.
+    // Decided from the inputs rather than from the physics manager, since the
+    // boundary conditions of velocity are set up before any physics is built.
+    const auto terrain_drag_pos = std::ranges::find(physics, "TerrainDrag");
+    const bool terrain_drag = (terrain_drag_pos != physics.end());
+    const auto built_before_terrain_drag = [&](const std::string& name) {
+        return std::find(physics.begin(), terrain_drag_pos, name) !=
+               terrain_drag_pos;
     };
-    const bool terrain_drag = has_physics("TerrainDrag");
-    // TerrainDrag builds its terrain from the waves when OceanWaves runs
-    // without a VOF field. Decided from the inputs rather than from the field
-    // repository, since the boundary conditions of velocity are set up before
-    // MultiPhase declares vof.
     std::string interface_model{"vof"};
     amrex::ParmParse("MultiPhase")
         .query("interface_capturing_method", interface_model);
-    const bool has_vof = has_physics("MultiPhase") &&
-                         (amrex::toLower(interface_model) != "levelset");
+    const bool vof_before_terrain_drag =
+        built_before_terrain_drag("MultiPhase") &&
+        (amrex::toLower(interface_model) != "levelset");
+    const bool terrain_from_waves = terrain_drag &&
+                                    built_before_terrain_drag("OceanWaves") &&
+                                    !vof_before_terrain_drag;
     std::string terrain_file;
     bool terrain_required = false;
-    const bool terrain_from_waves =
-        terrain_drag && has_physics("OceanWaves") && !has_vof;
     if (terrain_drag && !terrain_from_waves) {
         // Same default as TerrainDrag::m_terrain_file
         terrain_file = "terrain.amrwind";
         terrain_required = true;
     }
-    amrex::ParmParse("TerrainDrag").query("terrain_file", terrain_file);
+    if ((terrain_drag && !terrain_from_waves) ||
+        (init_wind_profile && terrain_aligned)) {
+        amrex::ParmParse("TerrainDrag").query("terrain_file", terrain_file);
+    }
 
     // Read the terrain once for every face that is checked against it
     amrex::Vector<amrex::Real> xterrain;
     amrex::Vector<amrex::Real> yterrain;
     amrex::Vector<amrex::Real> zterrain;
     bool have_terrain = false;
-    if (!terrain_file.empty() && !terrain_from_waves) {
+    if (!terrain_file.empty()) {
         std::ifstream terrain_reader(terrain_file, std::ios::in);
         have_terrain = terrain_reader.good();
         terrain_reader.close();

@@ -1445,6 +1445,10 @@ TEST_F(TabulatedProfileTest, offset_must_match_the_ground_it_stands_on)
         amrex::ParmParse pp("TerrainDrag");
         pp.add("terrain_file", std::string("tp_terrain_flat.amrwind"));
     }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"TerrainDrag"});
+    }
     initialize_mesh();
 
     // The ground is at 3 but no offset was given
@@ -1470,6 +1474,10 @@ TEST_F(TabulatedProfileTest, offset_matching_the_ground_is_accepted)
         amrex::ParmParse pp("TerrainDrag");
         pp.add("terrain_file", std::string("tp_terrain_flat2.amrwind"));
     }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"TerrainDrag"});
+    }
     initialize_mesh();
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
@@ -1494,6 +1502,10 @@ TEST_F(TabulatedProfileTest, ground_varying_along_the_face_is_rejected)
     {
         amrex::ParmParse pp("TerrainDrag");
         pp.add("terrain_file", std::string("tp_terrain_slope.amrwind"));
+    }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"TerrainDrag"});
     }
     initialize_mesh();
 
@@ -1524,6 +1536,10 @@ TEST_F(TabulatedProfileTest, a_constant_face_may_stand_on_varying_ground)
     {
         amrex::ParmParse pp("TerrainDrag");
         pp.add("terrain_file", std::string("tp_terrain_xslope.amrwind"));
+    }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"TerrainDrag"});
     }
     initialize_mesh();
 
@@ -1562,6 +1578,125 @@ TEST_F(TabulatedProfileTest, the_default_terrain_drag_file_is_checked)
     expect_abort_with(vel, "the ground along xlo varies between");
     // The default name is shared with other tests; leave no file behind
     std::remove("terrain.amrwind");
+}
+
+namespace {
+//! Set up a profiled xlo face over ground rising along it, with the given
+//! physics and the terrain in TerrainDrag.terrain_file
+void sloped_ground_case(
+    const std::string& tag, const amrex::Vector<std::string>& physics)
+{
+    write_profile(
+        "tp_" + tag + ".txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    write_terrain("tp_" + tag + ".amrwind", 0.0_rt, 8.0_rt);
+    amrex::ParmParse("TabulatedProfile").add("filename", "tp_" + tag + ".txt");
+    amrex::ParmParse("TerrainDrag")
+        .add("terrain_file", "tp_" + tag + ".amrwind");
+    if (!physics.empty()) {
+        amrex::ParmParse("incflo").addarr("physics", physics);
+    }
+}
+} // namespace
+
+// Physics are built in the order listed, and TerrainDrag takes its terrain
+// from the waves only when OceanWaves is built before it. Listed after, the
+// waves leave TerrainDrag reading its file, which is then checked
+TEST_F(TabulatedProfileTest, terrain_drag_before_the_waves_reads_its_file)
+{
+    populate_parameters();
+    sloped_ground_case("wv1", {"ABL", "TerrainDrag", "OceanWaves"});
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "the ground along xlo varies between");
+}
+
+// OceanWaves built before TerrainDrag gives it wave terrain, and the file is
+// not used
+TEST_F(TabulatedProfileTest, waves_before_terrain_drag_leave_no_file)
+{
+    populate_parameters();
+    sloped_ground_case("wv2", {"ABL", "OceanWaves", "TerrainDrag"});
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+}
+
+// A vof field built before TerrainDrag keeps it on its file, even with the
+// waves; built after, it does not
+TEST_F(TabulatedProfileTest, only_a_vof_built_before_terrain_drag_counts)
+{
+    populate_parameters();
+    sloped_ground_case("wv3", {"MultiPhase", "OceanWaves", "TerrainDrag"});
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    expect_abort_with(vel, "the ground along xlo varies between");
+
+    amrex::ParmParse("incflo").addarr(
+        "physics",
+        amrex::Vector<std::string>{"OceanWaves", "TerrainDrag", "MultiPhase"});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+
+    // A level set declares no vof field
+    amrex::ParmParse("MultiPhase")
+        .add("interface_capturing_method", std::string("levelset"));
+    amrex::ParmParse("incflo").addarr(
+        "physics",
+        amrex::Vector<std::string>{"MultiPhase", "OceanWaves", "TerrainDrag"});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+}
+
+// Without TerrainDrag the file is read only by the ABL physics, for a
+// terrain-aligned initial profile, and only then is it checked
+TEST_F(TabulatedProfileTest, a_terrain_file_is_checked_only_when_read)
+{
+    populate_parameters();
+    sloped_ground_case("wv4", {});
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("initial_wind_profile", true);
+        pp.add("terrain_aligned_profile", true);
+    }
+    initialize_mesh();
+
+    // Neither TerrainDrag nor ABL is built: the file is not used
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
+
+    amrex::ParmParse("incflo").addarr(
+        "physics", amrex::Vector<std::string>{"ABL"});
+    expect_abort_with(vel, "the ground along xlo varies between");
+}
+
+// The ABL inputs set the interior only through the ABL physics, so without
+// it an offset cannot conflict with them
+TEST_F(TabulatedProfileTest, abl_inputs_without_the_abl_physics_are_unused)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g13.txt",
+        "# z u v T\n"
+        "0.0   4.0  0.0  300.0\n"
+        "8.0   4.0  0.0  308.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_g13.txt"));
+        pp.add("zoffset", 3.0_rt);
+    }
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("initial_wind_profile", true);
+        pp.add("terrain_aligned_profile", false);
+    }
+    initialize_mesh();
+
+    auto& vel = inflow_field("velocity", 3, {m_xlo});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{vel});
 }
 
 // With TerrainDrag active, a terrain file that cannot be read is an error
@@ -1766,6 +1901,10 @@ TEST_F(TabulatedProfileTest, the_ground_tolerance_can_be_raised)
         amrex::ParmParse pp("TerrainDrag");
         pp.add("terrain_file", std::string("tp_terrain_gentle.amrwind"));
     }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"TerrainDrag"});
+    }
     initialize_mesh();
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
@@ -1791,6 +1930,10 @@ TEST_F(
         amrex::ParmParse pp("ABL");
         pp.add("initial_wind_profile", true);
         pp.add("terrain_aligned_profile", true);
+    }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"ABL"});
     }
     initialize_mesh();
 
@@ -1968,6 +2111,10 @@ TEST_F(TabulatedProfileTest, ground_varying_between_cell_centers_is_rejected)
         amrex::ParmParse pp("TerrainDrag");
         pp.add("terrain_file", std::string("tp_terrain_bump.amrwind"));
     }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"TerrainDrag"});
+    }
     initialize_mesh();
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
@@ -1992,6 +2139,10 @@ TEST_F(TabulatedProfileTest, an_offset_conflicts_with_an_unaligned_interior)
         amrex::ParmParse pp("ABL");
         pp.add("initial_wind_profile", true);
         pp.add("terrain_aligned_profile", false);
+    }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"ABL"});
     }
     initialize_mesh();
 
@@ -2018,6 +2169,10 @@ TEST_F(TabulatedProfileTest, a_scalar_offset_ignores_the_abl_initial_profile)
         amrex::ParmParse pp("ABL");
         pp.add("initial_wind_profile", true);
         pp.add("terrain_aligned_profile", false);
+    }
+    {
+        amrex::ParmParse pp("incflo");
+        pp.addarr("physics", amrex::Vector<std::string>{"ABL"});
     }
     initialize_mesh();
 

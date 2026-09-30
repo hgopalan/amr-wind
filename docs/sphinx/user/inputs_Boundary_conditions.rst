@@ -160,8 +160,11 @@ TabulatedProfile
 """"""""""""""""
 
 Reads a vertical profile from a text file and imposes it on inflow boundaries.
-Unlike the profiles above, it applies to any field: velocity, temperature,
-``tke``, and any scalar added later.
+Unlike the profiles above, it applies to velocity and to the fields of the
+scalar transport equations: temperature, ``tke``, and any scalar added later.
+It does not apply to ``density``, which the run refuses, or to the volume
+fraction ``vof`` of the multiphase solver, whose boundary conditions take only
+constant values.
 
 Choosing the boundary condition type
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -371,18 +374,23 @@ picked from the surface wind will be wrong higher up.
 
 Only a uniform lift is supported. Ground that varies along a face would vary
 the inflow area with it, and the inflow-outflow solvability correction would
-then rescale the profile that was asked for. With ``TerrainDrag`` active its
-terrain file (``TerrainDrag.terrain_file``, default ``terrain.amrwind``) is
-read, and otherwise ``TerrainDrag.terrain_file`` is used when it is given. The
-ground along each x or y face that uses a profile is then checked against the
-offset, and the run stops if the face is not level, if the offset is not the
-height it stands at, or if the ``TerrainDrag`` terrain file cannot be read.
-Terrain built from single-phase ocean waves is not checked.
+then rescale the profile that was asked for. The ground is taken from the
+terrain file the run reads: with ``TerrainDrag`` active, its file
+(``TerrainDrag.terrain_file``, default ``terrain.amrwind``); without it,
+``TerrainDrag.terrain_file`` when the ABL physics reads it for a
+terrain-aligned initial profile. The ground along each x or y face that uses a
+profile is then checked against the offset, and the run stops if the face is
+not level, if the offset is not the height it stands at, or if the
+``TerrainDrag`` terrain file cannot be read. ``TerrainDrag`` builds its terrain
+from the waves, and nothing is checked, when ``OceanWaves`` is listed before it
+in ``incflo.physics`` and no volume fraction is (``MultiPhase`` without a level
+set); physics are built in the order listed.
 
 The interior has to be measured from the same place as the boundary. Setting
 an offset while the interior is initialized from a profile measured from the
-bottom of the domain, that is with ``ABL.initial_wind_profile`` on and
-``ABL.terrain_aligned_profile`` off, is refused for that reason. This applies
+bottom of the domain, that is with the ``ABL`` physics active,
+``ABL.initial_wind_profile`` on and ``ABL.terrain_aligned_profile`` off, is
+refused for that reason. This applies
 to the fields that profile sets (velocity, temperature and tke); another scalar
 starts from its own initial condition.
 
