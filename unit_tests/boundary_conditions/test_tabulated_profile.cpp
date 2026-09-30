@@ -599,6 +599,8 @@ TEST_F(TabulatedProfileTest, outflow_part_of_a_scalar_face_is_extrapolated)
     auto& tracer = frepo.declare_field("tracer", 1, 1, 1);
     tracer.setVal(interior);
     kynema_sgf::BCScalar bc(tracer);
+    // Marked as transported, as the BC setup of its transport equation does
+    bc.set_transported();
     bc(0.0_rt);
     kynema_sgf::scalar_bc::register_scalar_dirichlet(
         tracer, mesh(), time(), bc.get_dirichlet_udfs());
@@ -614,9 +616,13 @@ TEST_F(TabulatedProfileTest, outflow_part_of_a_scalar_face_is_extrapolated)
     EXPECT_NEAR(err, 0.0_rt, tol);
 }
 
-// A scalar set by another UDF keeps that UDF's value on the whole face,
-// where the flow leaves too
-TEST_F(TabulatedProfileTest, outflow_of_a_scalar_set_by_another_udf_is_kept)
+// On a mass_inflow_outflow face a transported scalar takes the interior value
+// where the flow leaves, whatever sets its inflow value. Here the inflow value
+// is a constant: the ghost cells start at that constant (0) and the interior
+// is 100, so only the outflow half of the face may change
+TEST_F(
+    TabulatedProfileTest,
+    outflow_of_a_constant_transported_scalar_is_extrapolated)
 {
     populate_parameters();
     for (const auto& face : {"ylo", "zlo", "xhi", "yhi", "zhi"}) {
@@ -626,7 +632,8 @@ TEST_F(TabulatedProfileTest, outflow_of_a_scalar_set_by_another_udf_is_kept)
     {
         amrex::ParmParse pp("xlo");
         pp.add("type", std::string("mass_inflow_outflow"));
-        pp.add("tracer.inflow_outflow_type", std::string("CustomScalar"));
+        // The constant inflow value
+        pp.add("tracer", 0.0_rt);
     }
     initialize_mesh();
 
@@ -637,17 +644,53 @@ TEST_F(TabulatedProfileTest, outflow_of_a_scalar_set_by_another_udf_is_kept)
     auto& vel = frepo.declare_field("velocity", 3, 1, 1);
     set_inflow_outflow_velocity(vel, kmid);
 
-    // Ghost cells hold what the UDF would put there, 1, and the interior 100.
-    // CustomScalar itself is a template to be filled in by the user, so only
-    // the outflow treatment is exercised: it must leave the ghosts alone
     auto& tracer = frepo.declare_field("tracer", 1, 1, 1);
-    tracer.setVal(1.0_rt);
+    tracer.setVal(0.0_rt);
     tracer(0).setVal(interior, 0, 1, 0);
     kynema_sgf::BCScalar bc(tracer);
+    bc.set_transported();
     bc(0.0_rt);
     tracer.apply_bc_funcs(kynema_sgf::FieldState::New);
 
-    const auto err = xlo_ghost_error(tracer, 0, 0.0_rt, 1.0_rt);
+    // 0 (slope 0) where the flow enters, the interior value where it leaves
+    const auto err = xlo_ghost_error(tracer, kmid, 0.0_rt, interior);
+    constexpr amrex::Real tol =
+        std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
+    EXPECT_NEAR(err, 0.0_rt, tol);
+}
+
+// A field that is not transported, such as pressure or a source term, keeps
+// its inflow value on the whole face, where the flow leaves too
+TEST_F(TabulatedProfileTest, outflow_of_a_field_not_transported_is_kept)
+{
+    populate_parameters();
+    for (const auto& face : {"ylo", "zlo", "xhi", "yhi", "zhi"}) {
+        amrex::ParmParse pp(face);
+        pp.add("type", std::string("slip_wall"));
+    }
+    {
+        amrex::ParmParse pp("xlo");
+        pp.add("type", std::string("mass_inflow_outflow"));
+        // The constant inflow value
+        pp.add("other", 0.0_rt);
+    }
+    initialize_mesh();
+
+    const int kmid = 4;
+    const amrex::Real interior = 100.0_rt;
+    auto& frepo = mesh().field_repo();
+    auto& vel = frepo.declare_field("velocity", 3, 1, 1);
+    set_inflow_outflow_velocity(vel, kmid);
+
+    auto& other = frepo.declare_field("other", 1, 1, 1);
+    other.setVal(0.0_rt);
+    other(0).setVal(interior, 0, 1, 0);
+    kynema_sgf::BCScalar bc(other);
+    bc(0.0_rt);
+    other.apply_bc_funcs(kynema_sgf::FieldState::New);
+
+    // kmid = 0: every ghost cell of the face is expected at 0
+    const auto err = xlo_ghost_error(other, 0, 0.0_rt, 0.0_rt);
     constexpr amrex::Real tol =
         std::numeric_limits<amrex::Real>::epsilon() * 1.0e4_rt;
     EXPECT_NEAR(err, 0.0_rt, tol);
@@ -945,6 +988,32 @@ TEST_F(TabulatedProfileTest, an_offset_conflicts_with_an_unaligned_interior)
 
     auto& vel = inflow_field("velocity", 3, {m_xlo});
     EXPECT_THROW(kynema_sgf::udf::TabulatedProfile{vel}, amrex::RuntimeError);
+}
+
+// ABL.initial_wind_profile only sets velocity, temperature and tke, so the
+// offset of another scalar cannot conflict with it
+TEST_F(TabulatedProfileTest, a_scalar_offset_ignores_the_abl_initial_profile)
+{
+    populate_parameters();
+    write_profile(
+        "tp_g7.txt",
+        "# z u v T tracer\n"
+        "0.0   4.0  0.0  300.0  0.0\n"
+        "8.0   4.0  0.0  308.0  1.0\n");
+    {
+        amrex::ParmParse pp("TabulatedProfile");
+        pp.add("filename", std::string("tp_g7.txt"));
+        pp.add("zoffset", 3.0_rt);
+    }
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("initial_wind_profile", true);
+        pp.add("terrain_aligned_profile", false);
+    }
+    initialize_mesh();
+
+    auto& tracer = inflow_field("tracer", 1, {m_xlo});
+    EXPECT_NO_THROW(kynema_sgf::udf::TabulatedProfile{tracer});
 }
 
 TEST_F(TabulatedProfileTest, a_trailing_word_is_rejected)

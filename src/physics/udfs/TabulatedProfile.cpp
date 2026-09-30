@@ -534,6 +534,12 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     bool terrain_aligned = false;
     pp_abl.query("initial_wind_profile", init_wind_profile);
     pp_abl.query("terrain_aligned_profile", terrain_aligned);
+    // ABL.initial_wind_profile only sets these fields in the interior; any
+    // other scalar starts from its own initial condition, so an offset on its
+    // boundary cannot conflict with the ABL profile
+    const bool abl_initialized = (fld.name() == "velocity") ||
+                                 (fld.name() == "temperature") ||
+                                 (fld.name() == "tke");
 
     // Terrain lets the offset be checked against the ground it stands on
     std::string terrain_file;
@@ -601,7 +607,8 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
             continue;
         }
 
-        if (init_wind_profile && !terrain_aligned && (zoffset != 0.0_rt)) {
+        if (abl_initialized && init_wind_profile && !terrain_aligned &&
+            (zoffset != 0.0_rt)) {
             amrex::Abort(
                 "TabulatedProfile: the interior is initialized from a profile "
                 "measured from the bottom of the domain, since "

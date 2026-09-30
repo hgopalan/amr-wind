@@ -372,7 +372,11 @@ It uses a Dirichlet condition for the diffusion solver.
 Both the approaches mentioned above for the mass inflow condition,
 constant values and UDFs, can be used to specify the boundary values.
 The outflow values will be automatically replaced by a value from the interior cell
-to enforce the Neumann type behavior.
+to enforce the Neumann type behavior. This applies to velocity and to every
+field solved by a scalar transport equation (``temperature``, ``tke``, ``sdr``, passive
+scalars), on every ``mass_inflow_outflow`` face, whether its inflow value is a
+constant or a UDF. Fields that are not transported, such as pressure, keep the
+specified value on the whole face.
 See the ``freestream_godunov_inout`` test for an example that uses the TwoLayer UDF.
 This test involves two z-layers of the flow along opposite x-directions.
 The input file options are copied here::
