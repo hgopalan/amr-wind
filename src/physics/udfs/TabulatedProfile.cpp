@@ -699,8 +699,8 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
     amrex::ParmParse("MultiPhase")
         .query("interface_capturing_method", interface_model);
     const bool has_vof =
-        has_physics("MultiPhase") && (amrex::toLower(interface_model) == "vof");
-    const bool terrain_from_waves = has_physics("OceanWaves") && !has_vof;
+        has_physics("MultiPhase") &&
+        (amrex::toLower(interface_model) != "levelset");
     std::string terrain_file;
     bool terrain_required = false;
     if (terrain_drag && !terrain_from_waves) {
