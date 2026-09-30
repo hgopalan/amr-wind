@@ -228,6 +228,16 @@ void ABLWallFunction::update_level_means()
         return;
     }
 
+    const auto& velocity = repo.get_field("velocity");
+    const auto& temperature = repo.get_field("temperature");
+
+    // The means only serve the wall models at zlo
+    const amrex::Orientation zlo(amrex::Direction::z, amrex::Orientation::low);
+    if ((velocity.bc_type()[zlo] != BC::wall_model) &&
+        (temperature.bc_type()[zlo] != BC::wall_model)) {
+        return;
+    }
+
     // Same wall as ABLVelWallFunc and ABLTempWallFunc, which apply the wall
     // models at zlo with u and v as the tangential components
     constexpr int idim = 2;
@@ -260,14 +270,24 @@ void ABLWallFunction::update_level_means()
     // surface heat flux as at the reference height. The friction velocity,
     // the Obukhov length and the surface heat flux themselves stay those of
     // the reference height.
-    const auto& velocity = repo.get_field("velocity");
-    const auto& temperature = repo.get_field("temperature");
+    //
+    // Wall cells blanked by terrain carry no wall stress (the wall models
+    // multiply them by 1 - terrain_blank), so they are left out of the
+    // means as well.
+    const bool has_terrain = repo.int_field_exists("terrain_blank");
 
     m_mo_lev.resize(nlevels, m_mo);
     for (int lev = 0; lev < nlevels; ++lev) {
         const auto& geom = m_mesh.Geom(lev);
         const auto& ba = m_mesh.boxArray(lev);
         const auto& dm = m_mesh.DistributionMap(lev);
+        // The fields are read below by the box indices of the mesh
+        AMREX_ASSERT(
+            (velocity(lev).boxArray() == ba) &&
+            (velocity(lev).DistributionMap() == dm));
+        AMREX_ASSERT(
+            (temperature(lev).boxArray() == ba) &&
+            (temperature(lev).DistributionMap() == dm));
 
         // Wall-adjacent cells of the boxes of this level that touch the
         // wall, on the ranks that own these boxes, so that the sums below
@@ -324,6 +344,29 @@ void ABLWallFunction::update_level_means()
             temp_d.begin());
         const auto* vel_arrs = vel_d.data();
         const auto* temp_arrs = temp_d.data();
+
+        if (has_terrain) {
+            // Leave the wall cells blanked by terrain out of the mask
+            const auto& blank = repo.get_int_field("terrain_blank");
+            amrex::Vector<amrex::Array4<const int>> blank_h(nlocal);
+            for (amrex::MFIter mfi(level_mask); mfi.isValid(); ++mfi) {
+                blank_h[mfi.LocalIndex()] =
+                    blank(lev).const_array(wall_box_index[mfi.index()]);
+            }
+            amrex::Gpu::DeviceVector<amrex::Array4<const int>> blank_d(nlocal);
+            amrex::Gpu::copy(
+                amrex::Gpu::hostToDevice, blank_h.begin(), blank_h.end(),
+                blank_d.begin());
+            const auto* blank_arrs = blank_d.data();
+            const auto& lmask_arrs = level_mask.arrays();
+            amrex::ParallelFor(
+                level_mask,
+                [=] AMREX_GPU_DEVICE(int box_no, int i, int j, int k) {
+                    lmask_arrs[box_no](i, j, k) *=
+                        (1 - blank_arrs[box_no](i, j, k, 0));
+                });
+            amrex::Gpu::streamSynchronize();
+        }
         const auto& mask_arrs = level_mask.const_arrays();
 
         // Sums of u, v, |u_h|, |u_h| u, |u_h| v, theta and the cell count
@@ -364,12 +407,32 @@ void ABLWallFunction::update_level_means()
 
         const amrex::Real count = vals[6];
         if (!(count > 0.0_rt)) {
-            // A finer level covers all the wall cells of this level
+            // A finer level covers all the wall cells of this level, or
+            // terrain blanks them
+            continue;
+        }
+
+        // Height of the first cell center above the wall, measured from the
+        // wall position like the reference height
+        const amrex::Real zref_lev =
+            geom.ProbLo(idim) + (0.5_rt * geom.CellSize(idim)) - m_wall_pos;
+        if (zref_lev <= amrex::max(m_mo.z0, m_mo.z0t)) {
+            // The log law does not hold at or below the roughness height,
+            // where phi_h vanishes or changes sign: keep the means at the
+            // reference height on this level, as without refinement
+            if (!m_warned_low_first_cell) {
+                amrex::Print()
+                    << "WARNING: ABLWallFunction: the first cell of level "
+                    << lev << " sits at " << zref_lev
+                    << " m, at or below the roughness height; this level "
+                       "uses the plane averages at the reference height\n";
+                m_warned_low_first_cell = true;
+            }
             continue;
         }
 
         auto& mo_lev = m_mo_lev[lev];
-        mo_lev.zref = 0.5_rt * geom.CellSize(idim);
+        mo_lev.zref = zref_lev;
         mo_lev.vel_mean[0] = vals[0] / count;
         mo_lev.vel_mean[1] = vals[1] / count;
         mo_lev.vmag_mean = vals[2] / count;

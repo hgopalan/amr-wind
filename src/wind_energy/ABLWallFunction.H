@@ -31,11 +31,13 @@ public:
 
     //! Monin-Obukhov data carrying the mean quantities of a given mesh level
     //!
-    //! On a single-level mesh, or when only level 0 touches the wall, this
-    //! is the same object as mo(). When a finer level touches the wall, every
-    //! level holds the plane averages of its own wall-adjacent cells at their
-    //! own height, so that the wall
-    //! models that combine the local first-cell values with their plane
+    //! On a single-level mesh, when only level 0 touches the wall, when
+    //! the bottom boundary is not a wall model, or in inflow-outflow mode,
+    //! this is the same object as mo(). When a finer level touches the wall,
+    //! every level with uncovered, unblanked wall cells whose first cell sits
+    //! above the roughness height holds the plane averages of those cells at
+    //! their own height (any other level holds a copy of mo()), so that the
+    //! wall models that combine the local first-cell values with their plane
     //! averages return, on every level, the mean stress and heat flux set by
     //! the friction velocity and the surface heat flux.
     //! The friction velocity, Obukhov length and surface heat flux are
@@ -73,8 +75,13 @@ private:
     //! Monin-Obukhov instance
     MOData m_mo;
 
-    //! Monin-Obukhov data per mesh level, empty on single-level meshes
+    //! Monin-Obukhov data per mesh level; empty when mo(lev) is mo() on
+    //! every level (see mo(int))
     amrex::Vector<MOData> m_mo_lev;
+
+    //! Whether the warning about a first cell at or below the roughness
+    //! height was printed
+    bool m_warned_low_first_cell{false};
 
     int m_direction{2};             ///< Direction normal to wall
     bool m_use_fch{true};           ///< Use first cell height?

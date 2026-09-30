@@ -236,7 +236,7 @@ This section is for setting atmospheric boundary layer parameters.
    **type:** String, optional, default = "Moeng"
 
    Wall shear stress model: options include
-   "constant", "local", "Schumann", and "Moeng"
+   "constant", "local", "Schumann", "Moeng", and "Donelan"
 
    The "Moeng" and "Schumann" models combine the velocity and temperature
    of the first cell above the wall with their plane averages; the heat
@@ -258,7 +258,11 @@ This section is for setting atmospheric boundary layer parameters.
    "Donelan" model selects its drag coefficient from the mean wind at
    :input_param:`ABL.log_law_height` and keeps that plane average on every
    level. Meshes whose refinement does not reach the wall use the plane
-   averages at :input_param:`ABL.log_law_height` as before.
+   averages at :input_param:`ABL.log_law_height` as before, and so does a
+   level whose first cell sits at or below the roughness height (with a
+   warning) and every level in inflow-outflow mode. Wall cells blanked by
+   terrain carry no wall stress and are left out of the level averages;
+   heights are measured from ``ABL.wall_position``.
 
 .. input_param:: ABL.bndry_output_format
 
