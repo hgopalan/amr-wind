@@ -703,6 +703,8 @@ TabulatedProfile::TabulatedProfile(const Field& fld)
         (amrex::toLower(interface_model) != "levelset");
     std::string terrain_file;
     bool terrain_required = false;
+    const bool terrain_from_waves =
+        terrain_drag && has_physics("OceanWaves") && !has_vof;
     if (terrain_drag && !terrain_from_waves) {
         // Same default as TerrainDrag::m_terrain_file
         terrain_file = "terrain.amrwind";
