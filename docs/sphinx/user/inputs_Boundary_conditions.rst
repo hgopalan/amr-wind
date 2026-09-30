@@ -241,7 +241,10 @@ inflow:
    One inflow UDF serves every inflow face of a field, so all its
    ``mass_inflow`` and ``mass_inflow_outflow`` faces must name the same UDF
    (this holds for any UDF, not only this one); the run stops if they
-   differ.
+   differ. Any other UDF also fills the inflow faces that name none, so
+   with it every inflow face of the field must select it, and the run stops
+   on a face left at its constant. ``TabulatedProfile`` alone falls back to
+   the constant face by face.
 
 File format
 ^^^^^^^^^^^

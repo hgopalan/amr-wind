@@ -638,6 +638,170 @@ TEST_F(TabulatedProfileTest, different_udfs_on_the_two_face_types_are_rejected)
     }
 }
 
+namespace {
+//! Slip walls on the y and z faces, and the given types on xlo and xhi
+void set_x_faces(const std::string& xlo_type, const std::string& xhi_type)
+{
+    for (const auto& face : {"ylo", "zlo", "yhi", "zhi"}) {
+        amrex::ParmParse pp(face);
+        pp.add("type", std::string("slip_wall"));
+    }
+    amrex::ParmParse("xlo").add("type", xlo_type);
+    amrex::ParmParse("xhi").add("type", xhi_type);
+    // Read by CustomVelocity, so that a missing check fails the test rather
+    // than stopping on an input error
+    amrex::Vector<amrex::Real> uvw{{1.0_rt, 0.0_rt, 0.0_rt}};
+    amrex::ParmParse("CustomVelocity").addarr("velocity", uvw);
+}
+
+//! Register the inflow UDFs of a field and return the error, if any
+template <typename BCType, typename Register>
+std::string register_error(
+    kynema_sgf::Field& fld, const Register& register_fn, const bool vector)
+{
+    BCType bc(fld);
+    if (vector) {
+        bc();
+    } else {
+        bc(0.0_rt);
+    }
+    try {
+        register_fn(bc.get_dirichlet_udfs());
+    } catch (const amrex::RuntimeError& err) {
+        return err.what();
+    }
+    return "";
+}
+} // namespace
+
+// The one fill operator calls a custom UDF on every inflow face, so a face of
+// the other kind that gives a constant is refused rather than overwritten
+TEST_F(TabulatedProfileTest, a_custom_udf_next_to_a_constant_face_is_rejected)
+{
+    populate_parameters();
+    set_x_faces("mass_inflow", "mass_inflow_outflow");
+    {
+        amrex::ParmParse pp("xlo");
+        pp.add("velocity.inflow_type", std::string("CustomVelocity"));
+        pp.add("tracer.inflow_type", std::string("CustomScalar"));
+        pp.add("tracer", 0.0_rt);
+    }
+    {
+        amrex::ParmParse pp("xhi");
+        amrex::Vector<amrex::Real> uvw{{1.0_rt, 0.0_rt, 0.0_rt}};
+        pp.addarr("velocity", uvw);
+        pp.add("tracer", 0.0_rt);
+    }
+    initialize_mesh();
+
+    auto& frepo = mesh().field_repo();
+    auto& vel = frepo.declare_field("velocity", 3, 1, 1);
+    const auto verr = register_error<kynema_sgf::BCVelocity>(
+        vel,
+        [&](const auto& udfs) {
+            kynema_sgf::vel_bc::register_velocity_dirichlet(
+                vel, mesh(), time(), udfs);
+        },
+        true);
+    EXPECT_NE(
+        verr.find(
+            "xhi.velocity.inflow_outflow_type is ConstDirichlet, but "
+            "CustomVelocity fills every inflow face"),
+        std::string::npos)
+        << verr;
+
+    auto& tracer = frepo.declare_field("tracer", 1, 1, 1);
+    const auto serr = register_error<kynema_sgf::BCScalar>(
+        tracer,
+        [&](const auto& udfs) {
+            kynema_sgf::scalar_bc::register_scalar_dirichlet(
+                tracer, mesh(), time(), udfs);
+        },
+        false);
+    EXPECT_NE(
+        serr.find(
+            "xhi.tracer.inflow_outflow_type is ConstDirichlet, but "
+            "CustomScalar fills every inflow face"),
+        std::string::npos)
+        << serr;
+}
+
+// The same holds between two faces of the same kind
+TEST_F(TabulatedProfileTest, a_custom_udf_must_be_selected_on_every_inflow_face)
+{
+    populate_parameters();
+    set_x_faces("mass_inflow", "mass_inflow");
+    amrex::ParmParse("xlo").add(
+        "velocity.inflow_type", std::string("CustomVelocity"));
+    {
+        amrex::ParmParse pp("xhi");
+        amrex::Vector<amrex::Real> uvw{{-1.0_rt, 0.0_rt, 0.0_rt}};
+        pp.addarr("velocity", uvw);
+    }
+    initialize_mesh();
+
+    auto& vel = mesh().field_repo().declare_field("velocity", 3, 1, 1);
+    const auto verr = register_error<kynema_sgf::BCVelocity>(
+        vel,
+        [&](const auto& udfs) {
+            kynema_sgf::vel_bc::register_velocity_dirichlet(
+                vel, mesh(), time(), udfs);
+        },
+        true);
+    EXPECT_NE(
+        verr.find(
+            "xhi.velocity.inflow_type is ConstDirichlet, but "
+            "CustomVelocity fills every inflow face"),
+        std::string::npos)
+        << verr;
+}
+
+// A custom UDF on every inflow face passes the check (CustomVelocity itself
+// is a template that stops when built), and TabulatedProfile may sit next to
+// a constant face, since it falls back to the constant face by face
+TEST_F(TabulatedProfileTest, udfs_that_can_fill_their_faces_are_registered)
+{
+    populate_parameters();
+    set_x_faces("mass_inflow", "pressure_outflow");
+    amrex::ParmParse("xlo").add(
+        "velocity.inflow_type", std::string("CustomVelocity"));
+    initialize_mesh();
+
+    auto& frepo = mesh().field_repo();
+    auto& vel = frepo.declare_field("velocity", 3, 1, 1);
+    EXPECT_EQ(
+        register_error<kynema_sgf::BCVelocity>(
+            vel,
+            [&](const auto& udfs) {
+                kynema_sgf::bc_udf::check_inflow_udf_faces(
+                    vel, udfs, "Velocity BC");
+            },
+            true),
+        "");
+
+    write_profile(
+        "tp_mixed_const.txt",
+        "# z u v T tracer\n"
+        "0.0  1.0  0.0  300.0  1.0\n"
+        "8.0  2.0  0.0  308.0  2.0\n");
+    amrex::ParmParse("TabulatedProfile")
+        .add("filename", std::string("tp_mixed_const.txt"));
+    amrex::ParmParse("xlo").add(
+        "tracer.inflow_type", std::string("TabulatedProfile"));
+    amrex::ParmParse("xhi").add("type", std::string("mass_inflow_outflow"));
+    amrex::ParmParse("xhi").add("tracer", 0.0_rt);
+    auto& tracer = frepo.declare_field("tracer", 1, 1, 1);
+    EXPECT_EQ(
+        register_error<kynema_sgf::BCScalar>(
+            tracer,
+            [&](const auto& udfs) {
+                kynema_sgf::scalar_bc::register_scalar_dirichlet(
+                    tracer, mesh(), time(), udfs);
+            },
+            false),
+        "");
+}
+
 // A PDE records the fill interpolation of its field, so that an inflow UDF
 // registered later uses it too (TKE.interpolation = PiecewiseConstant)
 TEST_F(TabulatedProfileTest, a_pde_field_records_its_fill_interpolation)
