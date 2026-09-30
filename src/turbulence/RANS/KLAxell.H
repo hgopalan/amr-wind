@@ -117,7 +117,8 @@ private:
 
     std::unique_ptr<ScratchField> m_gradT;
 
-    //! TerrainDrag options, all off by default (``KLAxell.<name>``)
+    //! TerrainDrag options (``KLAxell.<name>``), all off by default and all
+    //! on with ``TerrainDrag.wall_treatment = improved``
     //! Flat-ground wall stencil for the strain rate of the wall cells
     bool m_terrain_wall_stencil{false};
     //! Mixing length measured from the top face of the blanked column

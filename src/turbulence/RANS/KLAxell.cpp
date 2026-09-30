@@ -8,6 +8,7 @@
 #include "AMReX_ParmParse.H"
 #include "src/utilities/math_ops.H"
 #include "src/wind_energy/MOData.H"
+#include "src/physics/TerrainDrag.H"
 
 using namespace amrex::literals;
 
@@ -143,7 +144,14 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
     }
 
     {
-        // Near-wall options for TerrainDrag, all off by default
+        // Near-wall options for TerrainDrag: all off with the original
+        // wall treatment (default), all on with the improved one, and each
+        // can be set on its own
+        const bool improved = terraindrag::improved_wall_treatment();
+        m_terrain_wall_stencil = improved;
+        m_terrain_blanked_face_length = improved;
+        m_terrain_face_stress = improved;
+        m_terrain_face_heat_flux = improved;
         amrex::ParmParse pp("KLAxell");
         pp.query("terrain_wall_stencil", m_terrain_wall_stencil);
         pp.query("terrain_blanked_face_length", m_terrain_blanked_face_length);

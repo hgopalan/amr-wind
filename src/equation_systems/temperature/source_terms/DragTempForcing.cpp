@@ -1,6 +1,7 @@
 #include "src/equation_systems/temperature/source_terms/DragTempForcing.H"
 #include "src/utilities/IOManager.H"
 #include "src/wind_energy/MOData.H"
+#include "src/physics/TerrainDrag.H"
 #include "AMReX_ParmParse.H"
 #include "AMReX_Gpu.H"
 #include "AMReX_Random.H"
@@ -21,6 +22,9 @@ DragTempForcing::DragTempForcing(const CFDSim& sim)
     pp.query("drag_coefficient", m_drag_coefficient);
     pp.query("soil_temperature", m_soil_temperature);
     pp.query("bc_forcing_time_factor", m_forcing_time_factor);
+    // On with TerrainDrag.wall_treatment = improved, and can be set on its
+    // own
+    m_blank_follow_fluid = terraindrag::improved_wall_treatment();
     pp.query("blank_follow_fluid", m_blank_follow_fluid);
     amrex::ParmParse pp_abl("ABL");
     pp_abl.query("wall_het_model", m_wall_het_model);

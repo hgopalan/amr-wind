@@ -37,6 +37,14 @@ void set_bool(const std::string& prefix, const char* key, const bool v)
     pp.add(key, v);
 }
 
+void set_string(
+    const std::string& prefix, const char* key, const std::string& v)
+{
+    amrex::ParmParse pp(prefix);
+    pp.remove(key);
+    pp.add(key, v);
+}
+
 //! Velocity (s z, v, 0) including ghost cells
 void init_shear(
     kynema_sgf::Field& vel, const amrex::Real s, const amrex::Real v)
@@ -512,6 +520,91 @@ TEST_F(KLAxellTerrainTest, defaults_leave_the_legacy_path_unchanged)
         sim().repo().get_int_field("terrain_blank"), 0.0_rt);
     const amrex::Real T1 = 300.0_rt + (m_dTdz * 1.5_rt * m_dz);
     const amrex::Real soil = -blank_drag_rate() * (T1 - m_soil_temperature);
+    EXPECT_NEAR(
+        utils::field_probe(drag_temp_source("src"), 0, 15, 10, 1), soil,
+        m_tol * std::abs(soil));
+}
+
+// TerrainDrag.wall_treatment is original unless set to improved.
+TEST_F(KLAxellTerrainTest, wall_treatment_defaults_to_original)
+{
+    EXPECT_FALSE(kynema_sgf::terraindrag::improved_wall_treatment());
+    set_string("TerrainDrag", "wall_treatment", "original");
+    EXPECT_FALSE(kynema_sgf::terraindrag::improved_wall_treatment());
+    set_string("TerrainDrag", "wall_treatment", "improved");
+    EXPECT_TRUE(kynema_sgf::terraindrag::improved_wall_treatment());
+}
+
+// TerrainDrag.wall_treatment = improved turns on the five options together,
+// each acting as in its own test: the flat-ground stencil beside the plateau,
+// the mixing length from the blanked face, the drag-cell viscosity and heat
+// diffusivity from the face stress and heat flux (stable mol), and the
+// blanked cells following the air above them.
+TEST_F(KLAxellTerrainTest, improved_wall_treatment_turns_on_every_option)
+{
+    set_string("TerrainDrag", "wall_treatment", "improved");
+    set_stable_mol();
+    setup();
+    set_blank_velocity(
+        sim().repo().get_field("velocity"),
+        sim().repo().get_int_field("terrain_blank"), -3.0_rt);
+    update_viscosity();
+    // terrain_wall_stencil
+    EXPECT_NEAR(strain(13, 10, 1), 3.0_rt * m_shear, m_tol * m_shear);
+    EXPECT_NEAR(strain(18, 10, 1), 3.0_rt * m_shear, m_tol * m_shear);
+    // terrain_blanked_face_length
+    const amrex::Real mu_above = mu_rans(48.0_rt);
+    EXPECT_NEAR(mu(15, 10, 4), mu_above, m_tol * mu_above);
+    // terrain_face_stress, with the mixing length above from the face
+    const amrex::Real psi = -5.0_rt * 1.5_rt * m_dz / m_L;
+    const amrex::Real mref =
+        std::sqrt((u_shear(4) * u_shear(4)) + (m_vspan * m_vspan));
+    const amrex::Real us =
+        0.41_rt * mref / (std::log(1.5_rt * m_dz / m_z0) - psi);
+    const amrex::Real mu_face = m_rho0 * us * us / m_shear;
+    EXPECT_NEAR(mu(15, 10, 3), (2.0_rt * mu_face) - mu_above, m_tol * mu_face);
+    // terrain_face_heat_flux
+    init_stable_temperature();
+    update_viscosity();
+    const auto& alpha = update_alpha();
+    const amrex::Real T = 300.0_rt + (m_dTdz * 3.5_rt * m_dz);
+    const amrex::Real q = -us * T * us * us / (0.41_rt * 9.81_rt * m_L);
+    const amrex::Real a_face = m_rho0 * q * m_dz / (-m_dTdz * m_dz);
+    const amrex::Real a_expected =
+        (2.0_rt * a_face) - utils::field_probe(alpha, 0, 15, 10, 4);
+    EXPECT_NEAR(
+        utils::field_probe(alpha, 0, 15, 10, 3), a_expected,
+        m_tol * a_expected);
+    // blank_follow_fluid
+    set_blank_velocity(
+        sim().repo().get_field("velocity"),
+        sim().repo().get_int_field("terrain_blank"), 0.0_rt);
+    const amrex::Real C = blank_drag_rate();
+    const amrex::Real C_e = (1.0_rt - std::exp(-C * m_dt)) / m_dt;
+    const amrex::Real follow = C_e * m_dTdz * m_dz;
+    EXPECT_NEAR(
+        utils::field_probe(drag_temp_source("src"), 0, 15, 10, 1), follow,
+        m_tol * follow);
+}
+
+// With the improved treatment each option can still be turned off: the drag
+// cell keeps the model viscosity of the floor length dz / 2 while the length
+// above it is measured from the face, and the blanked cells relax toward the
+// soil temperature.
+TEST_F(KLAxellTerrainTest, improved_wall_treatment_options_can_be_turned_off)
+{
+    set_string("TerrainDrag", "wall_treatment", "improved");
+    set_bool("KLAxell", "terrain_face_stress", false);
+    set_bool("DragTempForcing", "blank_follow_fluid", false);
+    setup();
+    update_viscosity();
+    EXPECT_NEAR(mu(15, 10, 3), mu_rans(16.0_rt), m_tol * mu_rans(16.0_rt));
+    EXPECT_NEAR(mu(15, 10, 4), mu_rans(48.0_rt), m_tol * mu_rans(48.0_rt));
+    set_blank_velocity(
+        sim().repo().get_field("velocity"),
+        sim().repo().get_int_field("terrain_blank"), 0.0_rt);
+    const amrex::Real soil =
+        -blank_drag_rate() * (300.0_rt - m_soil_temperature);
     EXPECT_NEAR(
         utils::field_probe(drag_temp_source("src"), 0, 15, 10, 1), soil,
         m_tol * std::abs(soil));

@@ -26,12 +26,14 @@ This section is for setting turbulence model parameters
 
 The following inputs change how the ``KLAxell`` model treats the cells next to
 the terrain with ``TerrainDrag`` (binary blanking). They are all off by
-default, and with every one of them off the model is unchanged. They have no
-effect on flat ground or without ``TerrainDrag``.
+default, and with every one of them off the model is unchanged;
+:input_param:`TerrainDrag.wall_treatment` ``= improved`` turns them all on.
+They have no effect on flat ground or without ``TerrainDrag``.
 
 .. input_param:: KLAxell.terrain_wall_stencil
 
-   **type:** Boolean, optional, default = false
+   **type:** Boolean, optional, default = false (true with
+   :input_param:`TerrainDrag.wall_treatment` ``= improved``)
 
    Computes the strain rate of the fluid cells next to the blanked cells with
    the stencil flat ground uses at its bottom wall, the wall being the face of
@@ -49,7 +51,8 @@ effect on flat ground or without ``TerrainDrag``.
 
 .. input_param:: KLAxell.terrain_blanked_face_length
 
-   **type:** Boolean, optional, default = false
+   **type:** Boolean, optional, default = false (true with
+   :input_param:`TerrainDrag.wall_treatment` ``= improved``)
 
    Measures the mixing length from the top face of the blanked column instead
    of the terrain height. A cell is blanked when its center is at or below
@@ -62,7 +65,8 @@ effect on flat ground or without ``TerrainDrag``.
 
 .. input_param:: KLAxell.terrain_face_stress
 
-   **type:** Boolean, optional, default = false
+   **type:** Boolean, optional, default = false (true with
+   :input_param:`TerrainDrag.wall_treatment` ``= improved``)
 
    Sizes the turbulent viscosity of the drag cells (the first fluid cell above
    a blanked column) so that the face above each one carries the wall stress
@@ -89,7 +93,8 @@ effect on flat ground or without ``TerrainDrag``.
 
 .. input_param:: KLAxell.terrain_face_heat_flux
 
-   **type:** Boolean, optional, default = false
+   **type:** Boolean, optional, default = false (true with
+   :input_param:`TerrainDrag.wall_treatment` ``= improved``)
 
    With ``ABL.wall_het_model = mol``, sizes the heat diffusivity of the drag
    cells so that the face above each one carries the surface heat flux given

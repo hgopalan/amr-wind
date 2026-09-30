@@ -31,7 +31,8 @@ Section: Temperature Sources
 
 .. input_param:: DragTempForcing.blank_follow_fluid
 
-   **type:** Boolean, optional, default = false
+   **type:** Boolean, optional, default = false (true with
+   :input_param:`TerrainDrag.wall_treatment` ``= improved``)
 
    Relaxes the blanked (terrain) cells toward the temperature of the cell
    above them instead of ``DragTempForcing.soil_temperature``.

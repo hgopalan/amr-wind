@@ -53,7 +53,8 @@ private:
     amrex::Real m_soil_temperature{300};
     amrex::Real m_forcing_time_factor{5.0_rt};
     //! Blanked cells relax toward the cell above instead of the soil
-    //! temperature (off by default)
+    //! temperature (off by default, on with ``TerrainDrag.wall_treatment =
+    //! improved``)
     bool m_blank_follow_fluid{false};
     amrex::Vector<amrex::Real> m_gravity{0.0_rt, 0.0_rt, -9.81_rt};
 };
