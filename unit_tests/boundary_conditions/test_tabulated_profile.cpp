@@ -261,6 +261,8 @@ protected:
         fld.setVal(0.0_rt);
         for (const auto& ori : inflow_faces) {
             fld.bc_type()[ori] = BC::mass_inflow;
+            amrex::ParmParse pp(kynema_sgf::bcnames[ori]);
+            pp.add(name + ".inflow_type", std::string("TabulatedProfile"));
         }
         return fld;
     }
