@@ -380,8 +380,8 @@ protected:
         ss << "16.1 16.1 0.0 47.9 47.9 31.9" << '\n';
 
         create_mesh_instance<RefineMesh>();
-        std::unique_ptr<kynema_sgf::CartBoxRefinement> box_refine(
-            new kynema_sgf::CartBoxRefinement(sim()));
+        auto box_refine =
+            std::make_unique<kynema_sgf::CartBoxRefinement>(sim());
         box_refine->read_inputs(mesh(), ss);
 
         if (mesh<RefineMesh>() != nullptr) {
@@ -1036,8 +1036,8 @@ TEST_F(TurbLESLevelTest, test_1eqKsgs_surface_rans_level_independence)
             const amrex::Real mut = rho0 * Ce * l * std::sqrt(tke_val);
             EXPECT_NEAR(cell_value(muturb, lev, i, i, k), mut, tol);
             EXPECT_NEAR(
-                cell_value(alphaeff, lev, i, i, k), mu / prandtl + 3.0_rt * mut,
-                tol);
+                cell_value(alphaeff, lev, i, i, k),
+                (mu / prandtl) + (3.0_rt * mut), tol);
             EXPECT_NEAR(
                 cell_value(dissip, lev, i, i, k),
                 Ceps * tke_val * std::sqrt(tke_val) / l, tol);
@@ -1236,7 +1236,7 @@ TEST_F(TurbLESTest, test_AMD_setup_calc)
     const amrex::Real amd_answer =
         C *
         (-1.0_rt * kynema_sgf::utils::powi(scale / std::sqrt(6.0_rt), 3) *
-         (m_dx * m_dx - 8.0_rt * m_dy * m_dy - m_dz * m_dz)) /
+         ((m_dx * m_dx) - (8.0_rt * m_dy * m_dy) - (m_dz * m_dz))) /
         (1.0_rt * scale * scale);
     EXPECT_NEAR(min_val, amd_answer, tol);
     EXPECT_NEAR(max_val, amd_answer, tol);
@@ -1316,7 +1316,7 @@ TEST_F(TurbLESTest, test_AMDNoTherm_setup_calc)
 
     const amrex::Real amd_answer =
         -C * kynema_sgf::utils::powi(scale, 3) *
-        (m_dx * m_dx - 8.0_rt * m_dy * m_dy + m_dz * m_dz) /
+        ((m_dx * m_dx) - (8.0_rt * m_dy * m_dy) + (m_dz * m_dz)) /
         (6 * scale * scale);
     EXPECT_NEAR(min_val, amd_answer, tol);
     EXPECT_NEAR(max_val, amd_answer, tol);
