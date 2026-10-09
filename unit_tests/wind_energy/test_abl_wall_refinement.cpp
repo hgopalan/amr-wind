@@ -224,8 +224,57 @@ amrex::GpuArray<amrex::Real, 6> full_level_wall_means(
     return {v[0] / n, v[1] / n, v[2] / n, v[3] / n, v[4] / n, v[5] / n};
 }
 
+//! EXPERIMENT: Monin-Obukhov-consistent wind and temperature profiles for a
+//! surface heat flux q (Dyer functions, as in MOData), uniform in plane
+void init_mo_profiles(
+    kynema_sgf::Field& vel,
+    kynema_sgf::Field& temp,
+    const amrex::Real ustar,
+    const amrex::Real wind_angle,
+    const amrex::Real theta0,
+    const amrex::Real q,
+    const amrex::Real kappa,
+    const amrex::Real z0)
+{
+    const amrex::Real obl = -ustar * ustar * ustar * theta0 / (kappa * 9.81_rt * q);
+    const amrex::Real thetastar = -q / ustar;
+    const amrex::Real wc = std::cos(wind_angle);
+    const amrex::Real ws = std::sin(wind_angle);
+    const auto& mesh = vel.repo().mesh();
+    const int nlevels = vel.repo().num_active_levels();
+    for (int lev = 0; lev < nlevels; ++lev) {
+        const amrex::Real dz = mesh.Geom(lev).CellSizeArray()[2];
+        const amrex::Real zlo = mesh.Geom(lev).ProbLoArray()[2];
+        const auto& varrs = vel(lev).arrays();
+        const auto& tarrs = temp(lev).arrays();
+        amrex::ParallelFor(
+            vel(lev), vel.num_grow(),
+            [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                const int kk = amrex::max(k, 0);
+                const amrex::Real z = zlo + ((kk + 0.5_rt) * dz);
+                const amrex::Real zeta = z / obl;
+                const amrex::Real xm = std::sqrt(std::sqrt(1.0_rt - (16.0_rt * zeta)));
+                const amrex::Real psim =
+                    (2.0_rt * std::log(0.5_rt * (1.0_rt + xm))) +
+                    std::log(0.5_rt * (1.0_rt + (xm * xm))) -
+                    (2.0_rt * std::atan(xm)) + (0.5_rt * M_PI);
+                const amrex::Real xh = std::sqrt(1.0_rt - (16.0_rt * zeta));
+                const amrex::Real psih = 2.0_rt * std::log(0.5_rt * (1.0_rt + xh));
+                const amrex::Real spd =
+                    ustar / kappa * (std::log(z / z0) - psim);
+                varrs[nbx](i, j, k, 0) = spd * wc;
+                varrs[nbx](i, j, k, 1) = spd * ws;
+                varrs[nbx](i, j, k, 2) = 0.0_rt;
+                tarrs[nbx](i, j, k, 0) =
+                    theta0 + (thetastar / kappa * (std::log(z / z0) - psih));
+            });
+    }
+    amrex::Gpu::streamSynchronize();
+}
+
 //! EXPERIMENT: scale the velocity in the patch x < 30, y < 30 (all z)
-void apply_wake(kynema_sgf::Field& fld, const amrex::Real factor)
+void apply_wake(
+    kynema_sgf::Field& fld, const amrex::Real factor, const amrex::Real wxy)
 {
     const auto& mesh = fld.repo().mesh();
     const int nlevels = fld.repo().num_active_levels();
@@ -238,7 +287,7 @@ void apply_wake(kynema_sgf::Field& fld, const amrex::Real factor)
             [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k, int n) {
                 const amrex::Real x = plo[0] + ((i + 0.5_rt) * dx[0]);
                 const amrex::Real y = plo[1] + ((j + 0.5_rt) * dx[1]);
-                if ((x < 30.0_rt) && (y < 30.0_rt)) {
+                if ((x < wxy) && (y < wxy)) {
                     farrs[nbx](i, j, k, n) *= factor;
                 }
             });
@@ -255,7 +304,9 @@ amrex::Real wall_flux_region(
     const int comp,
     const int lev,
     const int region,
-    amrex::Real& ncells)
+    amrex::Real& ncells,
+    const amrex::Real wxy = 30.0_rt,
+    const amrex::Real split = 50.0_rt)
 {
     const auto& mesh = fld.repo().mesh();
     const int nlevels = fld.repo().num_active_levels();
@@ -288,8 +339,8 @@ amrex::Real wall_flux_region(
             }
             const amrex::Real x = plo[0] + ((i + 0.5_rt) * dx[0]);
             const amrex::Real y = plo[1] + ((j + 0.5_rt) * dx[1]);
-            const bool wake = (x < 30.0_rt) && (y < 30.0_rt);
-            const bool patch_b = (x > 50.0_rt) && (y > 50.0_rt);
+            const bool wake = (x < wxy) && (y < wxy);
+            const bool patch_b = (x > split) && (y > split);
             if ((region == 1 && !wake) || (region == 2 && wake) ||
                 (region == 3 && !patch_b)) {
                 return {0.0_rt, 0.0_rt};
@@ -352,7 +403,11 @@ protected:
         ABLMeshTest::populate_parameters();
         {
             amrex::ParmParse pp("amr");
-            pp.add("max_level", 1);
+            pp.add("max_level", m_max_level);
+            if (m_n_cell_xy > 0) {
+                amrex::Vector<int> ncell{{m_n_cell_xy, m_n_cell_xy, 64}};
+                pp.addarr("n_cell", ncell);
+            }
             pp.add("max_grid_size", m_max_grid_size);
             pp.add("blocking_factor", m_blocking_factor);
             pp.add("n_error_buf", 0);
@@ -361,6 +416,11 @@ protected:
             amrex::ParmParse pp("geometry");
             amrex::Vector<int> periodic{{1, 1, 0}};
             pp.addarr("is_periodic", periodic);
+            if (m_n_cell_xy > 0) {
+                amrex::Vector<amrex::Real> probhi{
+                    {15.0_rt * m_n_cell_xy, 15.0_rt * m_n_cell_xy, 1000.0_rt}};
+                pp.addarr("prob_hi", probhi);
+            }
         }
         {
             amrex::ParmParse pp("zlo");
@@ -407,9 +467,13 @@ protected:
         }
 
         std::stringstream ss;
+        if (!m_refine_spec.empty()) {
+            ss << m_refine_spec;
+        } else {
         ss << "1 // Number of levels" << '\n';
         ss << m_n_boxes << " // Number of boxes at this level" << '\n';
         ss << m_refine_box << '\n';
+        }
 
         if (m_reverse_boxes) {
             create_mesh_instance<ReversedRefineMesh>();
@@ -431,7 +495,7 @@ protected:
     {
         populate_parameters();
         initialize_mesh();
-        ASSERT_EQ(sim().repo().num_active_levels(), 2);
+        ASSERT_EQ(sim().repo().num_active_levels(), m_max_level + 1);
 
         auto& pde_mgr = sim().pde_manager();
         pde_mgr.register_icns();
@@ -456,8 +520,13 @@ protected:
         init_log_profile(
             temperature, {m_theta0, 0.0_rt, 0.0_rt},
             {m_thetastar / m_kappa, 0.0_rt, 0.0_rt}, m_z0);
+        if (m_mo_consistent) {
+            init_mo_profiles(
+                velocity, temperature, m_ustar, m_wind_angle, m_theta0,
+                m_qwall, m_kappa, m_z0);
+        }
         if (m_wake_factor != 1.0_rt) {
-            apply_wake(velocity, m_wake_factor);
+            apply_wake(velocity, m_wake_factor, m_wake_xy);
         }
         if (m_blank_ibound > 0) {
             // Terrain blanking half of the level-1 wall cells (level 1
@@ -689,11 +758,68 @@ public:
         amrex::Print() << out.str() << std::endl;
     }
 
+    //! EXPERIMENT: multi-level report; regions 1 wake, 2 not wake, 3 x, y >
+    //! 240 (the B side of the layout)
+    void report_row_ml(const std::string& label)
+    {
+        ASSERT_NO_FATAL_FAILURE(init_wall_fields());
+        auto& repo = sim().repo();
+        const int nlev = repo.num_active_levels();
+        for (int lev = 1; lev < nlev; ++lev) {
+            amrex::Print() << "BOXES," << label << ",lev" << lev << ","
+                           << repo.mesh().boxArray(lev) << std::endl;
+        }
+        const auto& velocity = repo.get_field("velocity");
+        const auto& temperature = repo.get_field("temperature");
+        const auto& density = repo.get_field("density");
+        const auto& vel_mueff = repo.get_field("velocity_mueff");
+        const auto& temp_mueff = repo.get_field("temperature_mueff");
+        const auto& abl = sim().physics_manager().get<kynema_sgf::ABL>();
+        const auto& mo = abl.abl_wall_function().mo();
+        const amrex::Real utau2 = (m_level_means_method == "mol")
+                                      ? m_ustar * m_ustar
+                                      : mo.utau * mo.utau;
+        const amrex::Real c = std::cos(m_wind_angle);
+        const amrex::Real sn = std::sin(m_wind_angle);
+        std::stringstream out;
+        out << "MLROW," << label << "," << m_level_means_method << ","
+            << m_shear_stress_type << "," << m_wake_factor;
+        for (int lev = 0; lev < nlev; ++lev) {
+            for (int region = 0; region < 4; ++region) {
+                amrex::Real n = 0.0_rt;
+                const amrex::Real tx = wall_flux_region(
+                    velocity, vel_mueff, density, 0, lev, region, n, m_wake_xy,
+                    240.0_rt);
+                const amrex::Real ty = wall_flux_region(
+                    velocity, vel_mueff, density, 1, lev, region, n, m_wake_xy,
+                    240.0_rt);
+                const amrex::Real q = -wall_flux_region(
+                    temperature, temp_mueff, density, 0, lev, region, n,
+                    m_wake_xy, 240.0_rt);
+                if (n > 0.0_rt) {
+                    out << "," << ((tx * c) + (ty * sn)) / utau2 << ","
+                        << q / m_qwall << "," << n;
+                } else {
+                    out << ",nan,nan,0";
+                }
+            }
+        }
+        out << "," << mo.utau / m_ustar;
+        amrex::Print() << out.str() << std::endl;
+    }
+
 protected:
     //! Level-1 box (xlo ylo zlo xhi yhi zhi), by default over x < 60, all
     //! y and z < 250
     std::string m_refine_box{"0.0 0.0 0.0 60.0 120.0 250.0"};
     std::string m_shear_stress_type{"moeng"};
+    //! EXPERIMENT: Monin-Obukhov-consistent profiles
+    bool m_mo_consistent{false};
+    //! EXPERIMENT: multi-level layout
+    int m_max_level{1};
+    std::string m_refine_spec;
+    int m_n_cell_xy{0};
+    amrex::Real m_wake_xy{30.0_rt};
     //! EXPERIMENT: blocking factor
     int m_blocking_factor{4};
     //! EXPERIMENT: number of level-1 boxes listed in m_refine_box
@@ -920,5 +1046,48 @@ INSTANTIATE_TEST_SUITE_P(
             "none", "own_cells", "plane_average", "mo_profile", "mol"),
         ::testing::Values("moeng", "schumann", "local"),
         ::testing::Values(1.0, 0.7)));
+
+// EXPERIMENT: four levels, disconnected patches on every refined level, a
+// wake over x, y < 120 that covers some patches and not others
+using ExpMLParam = std::tuple<std::string, std::string, double, bool>;
+class ABLWallMeansMLExperiment
+    : public ABLWallRefinementTest
+    , public ::testing::WithParamInterface<ExpMLParam>
+{};
+
+TEST_P(ABLWallMeansMLExperiment, report)
+{
+    const auto& [method, model, wake, moc] = GetParam();
+    m_mo_consistent = moc;
+    m_max_level = 3;
+    m_n_cell_xy = 32;
+    m_blocking_factor = 2;
+    m_wake_xy = 120.0_rt;
+    m_refine_spec = "3\n"
+                    "2\n"
+                    "0 0 0 210 210 250\n"
+                    "270 270 0 450 450 250\n"
+                    "3\n"
+                    "15 15 0 90 90 125\n"
+                    "120 120 0 195 195 125\n"
+                    "300 300 0 420 420 125\n"
+                    "2\n"
+                    "30 30 0 75 75 60\n"
+                    "330 330 0 390 390 60\n";
+    m_level_means_method = method;
+    m_shear_stress_type = model;
+    m_wake_factor = static_cast<amrex::Real>(wake);
+    report_row_ml(moc ? "ml4_moc" : "ml4");
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ExpML,
+    ABLWallMeansMLExperiment,
+    ::testing::Combine(
+        ::testing::Values(
+            "none", "own_cells", "plane_average", "mo_profile", "mol"),
+        ::testing::Values("moeng", "schumann", "local"),
+        ::testing::Values(1.0, 0.7),
+        ::testing::Bool()));
 
 } // namespace kynema_sgf_tests
