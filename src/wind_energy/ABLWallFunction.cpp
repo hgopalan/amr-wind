@@ -79,6 +79,7 @@ ABLWallFunction::ABLWallFunction(const CFDSim& sim)
     }
     m_wall_pos = m_sim.mesh().Geom(0).ProbLo(m_direction);
     pp.query("wall_position", m_wall_pos);
+    pp.query("level_means_method", m_level_means_method);
 
     if (pp.contains("surface_temp_flux")) {
         pp.query("surface_temp_flux", m_mo.surf_temp_flux);
@@ -213,13 +214,17 @@ void ABLWallFunction::update_umean(
     if (m_inflow_outflow) {
         m_mo_lev.clear();
     } else {
-        update_level_means();
+        update_level_means(vpa, tpa);
     }
 }
 
-void ABLWallFunction::update_level_means()
+void ABLWallFunction::update_level_means(
+    const VelPlaneAveraging& vpa, const FieldPlaneAveraging& tpa)
 {
     m_mo_lev.clear();
+    if (m_level_means_method == "none") {
+        return;
+    }
 
     const auto& repo = m_sim.repo();
     const int nlevels = repo.num_active_levels();
@@ -439,6 +444,30 @@ void ABLWallFunction::update_level_means()
         mo_lev.Su_mean = vals[3] / count;
         mo_lev.Sv_mean = vals[4] / count;
         mo_lev.theta_mean = vals[5] / count;
+        if (m_level_means_method == "mo_profile") {
+            // Reference-height plane means carried to the first-cell height
+            // of this level along the Monin-Obukhov profile
+            const amrex::Real rm = m_mo.phi_m(zref_lev) / m_mo.phi_m();
+            const amrex::Real rh = m_mo.phi_h(zref_lev) / m_mo.phi_h();
+            mo_lev.vel_mean[0] = m_mo.vel_mean[0] * rm;
+            mo_lev.vel_mean[1] = m_mo.vel_mean[1] * rm;
+            mo_lev.vmag_mean = m_mo.vmag_mean * rm;
+            mo_lev.Su_mean = m_mo.Su_mean * rm * rm;
+            mo_lev.Sv_mean = m_mo.Sv_mean * rm * rm;
+            mo_lev.theta_mean =
+                m_mo.surf_temp + ((m_mo.theta_mean - m_mo.surf_temp) * rh);
+        }
+        if (m_level_means_method == "plane_average") {
+            // Full-plane averages of the finest-level profile, interpolated
+            // to the first-cell height of this level
+            const amrex::Real zl = m_wall_pos + zref_lev;
+            mo_lev.vel_mean[0] = vpa.line_average_interpolated(zl, 0);
+            mo_lev.vel_mean[1] = vpa.line_average_interpolated(zl, 1);
+            mo_lev.vmag_mean = vpa.line_hvelmag_average_interpolated(zl);
+            mo_lev.Su_mean = vpa.line_su_average_interpolated(zl);
+            mo_lev.Sv_mean = vpa.line_sv_average_interpolated(zl);
+            mo_lev.theta_mean = tpa.line_average_interpolated(zl, 0);
+        }
         if (mo_lev.alg_type == MOData::ThetaCalcType::HEAT_FLUX) {
             // Surface temperature that returns the specified heat flux from
             // the mean state of this level (same relation as update_fluxes)

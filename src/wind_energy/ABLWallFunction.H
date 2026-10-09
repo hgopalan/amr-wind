@@ -65,7 +65,8 @@ public:
     //! Compute the mean quantities of the wall-adjacent cells of every level
     //! that touches the wall (only when a level finer than level 0 does).
     //! Public because it launches GPU kernels
-    void update_level_means();
+    void update_level_means(
+        const VelPlaneAveraging& vpa, const FieldPlaneAveraging& tpa);
 
 private:
     const CFDSim& m_sim;
@@ -78,6 +79,9 @@ private:
     //! Monin-Obukhov data per mesh level; empty when mo(lev) is mo() on
     //! every level (see mo(int))
     amrex::Vector<MOData> m_mo_lev;
+
+    //! EXPERIMENT (#2041 review): none | own_cells | plane_average
+    std::string m_level_means_method{"own_cells"};
 
     //! Whether the warning about a first cell at or below the roughness
     //! height was printed
