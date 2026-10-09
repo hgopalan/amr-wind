@@ -304,7 +304,14 @@ protected:
             if (m_wall_position_set) {
                 pp.add("wall_position", m_wall_position);
             }
-            pp.add("surface_temp_flux", m_qwall);
+            if (m_surface_temp_mode) {
+                // Surface-temperature mode: a fixed surface temperature
+                // equal to the profile's temperature at the roughness height
+                pp.add("surface_temp_rate", 0.0_rt);
+                pp.add("surface_temp_init", m_theta0);
+            } else {
+                pp.add("surface_temp_flux", m_qwall);
+            }
             pp.add("wall_shear_stress_type", m_shear_stress_type);
             if (m_log_law_height > 0.0_rt) {
                 pp.add("log_law_height", m_log_law_height);
@@ -362,8 +369,8 @@ protected:
             temperature, {m_theta0, 0.0_rt, 0.0_rt},
             {m_thetastar / m_kappa, 0.0_rt, 0.0_rt}, m_z0);
         if (m_blank_ibound > 0) {
-            // Terrain blanking half of the level-1 wall cells (level 1
-            // covers i < 16 there)
+            // Terrain blanking the first 8 of the 12 level-1 wall columns
+            // in x (level 1 covers x < 90 m, i < 12 on level 1)
             auto& blank = repo.declare_int_field("terrain_blank", 1, 1, 1);
             blank.setVal(0);
             blank_wall_cells(
@@ -394,6 +401,26 @@ protected:
         // Fill the wall-model ghost cells of velocity and temperature
         velocity.apply_bc_funcs(kynema_sgf::FieldState::Old);
         temperature.apply_bc_funcs(kynema_sgf::FieldState::Old);
+    }
+
+    //! Mean heat flux expected from the wall cells of a level: the specified
+    //! flux in heat-flux mode; in surface-temperature mode the Monin-Obukhov
+    //! flux of the level's own mean temperature at its own height, with the
+    //! friction velocity and Obukhov length of the reference height
+    [[nodiscard]] amrex::Real expected_heat_flux(const int lev)
+    {
+        if (!m_surface_temp_mode) {
+            return m_qwall;
+        }
+        const auto& mesh = sim().repo().mesh();
+        const auto& abl = sim().physics_manager().get<kynema_sgf::ABL>();
+        const auto& mo = abl.abl_wall_function().mo();
+        const amrex::Real zl = 0.5_rt * mesh.Geom(lev).CellSizeArray()[2];
+        const amrex::Real theta_l =
+            m_theta0 + (m_thetastar / m_kappa * std::log(zl / m_z0));
+        const amrex::Real phi_h =
+            std::log(zl / mo.z0t) - mo.calc_psi_h(zl / mo.obukhov_len);
+        return mo.kappa * mo.utau * (mo.surf_temp - theta_l) / phi_h;
     }
 
     //! Check that the mean wall stress and heat flux of every level match
@@ -439,7 +466,20 @@ protected:
                 temperature, temp_mueff, density, 0, lev, ncells);
             EXPECT_NEAR(taux, utau2 * wind_cos, tol * utau2) << "level " << lev;
             EXPECT_NEAR(tauy, utau2 * wind_sin, tol * utau2) << "level " << lev;
-            EXPECT_NEAR(qwall, m_qwall, tol_q) << "level " << lev;
+            EXPECT_NEAR(qwall, expected_heat_flux(lev), tol_q)
+                << "level " << lev;
+        }
+        if (m_surface_temp_mode) {
+            // The specified surface temperature is in use and the two
+            // levels expect different fluxes from the reference-height
+            // formula, so a level reading the reference-height mean fails
+            const auto& mo = abl.abl_wall_function().mo();
+            ASSERT_EQ(
+                mo.alg_type,
+                kynema_sgf::MOData::ThetaCalcType::SURFACE_TEMPERATURE);
+            ASSERT_EQ(mo.surf_temp, m_theta0);
+            ASSERT_GT(expected_heat_flux(1), 0.0_rt);
+            ASSERT_GT(expected_heat_flux(0), 0.0_rt);
         }
     }
 
@@ -544,6 +584,8 @@ protected:
     amrex::Real m_perturb{0.0_rt};
     //! Level-1 wall cells with i below this are blanked by terrain (0: none)
     int m_blank_ibound{0};
+    //! Specify the surface temperature instead of the surface heat flux
+    bool m_surface_temp_mode{false};
     //! ABL.wall_position, when set
     bool m_wall_position_set{false};
     amrex::Real m_wall_position{0.0_rt};
@@ -586,6 +628,32 @@ TEST_F(ABLWallRefinementTest, local_wall_model_level_consistent)
 TEST_F(ABLWallRefinementTest, constant_wall_model_level_consistent)
 {
     m_shear_stress_type = "constant";
+    check_level_fluxes();
+}
+
+// In surface-temperature mode every level keeps the specified surface
+// temperature and its mean heat flux is the Monin-Obukhov flux of its own mean
+// temperature at its own height; with the reference-height mean the level-1
+// flux is phi_h(z_1) / phi_h(z_ref) times that (about 15 % low here)
+TEST_F(ABLWallRefinementTest, moeng_surface_temperature_mode_level_consistent)
+{
+    m_shear_stress_type = "moeng";
+    m_surface_temp_mode = true;
+    check_level_fluxes();
+}
+
+TEST_F(
+    ABLWallRefinementTest, schumann_surface_temperature_mode_level_consistent)
+{
+    m_shear_stress_type = "schumann";
+    m_surface_temp_mode = true;
+    check_level_fluxes();
+}
+
+TEST_F(ABLWallRefinementTest, local_surface_temperature_mode_level_consistent)
+{
+    m_shear_stress_type = "local";
+    m_surface_temp_mode = true;
     check_level_fluxes();
 }
 
@@ -648,8 +716,8 @@ TEST_F(ABLWallRefinementTest, level_means_match_a_full_sum_on_many_boxes)
 }
 
 // Wall cells blanked by terrain carry no wall stress, so the level means are
-// those of the fluid cells: here half the level-1 wall cells are blanked and
-// at rest, and the level-1 mean wind is still the profile's first-cell wind
+// those of the fluid cells: here 8 of the 12 level-1 wall columns are blanked
+// and at rest, and the level-1 mean wind is still the profile's first-cell wind
 TEST_F(ABLWallRefinementTest, level_means_exclude_blanked_wall_cells)
 {
     constexpr amrex::Real tol =

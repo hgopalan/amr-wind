@@ -252,7 +252,11 @@ This section is for setting atmospheric boundary layer parameters.
    with the averages taken over the wall-adjacent cells that the level
    owns, which is :math:`u_*^2` along the mean wind when the wind is uniform
    over the plane. With a specified :input_param:`ABL.surface_temp_flux`,
-   the mean surface heat flux is that flux on every level. The friction
+   the mean surface heat flux is that flux on every level. With a specified
+   surface temperature (:input_param:`ABL.surface_temp_rate` or
+   :input_param:`ABL.surface_temp_timetable`) every level uses that
+   temperature with its own mean temperature at its own height, so its mean
+   heat flux is the Monin-Obukhov flux of that level. The friction
    velocity, the Obukhov length and the surface heat flux are computed once,
    from the plane average at :input_param:`ABL.log_law_height`. The
    "Donelan" model selects its drag coefficient from the mean wind at
@@ -262,7 +266,7 @@ This section is for setting atmospheric boundary layer parameters.
    level whose first cell sits at or below the roughness height (with a
    warning) and every level in inflow-outflow mode. Wall cells blanked by
    terrain carry no wall stress and are left out of the level averages;
-   heights are measured from ``ABL.wall_position``.
+   heights are measured from :input_param:`ABL.wall_position`.
 
 .. input_param:: ABL.bndry_output_format
 
