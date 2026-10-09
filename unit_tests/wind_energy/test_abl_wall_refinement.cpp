@@ -390,7 +390,17 @@ protected:
             }
             pp.add("surface_temp_flux", m_qwall);
             pp.add("wall_shear_stress_type", m_shear_stress_type);
-            pp.add("level_means_method", m_level_means_method);
+            if (m_level_means_method == "mol") {
+                // Local Monin-Obukhov wall model with the Obukhov length that
+                // returns q_wall for the profile's friction velocity
+                pp.add("wall_het_model", (std::string) "mol");
+                pp.add(
+                    "monin_obukhov_length",
+                    -m_theta0 * m_ustar * m_ustar * m_ustar /
+                        (m_kappa * 9.81_rt * m_qwall));
+            } else {
+                pp.add("level_means_method", m_level_means_method);
+            }
             if (m_log_law_height > 0.0_rt) {
                 pp.add("log_law_height", m_log_law_height);
             }
@@ -637,7 +647,11 @@ public:
         const auto& temp_mueff = repo.get_field("temperature_mueff");
         const auto& abl = sim().physics_manager().get<kynema_sgf::ABL>();
         const auto& mo = abl.abl_wall_function().mo();
-        const amrex::Real utau2 = mo.utau * mo.utau;
+        // mol does not use the plane-averaged friction velocity: compare it
+        // with that of the profile
+        const amrex::Real utau2 = (m_level_means_method == "mol")
+                                      ? m_ustar * m_ustar
+                                      : mo.utau * mo.utau;
         const amrex::Real c = std::cos(m_wind_angle);
         const amrex::Real sn = std::sin(m_wind_angle);
         amrex::Print() << "BOXES," << label << "," << repo.mesh().boxArray(1)
@@ -671,6 +685,7 @@ public:
             const amrex::Real wex = m_ustar / m_kappa * std::log(z1 / m_z0);
             out << "," << mol.vmag_mean / wex;
         }
+        out << "," << mo.utau / m_ustar;
         amrex::Print() << out.str() << std::endl;
     }
 
@@ -901,7 +916,8 @@ INSTANTIATE_TEST_SUITE_P(
     ABLWallMeansExperiment,
     ::testing::Combine(
         ::testing::Values("full", "half", "small", "two"),
-        ::testing::Values("none", "own_cells", "plane_average", "mo_profile"),
+        ::testing::Values(
+            "none", "own_cells", "plane_average", "mo_profile", "mol"),
         ::testing::Values("moeng", "schumann", "local"),
         ::testing::Values(1.0, 0.7)));
 
