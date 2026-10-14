@@ -8,6 +8,7 @@
 #include "amr-wind/utilities/IOManager.H"
 #include "amr-wind/utilities/io_utils.H"
 #include "amr-wind/utilities/linear_interpolation.H"
+#include "amr-wind/wind_energy/DisplacementHeight.H"
 #include "AMReX_REAL.H"
 
 using namespace amrex::literals;
@@ -25,6 +26,8 @@ TerrainDrag::TerrainDrag(CFDSim& sim)
     , m_terrainz0(sim.repo().declare_field("terrainz0", 1, 1, 1))
     , m_terrain_height(sim.repo().declare_field("terrain_height", 1, 1, 1))
     , m_terrain_damping(sim.repo().declare_field("terrain_damping", 1, 1, 1))
+    , m_terrain_displacement(
+          sim.repo().declare_field(displacement::field_name, 1, 1, 1))
 {
 
     m_terrain_is_waves = sim.physics_manager().contains("OceanWaves") &&
@@ -34,6 +37,22 @@ TerrainDrag::TerrainDrag(CFDSim& sim)
         amrex::ParmParse pp(identifier());
         pp.query("terrain_file", m_terrain_file);
         pp.query("roughness_file", m_roughness_file);
+        if (pp.contains("displacement_file")) {
+            pp.get("displacement_file", m_displacement_file);
+            if (!std::ifstream(m_displacement_file).good()) {
+                amrex::Abort(
+                    "TerrainDrag: cannot find displacement_file " +
+                    m_displacement_file);
+            }
+            std::string wall_het_model{"none"};
+            amrex::ParmParse pp_abl("ABL");
+            pp_abl.query("wall_het_model", wall_het_model);
+            if (wall_het_model != "mol") {
+                amrex::Abort(
+                    "TerrainDrag.displacement_file is only supported with "
+                    "ABL.wall_het_model = mol");
+            }
+        }
     } else {
         m_wave_volume_fraction = &m_repo.get_field(m_wave_volume_fraction_name);
         m_wave_negative_elevation =
@@ -45,13 +64,16 @@ TerrainDrag::TerrainDrag(CFDSim& sim)
     m_sim.io_manager().register_io_var("terrainz0");
     m_sim.io_manager().register_io_var("terrain_height");
     m_sim.io_manager().register_io_var("terrain_damping");
+    m_sim.io_manager().register_io_var(displacement::field_name);
 
     m_terrain_blank.setVal(0);
     m_terrain_drag.setVal(0);
     m_terrain_damping.setVal(0);
+    m_terrain_displacement.setVal(0.0_rt);
     m_terrainz0.set_default_fillpatch_bc(m_sim.time());
     m_terrain_height.set_default_fillpatch_bc(m_sim.time());
     m_terrain_damping.set_default_fillpatch_bc(m_sim.time());
+    m_terrain_displacement.set_default_fillpatch_bc(m_sim.time());
     amrex::ParmParse pp(identifier());
     pp.query("damp_east_slope", m_damp_east_slope);
     pp.query("damp_east_full", m_damp_east_full);
@@ -91,6 +113,16 @@ void TerrainDrag::initialize_fields(int level, const amrex::Geometry& geom)
         ioutils::read_flat_grid_file(m_roughness_file, xrough, yrough, z0rough);
     }
     file.close();
+
+    // Displacement height is optional; zero when the file is absent
+    amrex::Vector<amrex::Real> xdisp;
+    amrex::Vector<amrex::Real> ydisp;
+    amrex::Vector<amrex::Real> zdisp;
+    std::ifstream dfile(m_displacement_file, std::ios::in);
+    if (dfile.good()) {
+        ioutils::read_flat_grid_file(m_displacement_file, xdisp, ydisp, zdisp);
+    }
+    dfile.close();
 
     const auto& dx = geom.CellSizeArray();
     const auto& prob_lo = geom.ProbLoArray();
@@ -137,6 +169,22 @@ void TerrainDrag::initialize_fields(int level, const amrex::Geometry& geom)
     const auto* xrough_ptr = d_xrough.data();
     const auto* yrough_ptr = d_yrough.data();
     const auto* z0rough_ptr = d_z0rough.data();
+    // Copy displacement height to gpu
+    const auto xdisp_size = xdisp.size();
+    const auto ydisp_size = ydisp.size();
+    amrex::Gpu::DeviceVector<amrex::Real> d_xdisp(xdisp_size);
+    amrex::Gpu::DeviceVector<amrex::Real> d_ydisp(ydisp_size);
+    amrex::Gpu::DeviceVector<amrex::Real> d_zdisp(zdisp.size());
+    amrex::Gpu::copy(
+        amrex::Gpu::hostToDevice, xdisp.begin(), xdisp.end(), d_xdisp.begin());
+    amrex::Gpu::copy(
+        amrex::Gpu::hostToDevice, ydisp.begin(), ydisp.end(), d_ydisp.begin());
+    amrex::Gpu::copy(
+        amrex::Gpu::hostToDevice, zdisp.begin(), zdisp.end(), d_zdisp.begin());
+    const auto* xdisp_ptr = d_xdisp.data();
+    const auto* ydisp_ptr = d_ydisp.data();
+    const auto* zdisp_ptr = d_zdisp.data();
+    auto levelDisp = m_terrain_displacement(level).arrays();
     auto levelBlanking = blanking.arrays();
     auto levelDrag = drag.arrays();
     auto levelz0 = terrainz0.arrays();
@@ -163,6 +211,14 @@ void TerrainDrag::initialize_fields(int level, const amrex::Geometry& geom)
                     yrough_ptr + yrough_size, z0rough_ptr, x, y);
             }
             levelz0[nbx](i, j, k, 0) = roughz0;
+
+            amrex::Real disp = 0.0_rt;
+            if (xdisp_size > 0) {
+                disp = interp::bilinear(
+                    xdisp_ptr, xdisp_ptr + xdisp_size, ydisp_ptr,
+                    ydisp_ptr + ydisp_size, zdisp_ptr, x, y);
+            }
+            levelDisp[nbx](i, j, k, 0) = amrex::max<amrex::Real>(disp, 0.0_rt);
         });
     amrex::Gpu::streamSynchronize();
     amrex::ParallelFor(

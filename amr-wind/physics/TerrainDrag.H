@@ -62,10 +62,15 @@ private:
     //! Roughness file
     std::string m_roughness_file{"terrain.roughness"};
 
+    //! Displacement height file (optional, same x y value format)
+    std::string m_displacement_file{"terrain.displacement"};
+
     //! Roughness fields
     Field& m_terrainz0;
     Field& m_terrain_height;
     Field& m_terrain_damping;
+    //! Zero-plane displacement height field (canopy/forest)
+    Field& m_terrain_displacement;
 
     //! Lateral Damping - X
     amrex::Real m_damp_east_slope{0.0_rt};
