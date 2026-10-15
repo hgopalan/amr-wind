@@ -43,7 +43,6 @@ TerrainDrag.roughness_file    = terrain.roughness
 TerrainDrag.displacement_file = terrain.displacement
 
 CoriolisForcing.latitude     = 45.0
-BoussinesqBuoyancy.reference_temperature = 300.0
 GeostrophicForcing.geostrophic_wind = 10.0 0.0 0.0
 
 amr.n_cell                   = 32 32 32
