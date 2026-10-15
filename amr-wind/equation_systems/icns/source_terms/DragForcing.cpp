@@ -7,6 +7,7 @@
 #include "amr-wind/physics/TerrainDrag.H"
 #include "amr-wind/utilities/linear_interpolation.H"
 #include "amr-wind/utilities/constants.H"
+#include "amr-wind/wind_energy/DisplacementHeight.H"
 #include "AMReX_REAL.H"
 #include <fstream>
 
@@ -22,12 +23,14 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real viscous_drag_calculations(
     const amrex::Real uy2r,
     const amrex::Real z0,
     const amrex::Real dz,
+    const amrex::Real z2,
     const amrex::Real kappa,
     const amrex::Real non_neutral_neighbour)
 {
+    // z2 is the (displaced) height of the neighbour cell, 1.5*dz - d
     const amrex::Real m2 = std::sqrt((ux2r * ux2r) + (uy2r * uy2r));
     const amrex::Real ustar =
-        m2 * kappa / (std::log(1.5_rt * dz / z0) - non_neutral_neighbour);
+        m2 * kappa / (std::log(z2 / z0) - non_neutral_neighbour);
     Dxz +=
         -ustar * ustar * ux1r /
         (amr_wind::constants::EPS + std::sqrt((ux1r * ux1r) + (uy1r * uy1r))) /
@@ -260,6 +263,19 @@ void DragForcing::operator()(
             ? MOData::calc_psi_m(
                   0.5_rt * dx[2] / m_monin_obukhov_length, m_beta_m, m_gamma_m)
             : 0.0_rt;
+    // Zero-plane displacement (forest canopy), only with the MOL model
+    const bool use_displacement =
+        (m_wall_het_model == "mol") &&
+        m_sim.repo().field_exists(amr_wind::displacement::field_name);
+    const auto& disp_arr =
+        use_displacement
+            ? m_sim.repo()
+                  .get_field(amr_wind::displacement::field_name)(lev)
+                  .const_array(mfi)
+            : amrex::Array4<amrex::Real const>();
+    const amrex::Real obukhov_length = m_monin_obukhov_length;
+    const amrex::Real beta_m = m_beta_m;
+    const amrex::Real gamma_m = m_gamma_m;
     const int nwvals = static_cast<int>(m_wind_heights.size());
     const amrex::Real* windh = m_windht_d.data();
     const amrex::Real* uu = m_prof_u_d.data();
@@ -337,16 +353,30 @@ void DragForcing::operator()(
             const amrex::Real uy2r = vel(i, j, k + 1, 1) - wall_v;
             const amrex::Real z0 =
                 amrex::max<amrex::Real>(terrainz0(i, j, k), z0_min);
+            // Heights of the first cell and its neighbour above the
+            // zero-plane displacement: log law uses (z - d) / z0
+            amrex::Real z1 = 0.5_rt * dx[2];
+            amrex::Real z2 = 1.5_rt * dx[2];
+            amrex::Real psi_neighbour = non_neutral_neighbour;
+            amrex::Real psi_cell = non_neutral_cell;
+            if (use_displacement) {
+                const amrex::Real d = disp_arr(i, j, k);
+                z1 = amr_wind::displacement::displaced_height(z1, d, z0);
+                z2 = amr_wind::displacement::displaced_height(z2, d, z0);
+                psi_neighbour = amr_wind::displacement::psi_m(
+                    z2 / obukhov_length, beta_m, gamma_m);
+                psi_cell = amr_wind::displacement::psi_m(
+                    z1 / obukhov_length, beta_m, gamma_m);
+            }
             const amrex::Real ustar = viscous_drag_calculations(
-                Dxz, Dyz, ux1r, uy1r, ux2r, uy2r, z0, dx[2], kappa,
-                non_neutral_neighbour);
+                Dxz, Dyz, ux1r, uy1r, ux2r, uy2r, z0, dx[2], z2, kappa,
+                psi_neighbour);
             if (model_form_drag) {
                 form_drag_calculations(
                     Dxz, Dyz, i, j, k, target_lvs_arr, dx, ux1r, uy1r);
             }
             const amrex::Real uTarget =
-                ustar / kappa *
-                (std::log(0.5_rt * dx[2] / z0) - non_neutral_cell);
+                ustar / kappa * (std::log(z1 / z0) - psi_cell);
             const amrex::Real uxTarget =
                 uTarget * ux2r /
                 (amr_wind::constants::EPS +

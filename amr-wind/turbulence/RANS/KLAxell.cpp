@@ -7,6 +7,7 @@
 #include "amr-wind/equation_systems/tke/TKE.H"
 #include "AMReX_ParmParse.H"
 #include "amr-wind/utilities/math_ops.H"
+#include "amr-wind/wind_energy/DisplacementHeight.H"
 
 using namespace amrex::literals;
 
@@ -35,6 +36,9 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
         amrex::ParmParse pp("ABL");
         pp.get("surface_temp_flux", m_surf_flux);
         pp.query("meso_sponge_start", m_meso_sponge_start);
+        std::string wall_het_model{"none"};
+        pp.query("wall_het_model", wall_het_model);
+        m_use_displacement = (wall_het_model == "mol");
     }
 
     {
@@ -125,6 +129,16 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                 &this->m_sim.repo().get_int_field("terrain_blank");
             const auto& ht_arrs = (*m_terrain_height)(lev).const_arrays();
             const auto& blank_arrs = (*m_terrain_blank)(lev).const_arrays();
+            // Zero-plane displacement shifts the surface-layer length scale:
+            // l_s = kappa (z - d) / (1 + kappa (z - d) / lambda)
+            const bool use_disp =
+                m_use_displacement &&
+                this->m_sim.repo().field_exists(displacement::field_name);
+            const auto& disp_arrs =
+                use_disp ? this->m_sim.repo()
+                               .get_field(displacement::field_name)(lev)
+                               .const_arrays()
+                         : ht_arrs;
             amrex::ParallelFor(
                 mu_turb(lev),
                 [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
@@ -133,8 +147,11 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                           (gradT_arrs[nbx](i, j, k, 1) * gravity[1]) +
                           (gradT_arrs[nbx](i, j, k, 2) * gravity[2])) *
                         beta_arrs[nbx](i, j, k);
+                    const amrex::Real disp =
+                        use_disp ? disp_arrs[nbx](i, j, k) : 0.0_rt;
                     const amrex::Real z = amrex::max<amrex::Real>(
-                        problo[2] + ((k + 0.5_rt) * dz) - ht_arrs[nbx](i, j, k),
+                        problo[2] + ((k + 0.5_rt) * dz) -
+                            ht_arrs[nbx](i, j, k) - disp,
                         0.5_rt * dz);
                     const amrex::Real lscale_s =
                         (lambda * kappa * z) / (lambda + kappa * z);

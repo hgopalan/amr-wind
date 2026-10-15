@@ -63,6 +63,8 @@ private:
     amrex::Vector<amrex::Real> m_gravity{0.0_rt, 0.0_rt, -9.81_rt};
     amrex::Real m_surf_flux{0};
     amrex::Real m_meso_sponge_start{2000};
+    //! Use zero-plane displacement height (only with wall_het_model = mol)
+    bool m_use_displacement{false};
 };
 
 } // namespace amr_wind::turbulence

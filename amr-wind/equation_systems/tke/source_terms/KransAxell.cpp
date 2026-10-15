@@ -1,6 +1,7 @@
 #include <AMReX_Orientation.H>
 
 #include "amr-wind/equation_systems/tke/source_terms/KransAxell.H"
+#include "amr-wind/wind_energy/DisplacementHeight.H"
 #include "amr-wind/CFDSim.H"
 #include "amr-wind/turbulence/TurbulenceModel.H"
 #include "amr-wind/wind_energy/MOData.H"
@@ -169,6 +170,17 @@ void KransAxell::operator()(
         auto* const m_terrain_height =
             &this->m_sim.repo().get_field("terrain_height");
         auto* const m_terrainz0 = &this->m_sim.repo().get_field("terrainz0");
+        const bool use_disp =
+            (m_wall_het_model == "mol") &&
+            this->m_sim.repo().field_exists(displacement::field_name);
+        const auto& disp_arr =
+            use_disp ? this->m_sim.repo()
+                           .get_field(displacement::field_name)(lev)
+                           .const_array(mfi)
+                     : amrex::Array4<amrex::Real const>();
+        const amrex::Real obukhov_length = m_monin_obukhov_length;
+        const amrex::Real beta_m = m_beta_m;
+        const amrex::Real gamma_m = m_gamma_m;
         const auto& blank_arr = (*m_terrain_blank)(lev).const_array(mfi);
         const auto& drag_arr = (*m_terrain_drag)(lev).const_array(mfi);
         const auto& terrain_height = (*m_terrain_height)(lev).const_array(mfi);
@@ -182,8 +194,17 @@ void KransAxell::operator()(
             amrex::Real uy = vel(i, j, k + 1, 1);
             amrex::Real z = 0.5_rt * dx[2];
             amrex::Real m = std::sqrt((ux * ux) + (uy * uy));
+            // Neighbour (k+1) height 3z, shifted by displacement height d
+            amrex::Real z_nb = 3.0_rt * z;
+            amrex::Real psi_nb = psi_m;
+            if (use_disp) {
+                z_nb = displacement::displaced_height(
+                    z_nb, disp_arr(i, j, k), cell_z0);
+                psi_nb =
+                    displacement::psi_m(z_nb / obukhov_length, beta_m, gamma_m);
+            }
             const amrex::Real ustar =
-                m * kappa / (std::log(3.0_rt * z / cell_z0) - psi_m);
+                m * kappa / (std::log(z_nb / cell_z0) - psi_nb);
             const amrex::Real T0 = ref_theta_arr(i, j, k);
             const amrex::Real hf = std::abs(gravity[2]) / T0 * heat_flux;
             const amrex::Real rans_b = amrex::max<amrex::Real>(hf, 0.0_rt) *

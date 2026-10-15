@@ -1,0 +1,66 @@
+# Gaussian hill (h = 150 m, sigma = 300 m) with a forest patch: zero-plane displacement height test.
+# The log law in DragForcing/ABLWallFunction/KransAxell uses (z - d)/z0 and
+# KLAxell shifts its surface-layer length scale by d.
+# Input grid files are generated with: python3 generate_files.py terrain .
+
+time.stop_time               = -1
+time.max_step                = 10
+time.fixed_dt                = 0.5
+time.plot_interval           = 10
+time.checkpoint_interval     = -1
+
+incflo.physics               = ABL TerrainDrag
+io.outputs                   = terrain_displacement terrainz0 terrain_height
+io.int_outputs               = terrain_blank terrain_drag
+ICNS.source_terms            = BoussinesqBuoyancy CoriolisForcing GeostrophicForcing DragForcing
+TKE.source_terms             = KransAxell
+incflo.velocity              = 10.0 0.0 0.0
+incflo.use_godunov           = 1
+incflo.diffusion_type        = 2
+incflo.density               = 1.225
+incflo.verbose               = 0
+incflo.gravity               = 0.0 0.0 -9.81
+transport.viscosity          = 1.0e-5
+transport.laminar_prandtl    = 0.7
+transport.turbulent_prandtl  = 0.3333
+transport.reference_temperature = 300.0
+turbulence.model             = KLAxell
+
+ABL.temperature_heights      = 0.0 1000.0 2000.0
+ABL.temperature_values       = 300.0 300.0 308.0
+ABL.kappa                    = .41
+ABL.surface_roughness_z0     = 0.1
+ABL.surface_temp_flux        = 0.0
+ABL.wall_shear_stress_type   = local
+ABL.wall_het_model           = mol
+ABL.monin_obukhov_length     = 1.0e8
+ABL.initial_wind_profile     = true
+ABL.rans_1dprofile_file      = rans_1d.info
+ABL.meso_sponge_start        = 1500.0
+
+TerrainDrag.terrain_file      = terrain.amrwind
+TerrainDrag.roughness_file    = terrain.roughness
+TerrainDrag.displacement_file = terrain.displacement
+
+CoriolisForcing.latitude     = 45.0
+BoussinesqBuoyancy.reference_temperature = 300.0
+GeostrophicForcing.geostrophic_wind = 10.0 0.0 0.0
+
+amr.n_cell                   = 32 32 32
+amr.max_level                = 0
+geometry.prob_lo             = 0.0 0.0 0.0
+geometry.prob_hi             = 2048.0 2048.0 2048.0
+geometry.is_periodic         = 1 1 0
+
+zlo.type                     = "wall_model"
+zlo.temperature_type         = "wall_model"
+zlo.tke_type                 = "fixed_gradient"
+zlo.tke                      = 0.0
+zhi.type                     = "slip_wall"
+zhi.temperature_type         = "fixed_gradient"
+zhi.temperature              = 0.003
+zhi.tke_type                 = "fixed_gradient"
+zhi.tke                      = 0.0
+
+# Hill is resolved by blanking; first cell above terrain uses DragForcing log law
+DragForcing.drag_coefficient = 10.0

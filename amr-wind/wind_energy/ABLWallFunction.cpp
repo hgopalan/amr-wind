@@ -6,6 +6,7 @@
 #include "amr-wind/diffusion/diffusion.H"
 #include "amr-wind/wind_energy/ShearStress.H"
 #include "amr-wind/wind_energy/MOData.H"
+#include "amr-wind/wind_energy/DisplacementHeight.H"
 #include "amr-wind/utilities/linear_interpolation.H"
 
 #include <cmath>
@@ -272,6 +273,15 @@ void ABLVelWallFunc::wall_model(
                     const amrex::Real psi_m = mo.calc_psi_m(zeta);
                     const amrex::Real z0 = mo.z0;
                     const amrex::Real kappa = mo.kappa;
+                    const amrex::Real obukhov_length = m_monin_obukhov_length;
+                    const amrex::Real beta_m = mo.beta_m;
+                    const amrex::Real gamma_m = mo.gamma_m;
+                    const bool has_disp =
+                        repo.field_exists(displacement::field_name);
+                    const auto& disp_arr =
+                        has_disp ? repo.get_field(displacement::field_name)(lev)
+                                       .const_array(mfi)
+                                 : amrex::Array4<amrex::Real const>();
                     amrex::ParallelFor(
                         amrex::bdryLo(bx, idim),
                         [=] AMREX_GPU_DEVICE(int i, int j, int k) {
@@ -280,7 +290,18 @@ void ABLVelWallFunc::wall_model(
                             const amrex::Real vv = vold_arr(i, j, k, 1);
                             const amrex::Real wspd =
                                 std::sqrt((uu * uu) + (vv * vv));
-                            const amrex::Real drag = std::log(z / z0) - psi_m;
+                            // Log law with zero-plane displacement:
+                            // ln((z - d) / z0) - psi_m((z - d) / L)
+                            amrex::Real drag = std::log(z / z0) - psi_m;
+                            if (has_disp) {
+                                const amrex::Real zd =
+                                    displacement::displaced_height(
+                                        z, disp_arr(i, j, k), z0);
+                                drag =
+                                    std::log(zd / z0) -
+                                    displacement::psi_m(
+                                        zd / obukhov_length, beta_m, gamma_m);
+                            }
                             const amrex::Real ustar = wspd * kappa / drag;
                             // Dirichlet BC
                             varr(i, j, k - 1, 2) = 0.0_rt;
@@ -435,6 +456,15 @@ void ABLTempWallFunc::wall_model(
                     const amrex::Real psi_m = mo.calc_psi_m(zeta);
                     const amrex::Real z0 = mo.z0;
                     const amrex::Real kappa = mo.kappa;
+                    const amrex::Real obukhov_length = m_monin_obukhov_length;
+                    const amrex::Real beta_m = mo.beta_m;
+                    const amrex::Real gamma_m = mo.gamma_m;
+                    const bool has_disp =
+                        repo.field_exists(displacement::field_name);
+                    const auto& disp_arr =
+                        has_disp ? repo.get_field(displacement::field_name)(lev)
+                                       .const_array(mfi)
+                                 : amrex::Array4<amrex::Real const>();
                     const amrex::Real gravity_mod = 9.81_rt;
                     const amrex::Real monin_obukhov_length =
                         m_monin_obukhov_length;
@@ -447,7 +477,18 @@ void ABLTempWallFunc::wall_model(
                             const amrex::Real wspd =
                                 std::sqrt((uu * uu) + (vv * vv));
                             const amrex::Real theta2 = told_arr(i, j, k);
-                            const amrex::Real drag = std::log(z / z0) - psi_m;
+                            // Log law with zero-plane displacement:
+                            // ln((z - d) / z0) - psi_m((z - d) / L)
+                            amrex::Real drag = std::log(z / z0) - psi_m;
+                            if (has_disp) {
+                                const amrex::Real zd =
+                                    displacement::displaced_height(
+                                        z, disp_arr(i, j, k), z0);
+                                drag =
+                                    std::log(zd / z0) -
+                                    displacement::psi_m(
+                                        zd / obukhov_length, beta_m, gamma_m);
+                            }
                             const amrex::Real ustar = wspd * kappa / drag;
                             const amrex::Real thetastar =
                                 theta2 * ustar * ustar /
