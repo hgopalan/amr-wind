@@ -281,10 +281,13 @@ TEST_F(TurbineDiskSrcTest, blade_point_radial_support)
             const amrex::Real r =
                 std::hypot(y - td::rotor_center.y(), z - td::rotor_center.z());
             if (std::abs(r - rpt) > td::blade_dr + 1.0e-6_rt) {
-                if (sarr(i, j, k, 0) != 0.0_rt) {
+                if (sarr(i, j, k, 0) <
+                    std::numeric_limits<amrex::Real>::epsilon()) {
                     ++noutside;
                 }
-            } else if (sarr(i, j, k, 0) > 0.0_rt) {
+            } else if (
+                sarr(i, j, k, 0) >=
+                std::numeric_limits<amrex::Real>::epsilon()) {
                 ++ninside;
             }
         });
