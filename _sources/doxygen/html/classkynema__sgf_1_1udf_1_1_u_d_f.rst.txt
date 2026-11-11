@@ -1,0 +1,14 @@
+.. meta::ac1728b3723f8d752952ac9cdb8552738630701e6557babf3ca578669dbfea9abda0610d7fedc62baece4eef02af6301fe57969c80833b96af7db40ad89c1d5d
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::udf::UDF Class Reference
+
+UDF Class Reference
+===================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1udf_1_1_u_d_f.html

@@ -1,0 +1,14 @@
+.. meta::f76e4c4b924279737b4cc185c3bd5484022f3f7d64dc3f4167eda7f917f8bb29fcf5c2fa9b351032131286249e446db793823ac0eb88825023d7264a7b45d250
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::DiskBaseData Struct Reference
+
+DiskBaseData Struct Reference
+=============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_disk_base_data.html

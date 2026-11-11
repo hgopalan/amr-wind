@@ -1,0 +1,14 @@
+.. meta::dcc9fd42437ff7b909e805776bcdc54b846444da457f5900d56ea2ec15de6b8091dc37a271c8502a5ea8782d66435c78ac1fbbc21c1abd0d2438d9efe4c8b668
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/turbine/kynema_fmb -&gt; utilities Relation
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/turbine/kynema\_fmb -&gt; utilities Relation
+=============================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: dir_000023_000056.html

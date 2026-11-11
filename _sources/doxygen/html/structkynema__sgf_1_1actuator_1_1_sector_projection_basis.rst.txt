@@ -1,0 +1,14 @@
+.. meta::9baef2c6f6ae0577ffdcb1ff57796adc55d70178151c3bc346b3773c8656772af498a658b46b36b7a8493b78e9ade45a82e1af3d6703468fc12b3e9aa5170377
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::SectorProjectionBasis Struct Reference
+
+SectorProjectionBasis Struct Reference
+======================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_sector_projection_basis.html

@@ -1,0 +1,14 @@
+.. meta::c6c134ae6e8ba4e570c6f81f96467eb948fa4e542c9eb4909df5a4de03ffbd4cadbde2b7b39ecd11fcad5f886495e2e993dc552d9778f2d9de3b461cc71ead8e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::AdvectionOp&lt; ICNS, fvm::MOL &gt; Struct Reference
+
+MOL &gt; Struct Reference
+=========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1pde_1_1_advection_op_3_01_i_c_n_s_00_01fvm_1_1_m_o_l_01_4.html

@@ -1,0 +1,14 @@
+.. meta::a29d8da9874167e5af129bc93fbf16db747050e4c92be451943f081e4cbcec088adf2d63b3922ba42af5323bba63b3750b640b210af56b6f66979f496f5a62e8
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ComputeLoadsOp&lt; TurbineFast, SrcTrait &gt; Struct Template Reference
+
+ComputeLoadsOp&lt; TurbineFast, SrcTrait &gt; Struct Template Reference
+=======================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_compute_loads_op_3_01_turbine_fast_00_01_src_trait_01_4.html

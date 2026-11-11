@@ -1,0 +1,14 @@
+.. meta::fee60a792104a05e37610cc90263d0ac19f7dde5831229b14c0951930387e94c660d3a145749a204d504c4a3d8035a50348e1fdef080f6a49353baba4b5f924e
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/equation_systems/icns/source_terms/ActuatorForcing.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/equation\_systems/icns/source\_terms/ActuatorForcing.H File Reference
+=============================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _actuator_forcing_8_h.html

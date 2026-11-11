@@ -1,0 +1,14 @@
+.. meta::3c087da56eb2c4697f346426139f75455837e91ee2c8c16e89a266d3fba6682359bb52c709a38c61f6b8459792e76133a2325e21d570c9016bce79edc8a90d19
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::AirfoilTraits&lt; FlatPlate &gt; Struct Reference
+
+AirfoilTraits&lt; FlatPlate &gt; Struct Reference
+=================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_airfoil_traits_3_01_flat_plate_01_4.html

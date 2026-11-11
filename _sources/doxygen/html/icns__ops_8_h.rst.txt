@@ -1,0 +1,14 @@
+.. meta::a216271cdded291d47a2b3d0af3bd2cbd9d82e14c9d8a40af5842945bf007b22cd4a74b34d7e8ad202aa3673da82a2e935e461a1733a2104f81b08b23fdb6ff6
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/equation_systems/icns/icns_ops.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/equation\_systems/icns/icns\_ops.H File Reference
+=========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: icns__ops_8_h.html

@@ -1,0 +1,14 @@
+.. meta::26756676070e536aec3a2964fefa8b98cd9cc04826d0866e01c7c8e1b4399fd9cad2a82a2c4b00a8a3115b786e6a6085f440d2c46a7a541e7d1fa4017876f15e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::derived::QCriterion Struct Reference
+
+QCriterion Struct Reference
+===========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1derived_1_1_q_criterion.html

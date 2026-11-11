@@ -1,0 +1,14 @@
+.. meta::763a3941e36563731f618194559d755b115f9f00244da23f470a13f849d2be72befd23339bcbee4ee086580921340039e625d5b0bd706495469faedcf6b98437
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/averaging Directory Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/averaging Directory Reference
+===============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: dir_115007e8363abab6c17534864f6f6bad.html

@@ -1,0 +1,14 @@
+.. meta::db16ead028b741c7dbe86b43b55f6af9c52a90f9ce664ee71734c00607fd7766a84f871a15f10aac1bce7f1ffa00de3334d8c34f962ff1ae8e8b6c3b4fe28e7c
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::base::AreaComputer Class Reference
+
+AreaComputer Class Reference
+============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1actuator_1_1ops_1_1base_1_1_area_computer.html

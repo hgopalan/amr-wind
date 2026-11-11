@@ -1,0 +1,14 @@
+.. meta::232ad1188f7b19dd62a5771a390235b021549293aeeef6fb091503ce11d89afcd5a1f93979159d6ca57b777a9db2fb6e704f109b5c5799327a01a49eab14694c
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ReadInputsOp&lt; UniformCt, ActSrcDisk &gt; Struct Reference
+
+ReadInputsOp&lt; UniformCt, ActSrcDisk &gt; Struct Reference
+============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_read_inputs_op_3_01_uniform_ct_00_01_act_src_disk_01_4.html

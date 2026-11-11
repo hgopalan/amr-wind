@@ -1,0 +1,14 @@
+.. meta::2848bb2727d927d4d19bd5ce7730fc8d67c2148bf8de3908ff7a510f83707439e8a12f8654de080bf8c90974476d21e5b633e82de23554188ac0081ad1f65963
+
+:orphan:
+
+.. title:: Kynema-SGF API: DirectionSelector&lt; Index &gt; Struct Template Reference
+
+DirectionSelector&lt; Index &gt; Struct Template Reference
+==========================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: struct_direction_selector.html

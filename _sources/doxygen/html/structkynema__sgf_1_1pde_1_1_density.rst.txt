@@ -1,0 +1,14 @@
+.. meta::21f6ff6ab3ddf2b89dd7f245f921bf6ad16b17260a48d90fee47e9cbe2c37b829b9781958c6742cf37fbacaae3cce02532b93afb13357a135b3fa80a71f596cc
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::Density Struct Reference
+
+Density Struct Reference
+========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1pde_1_1_density.html

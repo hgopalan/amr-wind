@@ -1,0 +1,14 @@
+.. meta::482345c2c71a01c210ad8d3bad8e502a2869e0c5cefa2e29bf92bbd329510cc2b71575c7b9bd651c38a011284fb446e56371fb901926cf57afa6730faf7e440f
+
+:orphan:
+
+.. title:: Kynema-SGF API: ext_turb::FastTurbine Struct Reference
+
+FastTurbine Struct Reference
+============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structext__turb_1_1_fast_turbine.html

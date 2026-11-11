@@ -1,0 +1,14 @@
+.. meta::a80f02ecaf1049808b119ca1116cd638e78549cafb27064f2b16fed961916f338c17b974afb4983b4c6e0bacd8f66a5c62dc279f3d235284478c2b857456efb1
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ComputeLoadsOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+
+ComputeLoadsOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+==============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_compute_loads_op.html

@@ -1,0 +1,14 @@
+.. meta::2d8041df2bef86a050e086ead769d4b99570d48232f5ddea809c24b2547e8ba90944f17255d6c4cda95da5a12c351a28fbb6d9b085c1665e42c99f2b334b4c89
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ocean_waves::ops::ReadInputsOp&lt; WaveTheoryTrait, typename &gt; Struct Template Reference
+
+ReadInputsOp&lt; WaveTheoryTrait, typename &gt; Struct Template Reference
+=========================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ocean__waves_1_1ops_1_1_read_inputs_op.html

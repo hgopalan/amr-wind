@@ -1,0 +1,14 @@
+.. meta::8dcdb88464d142a223094b7a836b0d2b68364605fa311bc8bc9710338fd74f98e28fe2b7ed8445374dd5cf78c9121c21fb4d7e0bcec64ca5e1fa7ca08923d00e
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/immersed_boundary/bluff_body/box_ops.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/immersed\_boundary/bluff\_body/box\_ops.H File Reference
+================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: box__ops_8_h.html

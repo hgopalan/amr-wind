@@ -1,0 +1,14 @@
+.. meta::902b326fb4ef844c8d6e0868b7d16ed8390005826d2d8d1dbcedc631eb4485e5cf7885e974a675c5f7be1ed0d4a04f4c13ff79cd93c226a01298554640e78639
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::synth_turb::PowerLawProfile Class Reference
+
+PowerLawProfile Class Reference
+===============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1synth__turb_1_1_power_law_profile.html

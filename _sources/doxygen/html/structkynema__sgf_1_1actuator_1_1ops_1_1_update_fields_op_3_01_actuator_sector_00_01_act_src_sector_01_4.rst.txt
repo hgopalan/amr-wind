@@ -1,0 +1,14 @@
+.. meta::dd9f0f3c3921c888783b37be7cbd61cfff17e87e41c0b4b1e07c580e6e89cae681ab77c668bf049d63efed75af5e0f912c84beed1154b4d4d69204d907e9f45b
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::UpdateFieldsOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+
+UpdateFieldsOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+=====================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_update_fields_op_3_01_actuator_sector_00_01_act_src_sector_01_4.html

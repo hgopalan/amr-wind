@@ -1,0 +1,14 @@
+.. meta::7b2436106720d325789e09a95d7844856c55b992aff68916eea826eb82f7470cfdece1c8d136097d4b5b9ca712e9b74b7d5dc44394552b70334a4a21806c44b8
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::AdvanceModelOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+
+AdvanceModelOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+===========================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_advance_model_op_3_01_drone_00_01_act_src_drone_01_4.html

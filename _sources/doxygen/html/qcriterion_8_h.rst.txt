@@ -1,0 +1,14 @@
+.. meta::74619e0bd2da9c005c7696a218162235fedea9a9696afdc4574344c96cf11a82779da091396f85e6685a795a925bc64182f6d75a8273729814903698d26bc355
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/fvm/qcriterion.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/fvm/qcriterion.H File Reference
+=======================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: qcriterion_8_h.html

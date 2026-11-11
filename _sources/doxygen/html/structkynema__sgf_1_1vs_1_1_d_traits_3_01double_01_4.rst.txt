@@ -1,0 +1,14 @@
+.. meta::ba0c140374ee37503d97d7bca83b51377f195f2d4d7dac67068dcae570f34ee238b4d8a547ad0612cc812375663adaa6479327e06a1029d8001b60541e0a6b6c
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::vs::DTraits&lt; double &gt; Struct Reference
+
+DTraits&lt; double &gt; Struct Reference
+========================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1vs_1_1_d_traits_3_01double_01_4.html

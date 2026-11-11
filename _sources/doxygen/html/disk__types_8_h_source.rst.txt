@@ -1,0 +1,14 @@
+.. meta::fea814959d02ad563d1424b843252fb88db6d886560aaebf24b7578d1ab65fc0c8cc882ec272eeb134044938e8420b5613864bfa42366d85eeff7e8e38657e89
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/disk/disk_types.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/disk/disk\_types.H Source File
+===============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: disk__types_8_h_source.html

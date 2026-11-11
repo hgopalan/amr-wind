@@ -1,0 +1,14 @@
+.. meta::4559e9ba27861b8dd5804113ddee6913286ffb697e96d32c1880bf94b2082bab210bb475e535c8574ae3bbcd51bfc0c9d3732ab927ec5ac936ab5c82231ef235
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/motion/RotorMotion.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/motion/RotorMotion.H Source File
+=================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _rotor_motion_8_h_source.html

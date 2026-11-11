@@ -1,0 +1,14 @@
+.. meta::cdefaf447933c976de25bb24e92a945e3296aab539e9e807567f2c1c3dcc045ec4d3d92de1a3d03f61462e980fe0bbd951eb9677f36d271a3c054189ef19e9c7
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/DerivedQtyDefs.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/DerivedQtyDefs.H Source File
+==============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _derived_qty_defs_8_h_source.html

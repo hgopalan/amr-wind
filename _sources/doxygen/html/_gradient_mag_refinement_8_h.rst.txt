@@ -1,0 +1,14 @@
+.. meta::7e8a2ce7e857b296da0f4e130fa4ea73d43cfb2392e64217e5a208db7b312e35cc36f95fe5f1ebcc8be6f9552bee21a7f8236b21a8163159f89e6684f0985ee1
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/tagging/GradientMagRefinement.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/tagging/GradientMagRefinement.H File Reference
+================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _gradient_mag_refinement_8_h.html

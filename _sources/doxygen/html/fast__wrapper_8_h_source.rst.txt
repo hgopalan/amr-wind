@@ -1,0 +1,14 @@
+.. meta::394ad0b7c2b84295a75f9242e38f2c5acc417c44a5f284280afa6e26069fe91076a82e64ec54736c8fc8deb3eee7822abbd3c556a06eac08d017c8891592c3b9
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/turbine/fast/fast_wrapper.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/turbine/fast/fast\_wrapper.H Source File
+=========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: fast__wrapper_8_h_source.html

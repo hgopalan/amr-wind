@@ -1,0 +1,14 @@
+.. meta::b4fd9ec325ed87960f8c1832acc85a86c9461c64f7ec0bd9f7821eaaf145044943959ec3bc27910a8b4089e776a4cf215e38d85f9ffde6d69e4a26cc197f9239
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::SphereData Struct Reference
+
+SphereData Struct Reference
+===========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ib_1_1_sphere_data.html

@@ -1,0 +1,14 @@
+.. meta::bb7fd9968b84c97567d1c8bbd4fc2b30d1e648c729702a7dda8bf986548f65e1537f19deeba4303eafba2fa2a163194e225997409a7c0070b95ac0f1353101fa
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/tagging/RefinementCriteria.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/tagging/RefinementCriteria.H Source File
+==========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _refinement_criteria_8_h_source.html

@@ -1,0 +1,17 @@
+<map id="/home/runner/work/amr&#45;wind/amr&#45;wind/src/utilities/tagging/GeometryRefinement.H" name="/home/runner/work/amr&#45;wind/amr&#45;wind/src/utilities/tagging/GeometryRefinement.H">
+<area shape="rect" id="Node000001" title=" " alt="" coords="336,5,568,67"/>
+<area shape="rect" id="Node000002" href="$_box_refiner_8_h.html" title=" " alt="" coords="5,115,205,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="338,74,203,117,201,112,342,70"/>
+<area shape="rect" id="Node000004" href="$_cylinder_refiner_8_h.html" title=" " alt="" coords="229,115,429,177"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="408,76,365,117,362,112,404,79"/>
+<area shape="rect" id="Node000006" href="$_geometry_refinement_8cpp.html" title=" " alt="" coords="453,115,698,177"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="498,75,544,115,538,114,497,80"/>
+<area shape="rect" id="Node000007" href="$_u_d_f_refiner_8_h.html" title=" " alt="" coords="723,115,922,177"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="570,69,725,115,719,116,570,74"/>
+<area shape="rect" id="Node000003" href="$_box_refiner_8cpp.html" title=" " alt="" coords="5,225,205,286"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="107,190,108,225,102,223,103,194"/>
+<area shape="rect" id="Node000005" href="$_cylinder_refiner_8cpp.html" title=" " alt="" coords="228,225,432,286"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="331,190,332,226,328,223,328,194"/>
+<area shape="rect" id="Node000008" href="$_u_d_f_refiner_8cpp.html" title=" " alt="" coords="723,225,922,286"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="824,190,824,226,820,222,820,194"/>
+</map>

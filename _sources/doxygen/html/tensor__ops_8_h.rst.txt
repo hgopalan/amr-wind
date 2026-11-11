@@ -1,0 +1,14 @@
+.. meta::8ae58fdf719e807171d3931aa4eab88c33a16c69096f5f85d43c651d1e6e5bd3e22720bf10433ecf4f0f850ed4380968b58058d4007652056f63c8622c92cb97
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/tensor_ops.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/tensor\_ops.H File Reference
+==============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: tensor__ops_8_h.html

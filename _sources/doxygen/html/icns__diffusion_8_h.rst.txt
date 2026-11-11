@@ -1,0 +1,14 @@
+.. meta::5f91a322b756099240806ec889c60f4ac26fddbdc9effa95bea873b170e2ce6fe42eeff983d4833fff2f7488218c1431ffca1314139b00f25382e1dbfe57864e
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/equation_systems/icns/icns_diffusion.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/equation\_systems/icns/icns\_diffusion.H File Reference
+===============================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: icns__diffusion_8_h.html

@@ -1,0 +1,14 @@
+.. meta::6a0c4b3180a40a55c83e85e1e55fdb1a852cbae59e2386191de5abca489cfdda6752d6289b32fc683d75cfd20d9953d28a5a320a8247edab03765b96bdaa6b54
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::FlatPlate Struct Reference
+
+FlatPlate Struct Reference
+==========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_flat_plate.html

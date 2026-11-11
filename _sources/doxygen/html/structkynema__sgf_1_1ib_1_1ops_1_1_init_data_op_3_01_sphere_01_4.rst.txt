@@ -1,0 +1,14 @@
+.. meta::ea892adccf16a6a39ce8ec75a8e103ea01fb535e41eb6e74f866c8a43dfadde676819fc2a04762beb3a9f9e6d14925a5051d6b2cf2884515ca14410e18ee2fc6
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::ops::InitDataOp&lt; Sphere &gt; Struct Reference
+
+InitDataOp&lt; Sphere &gt; Struct Reference
+===========================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ib_1_1ops_1_1_init_data_op_3_01_sphere_01_4.html

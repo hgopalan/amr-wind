@@ -1,0 +1,14 @@
+.. meta::e2d323e9b7f9e2c4149c8dd95850e1fa16c690f1cad4b7a0f2d78da3a1d247d335a932d58a5daf3d734073977e6b517e4e023051d104c9d86553d56020c71161
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::ops::UpdatePosOp&lt; GeomTrait, typename &gt; Struct Template Reference
+
+UpdatePosOp&lt; GeomTrait, typename &gt; Struct Template Reference
+==================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ib_1_1ops_1_1_update_pos_op.html

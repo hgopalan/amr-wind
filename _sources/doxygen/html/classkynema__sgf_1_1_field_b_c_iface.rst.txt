@@ -1,0 +1,14 @@
+.. meta::f44dd593a957784642178f0746a75c9c02f106d78bf527abd3bd7b3465e9d48679dcc3a5e5648bbfd3b877a55e75e9bb79fc3591ee20d2503011af50d8cfc2a9
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::FieldBCIface Class Reference
+
+FieldBCIface Class Reference
+============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_field_b_c_iface.html

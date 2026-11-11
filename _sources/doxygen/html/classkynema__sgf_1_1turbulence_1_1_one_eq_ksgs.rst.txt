@@ -1,0 +1,14 @@
+.. meta::8af3125a627afacda09b9a33d498721dfcf85e6bbe528da1b9e67ff4d11acfd5abc694bc0f632e0c938879f6498e168ccf2cfd87f367ed59f02267f363dd3e6f
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::turbulence::OneEqKsgs&lt; Transport &gt; Class Template Reference
+
+OneEqKsgs&lt; Transport &gt; Class Template Reference
+=====================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1turbulence_1_1_one_eq_ksgs.html

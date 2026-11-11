@@ -1,0 +1,14 @@
+.. meta::8259a11d07c1d5bb0a4153942cb1d9f907dd5913b3bae57fe4b022ac5b4129253f4b24fad66ee6b8f886d9d0945d4caaa2f128c76ead6dbc22b471365de4f7c8
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/turbine/external/ExtTurbIface.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/turbine/external/ExtTurbIface.H Source File
+============================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _ext_turb_iface_8_h_source.html

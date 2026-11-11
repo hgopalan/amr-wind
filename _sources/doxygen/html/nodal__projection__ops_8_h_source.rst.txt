@@ -1,0 +1,14 @@
+.. meta::28778087cf797ae3f76a9b7af409414762889650897037335374e9f2343a4f500ea82f61f84039dfa207585fe347e81b1cc94b4291857c29a79b3995e4ff139b
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/projection/nodal_projection_ops.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/projection/nodal\_projection\_ops.H Source File
+=======================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: nodal__projection__ops_8_h_source.html

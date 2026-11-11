@@ -1,0 +1,14 @@
+.. meta::b3d5308b33862aeb0c93ffbe579936eca6d570c2375f65f40ccd57b7704125540c79c8ea794b7b98897671d52c4c3d5dcfeed6fb69facea7657de3327ed40ed2
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ActuatorCloud Struct Reference
+
+ActuatorCloud Struct Reference
+==============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_actuator_cloud.html

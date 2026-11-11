@@ -1,0 +1,14 @@
+.. meta::2918ae98df3e91c6561260a64abede6aa30f91d9394b803ca6c5e9bfb5778391aafd57af74bc5db7061b6eae10a2a6959a0c312a86bb71fbacae123c6ea72269
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/fvm/vorticity.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/fvm/vorticity.H File Reference
+======================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: vorticity_8_h.html

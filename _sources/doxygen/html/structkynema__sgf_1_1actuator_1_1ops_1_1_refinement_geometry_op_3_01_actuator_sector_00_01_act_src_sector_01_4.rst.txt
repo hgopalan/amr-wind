@@ -1,0 +1,14 @@
+.. meta::61182c81d37600df5c6b36c8bb90787a6fb0cb71f91b185ed65cece453111145823951df36224127fc426def2aaf14b105354ed961b0203b0bdbe37856f979dc
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::RefinementGeometryOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+
+RefinementGeometryOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+===========================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_refinement_geometry_op_3_01_actuator_sector_00_01_act_src_sector_01_4.html

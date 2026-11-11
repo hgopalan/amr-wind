@@ -1,0 +1,14 @@
+.. meta::0889e1f1e8e5c40bc662787bd87076c46f561f64332786a1872d3b02d90de9c010621b991a6927e700f990487e7be81fe67a8f59e23dec002c8d1c926def4472
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/sampling/DTUSpinnerSampler.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/sampling/DTUSpinnerSampler.H File Reference
+=============================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _d_t_u_spinner_sampler_8_h.html

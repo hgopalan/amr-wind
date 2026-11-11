@@ -1,0 +1,14 @@
+.. meta::49f0070c7f7eab2dd3f63b33e5a0abdeaa963461b21e0bbd7c7031935c51e31ed2b4f6cd92aeebd56dfdbb1dc1f6663e8041beb68aa36045158a13e06d7ffcc0
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/ocean_waves/OceanWavesTypes.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/ocean\_waves/OceanWavesTypes.H Source File
+==================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _ocean_waves_types_8_h_source.html

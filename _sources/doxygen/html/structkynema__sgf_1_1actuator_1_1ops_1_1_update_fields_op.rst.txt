@@ -1,0 +1,14 @@
+.. meta::480483946b9b92ffa7eca90e846fb065dda53de83fa878e354284bd9bccba89c043c203c1fee3d163c50bd0f31e1aa5f57207eaee55c670dac79c4d1db4e647e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::UpdateFieldsOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+
+UpdateFieldsOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+==============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_update_fields_op.html

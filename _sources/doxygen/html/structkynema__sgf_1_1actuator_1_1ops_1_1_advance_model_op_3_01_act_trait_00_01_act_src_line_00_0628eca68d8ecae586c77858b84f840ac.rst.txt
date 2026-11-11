@@ -1,0 +1,14 @@
+.. meta::822bbeef95c22eec735b87d2e51601570f83890306a2fe66694536edd37959404b3ac7509c4083494221605c5fc79c2b94406a8f084bd15a5ccb9e2caf4ce2fc
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::AdvanceModelOp&lt; ActTrait, ActSrcLine, typename std::enable_if_t&lt; std::is_base_of_v&lt; WingType, ActTrait &gt; &amp;&amp;UseDefaultOp&lt; ActTrait, ActSrcLine &gt;::advance_model &gt; &gt; Struct Template Reference
+
+advance\_model &gt; &gt; Struct Template Reference
+==================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_advance_model_op_3_01_act_trait_00_01_act_src_line_00_0628eca68d8ecae586c77858b84f840ac.html

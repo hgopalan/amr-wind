@@ -1,0 +1,14 @@
+.. meta::e533425656fde090aeb405e447ed58953247e1a7f2d2a629e5a88f9a4c9cd60f1b0c420fbb9c501dcff1b198128d31506a43a2cc1136c8e5bb8a202a72ac78c0
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::SyntheticTurbulence Class Reference
+
+SyntheticTurbulence Class Reference
+===================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_synthetic_turbulence.html

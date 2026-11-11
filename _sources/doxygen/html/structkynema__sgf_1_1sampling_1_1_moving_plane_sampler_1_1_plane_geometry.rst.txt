@@ -1,0 +1,14 @@
+.. meta::5eec699c75f8fd7a70ffd1f249832eb83b7f4d94c9d89463406d818411cd7e46120096465318a0b6584cee28a8064bc57b5dddc38538ccc7bd46173c3934b12f
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::sampling::MovingPlaneSampler::PlaneGeometry Struct Reference
+
+PlaneGeometry Struct Reference
+==============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1sampling_1_1_moving_plane_sampler_1_1_plane_geometry.html

@@ -1,0 +1,14 @@
+.. meta::63803d6df54ce1843fe7f4f00ba2faa6fb3a13203ca88d992495001fbdc96338eba980505e33c08fd02e36f2d6d6b05aeb3b3070ab2b35ea8461c78deb6b8ab8
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::AdvanceModelOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+
+AdvanceModelOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+==============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_advance_model_op.html

@@ -1,0 +1,14 @@
+.. meta::453e741a32cb184bb15babce2bcac5563cce665e88c559dc7aa9851a877d3ebed132ee77be482d601ee3309aebcdc6ef247b0ea63db4fe9635cdda600a875d2d
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/wind_energy -&gt; core Relation
+
+/home/runner/work/amr-wind/amr-wind/src/wind\_energy -&gt; core Relation
+========================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: dir_000061_000008.html

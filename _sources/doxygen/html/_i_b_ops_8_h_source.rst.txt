@@ -1,0 +1,14 @@
+.. meta::715da3a2598909b85d5120ad56645fdb44df5d432fbd12a497cd1d5ead8932520624fd5c543b7dfa0ff49007895151c576df775b6301fe8b78777c7c0dcbe877
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/immersed_boundary/IBOps.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/immersed\_boundary/IBOps.H Source File
+==============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _i_b_ops_8_h_source.html

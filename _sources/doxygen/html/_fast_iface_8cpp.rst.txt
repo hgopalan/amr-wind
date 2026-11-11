@@ -1,0 +1,14 @@
+.. meta::8d2201b7dc69913e82f76749e656146e414d2c0efa6203ff59f959b44c045d6117ecd2510d7f8708ec44d0e09a1cda078ba2a6cfa9cab2d566cdcbab71c908c0
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/turbine/fast/FastIface.cpp File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/turbine/fast/FastIface.cpp File Reference
+==========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _fast_iface_8cpp.html

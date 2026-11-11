@@ -1,0 +1,14 @@
+.. meta::df4ee8539fd574ceb1f047086d099f2d7a1afdf2cbaf3202463101360d894ab259fd39993dfee8995826d1a4fbb7b2c15fe24a4993f4390804fbf404a0fe2998
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::channel_flow::ChannelFlow Class Reference
+
+ChannelFlow Class Reference
+===========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1channel__flow_1_1_channel_flow.html

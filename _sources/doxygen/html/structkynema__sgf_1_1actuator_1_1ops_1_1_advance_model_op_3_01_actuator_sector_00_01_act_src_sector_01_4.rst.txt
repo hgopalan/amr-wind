@@ -1,0 +1,14 @@
+.. meta::1ad4882f0353aa119b498efd67c6eba5e7c13eb46f849bf6ebfcd953d76ca939d604dd0558e22915ab3856dcd5bbed025f9d4a29309e690056b3749f3119c22e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::AdvanceModelOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+
+AdvanceModelOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+=====================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_advance_model_op_3_01_actuator_sector_00_01_act_src_sector_01_4.html

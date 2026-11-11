@@ -1,0 +1,14 @@
+.. meta::5c3dc1889ea5e21699395a90f44e1df5248a3bc08d36df50e36acdbc55abf6df973cfbbce5a80cad566983c58c5247a0880a1821669fd5a1747003551af9848f
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::burggraf::BurggrafFlow Class Reference
+
+BurggrafFlow Class Reference
+============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1burggraf_1_1_burggraf_flow.html

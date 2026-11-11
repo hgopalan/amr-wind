@@ -1,0 +1,14 @@
+.. meta::e15ae57f05e8b113e552d275fe961ed6d07dca3e3750e01f5343e5bfc632ba6ea47ab7b0d33c4714ff7fb83fbaf369ad8c72004860764742aec22041c99f02bb
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/tagging/BoxRefiner.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/tagging/BoxRefiner.H File Reference
+=====================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _box_refiner_8_h.html

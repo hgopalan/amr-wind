@@ -1,0 +1,14 @@
+.. meta::0d217d44b8554db700c927db73ae7abecc039af3ab93825fb0ab95b822cf88a613836e1e2890520614c617e19c5b2bb264db8ea21f05c776c98abb13202c8aa8
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::VelWallFunc Class Reference
+
+VelWallFunc Class Reference
+===========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_vel_wall_func.html

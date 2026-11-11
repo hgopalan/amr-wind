@@ -1,0 +1,14 @@
+.. meta::7bdbf9db5c97bfc4e989b4c8a354c55cc5b7b4d6b3a718daaf4409017bac215c38c88fabb2183214e0be9894236d395650ac1ddd52378ac0b05301e27e214d84
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::Joukowsky Struct Reference
+
+Joukowsky Struct Reference
+==========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_joukowsky.html

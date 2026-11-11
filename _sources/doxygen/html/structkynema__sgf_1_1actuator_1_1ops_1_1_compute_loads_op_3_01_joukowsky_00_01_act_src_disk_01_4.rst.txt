@@ -1,0 +1,14 @@
+.. meta::78ea41a0da4be46a70e033cb6287353fdd804fc9e9743346b1879d2c0fce61d3c1f60750f9733999f7db2a0ba3586741c05f20ab9ab087a77f740c4ea0f1fe59
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ComputeLoadsOp&lt; Joukowsky, ActSrcDisk &gt; Struct Reference
+
+ComputeLoadsOp&lt; Joukowsky, ActSrcDisk &gt; Struct Reference
+==============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_compute_loads_op_3_01_joukowsky_00_01_act_src_disk_01_4.html

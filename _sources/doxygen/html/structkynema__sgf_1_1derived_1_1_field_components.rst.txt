@@ -1,0 +1,14 @@
+.. meta::0706b36aaa0e3ec245452630cd57a0e2ffc7d8df7b7b4d3907bfa86ddcd9711b131839d9e22b787fa30d55f805229c15be2a9fe71025f0f810cb2a6bc4f10f65
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::derived::FieldComponents Struct Reference
+
+FieldComponents Struct Reference
+================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1derived_1_1_field_components.html

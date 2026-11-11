@@ -1,0 +1,14 @@
+.. meta::f61ea7da3534b603e3429e83424c2448a8036507c6d869ec8e49c14f489d0d8b9f884d128020d7f4ec98ebc0d75a0bf1663bfea0dd24547ff79221647fa2c849
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ProcessOutputsOp&lt; ActTrait, SrcTrait, typename std::enable_if_t&lt; std::is_base_of_v&lt; WingType, ActTrait &gt; &amp;&amp;UseDefaultOp&lt; ActTrait, SrcTrait &gt;::process_outputs &gt; &gt; Struct Template Reference
+
+process\_outputs &gt; &gt; Struct Template Reference
+====================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_process_outputs_op_3_01_act_trait_00_01_src_trait_00_011a2ccea472b8c4d4b7b61bb2ff169fa3.html

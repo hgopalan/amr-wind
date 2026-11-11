@@ -1,0 +1,14 @@
+.. meta::330331b2c050dd9ef30c3b6f0979dde835c05851fbfe94b0baa4bb45b409aac73e0c3cc3bd82078336c7acda7659d52b8b51eb0b3417533e75fab98fa1302617
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::PrescribeModelMotionOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+
+PrescribeModelMotionOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+======================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_prescribe_model_motion_op.html

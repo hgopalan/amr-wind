@@ -1,0 +1,14 @@
+.. meta::8dde066f9a4c73832df8149781a5b23b2f60877804ec250602635cb5c2fcd72473c4ffc33f6c1653d6496d7d17cf5232c53cfc1aa0594964dbcaf995232b0964
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::sampling::MovingVolumeSampler::VolumeGeometry Struct Reference
+
+VolumeGeometry Struct Reference
+===============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1sampling_1_1_moving_volume_sampler_1_1_volume_geometry.html

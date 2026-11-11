@@ -1,0 +1,14 @@
+.. meta::63330ad3431ff7c62fee0316594ebf3f467d9ee8cf33f06b42356688be1fb7fd7511414bd3a472274bbb23aa4dfc581df9005efd34e5545b397eb10c880902f9
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/sector -&gt; core Relation
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/sector -&gt; core Relation
+===========================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: dir_000041_000008.html

@@ -1,0 +1,14 @@
+.. meta::dbc5ed5fd410b1b0ff56e4b4dd53beca117457023012a10ba0f7bc03e0112aec0ccc104bfd29d1e7dbb90b84a1f0704f084ed2452ba1fbb2d3b3e2a4ca7e0a48
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/turbine/ActSrcDiskOp_Turbine.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/turbine/ActSrcDiskOp\_Turbine.H Source File
+============================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _act_src_disk_op___turbine_8_h_source.html

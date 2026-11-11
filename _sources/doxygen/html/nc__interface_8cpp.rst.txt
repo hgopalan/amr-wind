@@ -1,0 +1,14 @@
+.. meta::4e2db59cb43a5a167c47b9705cd438263f2efaad44abf7c991f9f34c7b9518583c0afb2da81455aadba39c49aa24573b42ddff4cb17b38f6a2e9a78f80e735ec
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/ncutils/nc_interface.cpp File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/ncutils/nc\_interface.cpp File Reference
+==========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: nc__interface_8cpp.html

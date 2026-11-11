@@ -1,0 +1,14 @@
+.. meta::b7a34e77410fca48e9d89d9955e66b4239a462ae66aa40072cb389821f0f7bbb7ddeb1d78112480d18f5d106a69ba5d326fa8a802b58984c7113d1bd077d1897
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/equation_systems/SourceTerm.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/equation\_systems/SourceTerm.H Source File
+==================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _source_term_8_h_source.html

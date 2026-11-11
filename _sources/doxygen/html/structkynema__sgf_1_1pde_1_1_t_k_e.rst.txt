@@ -1,0 +1,14 @@
+.. meta::d14f93a724670c5b6a8dcf9ff563ee9d4245dca52dbcb6a5377e5ab16854a9f1b0942bbec590bed6cb99942c32caceedf61688ab7661b318a2c7ea23ef09be4c
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::TKE Struct Reference
+
+TKE Struct Reference
+====================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1pde_1_1_t_k_e.html

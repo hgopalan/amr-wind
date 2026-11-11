@@ -1,0 +1,14 @@
+.. meta::10642c1a4ad9ae889df2d03f7d9bc32a99c3cd9d8deeba842d04d3819e2d6a619908eda2f4e0ce9ff21fdf0231cc777430fe0521c76efcdd485f0ab2bb155034
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ReferenceFrameOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+
+ReferenceFrameOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_reference_frame_op.html

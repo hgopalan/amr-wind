@@ -1,0 +1,14 @@
+.. meta::b30dac110fd3c7d284f2b2e5913367a9f389901c8bedc15081b25addba5ba274e6c556c34f2c986d7cd1d59deda6e0c3a4ff75ea05aefb10de8971069dcd690d
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/tagging/CurvatureRefinement.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/tagging/CurvatureRefinement.H Source File
+===========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _curvature_refinement_8_h_source.html

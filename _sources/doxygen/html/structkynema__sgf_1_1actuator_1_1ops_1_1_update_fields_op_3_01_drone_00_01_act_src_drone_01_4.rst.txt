@@ -1,0 +1,14 @@
+.. meta::6c79d1b1b1ca709fee3eabf975897299f4db094ba64a60e32cb390bd5451468db542e978ce8e280c0b58d3f6b771ca77a129f6fa4c4bc49964efa574bda9ab41
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::UpdateFieldsOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+
+UpdateFieldsOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+===========================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_update_fields_op_3_01_drone_00_01_act_src_drone_01_4.html

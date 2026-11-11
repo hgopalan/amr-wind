@@ -1,0 +1,14 @@
+.. meta::c09b6431dd60a7e15b9fc9b34f5643b34a996f9b7d0991ed4a98c88e6595103e07c6d9638732b0433f69264b7a668b6d466d78c2852bdcca123b363b7579ce5d
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ABLFieldInitFile Class Reference
+
+ABLFieldInitFile Class Reference
+================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_a_b_l_field_init_file.html

@@ -1,0 +1,14 @@
+.. meta::09dce181cbea4209e75a73acc1ec48fc3b7fef358f463a5dafdf1a505069466e6817048c69d14abb22a3be56f0db56f359e29362d70b64a4782946cbbb7bff63
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::derived::StrainRateMag Struct Reference
+
+StrainRateMag Struct Reference
+==============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1derived_1_1_strain_rate_mag.html

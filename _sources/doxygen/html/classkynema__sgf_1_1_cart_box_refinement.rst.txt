@@ -1,0 +1,14 @@
+.. meta::48ea42aa0986ade163d7e69fdcbf2b180c6a1f70076227a1268ae05813714a531b2d307ade98b3efbf0053791ad9d80089957c1f3680af8b0170e516613c2fef
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::CartBoxRefinement Class Reference
+
+CartBoxRefinement Class Reference
+=================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_cart_box_refinement.html

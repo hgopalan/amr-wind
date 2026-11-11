@@ -1,0 +1,14 @@
+.. meta::92e02e089f949a6cc9b0975c73e42a26b33115f18565c1c4e014602f22e9875de6f4fbc92894ec8ffedcfcfae0bdd384a5d0fc6d04bf0301e8b928e62662552b
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::udf::BurggrafLid Struct Reference
+
+BurggrafLid Struct Reference
+============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1udf_1_1_burggraf_lid.html

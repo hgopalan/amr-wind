@@ -1,0 +1,14 @@
+.. meta::878a766b02ecc21ee0f79208d643c9faf79df87d373cc8383f21405ebc9141b09f84859265d8def9ae18f01748cfe315490f4c8f9ff7bd8a871b838b04404e32
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::PrescribeModelMotionOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+
+PrescribeModelMotionOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+===================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_prescribe_model_motion_op_3_01_drone_00_01_act_src_drone_01_4.html

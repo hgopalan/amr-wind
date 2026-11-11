@@ -1,0 +1,14 @@
+.. meta::2996ae347fe089c4d5e91fb52bc3c5016cbf8d50d14ca8974e9ecd0672d1d15b96fab22c88289382711ae9b53951c768cb2500dd836fb3240db5490c076c4d53
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::Field Class Reference
+
+Field Class Reference
+=====================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_field.html

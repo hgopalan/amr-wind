@@ -1,0 +1,16 @@
+<map id="/home/runner/work/amr&#45;wind/amr&#45;wind/src/boundary_conditions/wall_models" name="/home/runner/work/amr&#45;wind/amr&#45;wind/src/boundary_conditions/wall_models">
+<area shape="rect" id="node1" href="dir_191b0ccc732528ff7296bddf97cdf4de.html" title="wall_models" alt="" coords="158,54,261,82"/>
+<area shape="rect" id="node2" href="dir_005b8d5a28196ef8e224bc48e9bf704b.html" title="diffusion" alt="" coords="5,130,83,158"/>
+<area shape="poly" id="edge1" href="dir_000060_000010.html" alt="" coords="181,85,88,126,86,121,179,80"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000060_000010.html" title="1" alt="" coords="89,121,97,138"/>
+<area shape="rect" id="node3" href="dir_133c6df21499008847e7f9c02efce123.html" title="wind_energy" alt="" coords="106,130,211,158"/>
+<area shape="poly" id="edge2" href="dir_000060_000061.html" alt="" coords="203,81,178,119,175,115,198,84"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000060_000061.html" title="1" alt="" coords="181,111,189,128"/>
+<area shape="rect" id="node4" href="dir_8bc3620d22f348c3a20da4350a7fbe1e.html" title="core" alt="" coords="235,130,285,158"/>
+<area shape="poly" id="edge3" href="dir_000060_000008.html" alt="" coords="220,80,245,118,240,116,217,85"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000060_000008.html" title="1" alt="" coords="244,101,252,118"/>
+<area shape="rect" id="node5" href="dir_b6cb907ee7f28da0ed55bdc53992fe8b.html" title="utilities" alt="" coords="309,130,379,158"/>
+<area shape="poly" id="edge4" href="dir_000060_000056.html" alt="" coords="234,80,310,122,304,123,233,85"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000060_000056.html" title="3" alt="" coords="304,105,312,122"/>
+<area shape="rect" id="clust1" href="dir_050dbe99472bbfb94a8f3df6a82eaf7d.html" title="boundary_conditions" alt="" coords="132,16,288,93"/>
+</map>

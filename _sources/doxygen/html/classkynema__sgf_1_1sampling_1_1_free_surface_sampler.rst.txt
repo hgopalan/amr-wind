@@ -1,0 +1,14 @@
+.. meta::68bbee3115a4b7d0b697d274b3fafea9735169ae836128e08cf163aacde9b7c452316057bd893929cabf80071e2d16afb05ff4046d5ea2e8a799fc19ca3c280a
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::sampling::FreeSurfaceSampler Class Reference
+
+FreeSurfaceSampler Class Reference
+==================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1sampling_1_1_free_surface_sampler.html

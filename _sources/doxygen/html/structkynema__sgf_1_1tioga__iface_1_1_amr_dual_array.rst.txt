@@ -1,0 +1,14 @@
+.. meta::04c5640da3190046d7820b9c6ba5771657c9397f5b48016355d90b97904eb50c8bf374ad119de7b3ecaa0d61e29636bfa033769666898306046e2d17d08142a4
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::tioga_iface::AmrDualArray&lt; T &gt; Struct Template Reference
+
+AmrDualArray&lt; T &gt; Struct Template Reference
+=================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1tioga__iface_1_1_amr_dual_array.html

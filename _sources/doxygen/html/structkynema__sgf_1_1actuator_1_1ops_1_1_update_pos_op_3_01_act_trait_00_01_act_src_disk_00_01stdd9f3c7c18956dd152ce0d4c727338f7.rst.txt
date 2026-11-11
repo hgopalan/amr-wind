@@ -1,0 +1,14 @@
+.. meta::8f9f8e3b76c041a5d7a593a1697c21357b82fa62e5775888fb16a7d7ad797d34b01be476dbf03cf9633bfb65268a2f207f2176d086576a7892117448e80ab592
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::UpdatePosOp&lt; ActTrait, ActSrcDisk, std::enable_if_t&lt; std::is_base_of_v&lt; DiskType, ActTrait &gt; &gt; &gt; Struct Template Reference
+
+is\_base\_of\_v&lt; DiskType, ActTrait &gt; &gt; &gt; Struct Template Reference
+===============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_update_pos_op_3_01_act_trait_00_01_act_src_disk_00_01stdd9f3c7c18956dd152ce0d4c727338f7.html

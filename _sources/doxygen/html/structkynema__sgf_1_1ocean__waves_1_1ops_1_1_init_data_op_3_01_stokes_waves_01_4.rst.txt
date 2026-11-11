@@ -1,0 +1,14 @@
+.. meta::2fa33614fb6b7218adc2da5f64d0bc904bf69acbb93c582d4cba0c9c10fa3bb49334306b60c7bcd5c31223f5bd3fa23f717820b72d21116659365a2e08462c3b
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ocean_waves::ops::InitDataOp&lt; StokesWaves &gt; Struct Reference
+
+InitDataOp&lt; StokesWaves &gt; Struct Reference
+================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ocean__waves_1_1ops_1_1_init_data_op_3_01_stokes_waves_01_4.html

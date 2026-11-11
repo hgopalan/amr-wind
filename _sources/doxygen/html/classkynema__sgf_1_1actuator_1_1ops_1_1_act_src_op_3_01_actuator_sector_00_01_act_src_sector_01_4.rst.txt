@@ -1,0 +1,14 @@
+.. meta::bd11870b9e5a34a91166f559287cdb6e49120bc216fe8fa3445188d3718b311c26a9b6809b674693753ee9821f7e48d91d337fa7d290fd0550f5456c510f7d1a
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ActSrcOp&lt; ActuatorSector, ActSrcSector &gt; Class Reference
+
+ActSrcOp&lt; ActuatorSector, ActSrcSector &gt; Class Reference
+==============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1actuator_1_1ops_1_1_act_src_op_3_01_actuator_sector_00_01_act_src_sector_01_4.html

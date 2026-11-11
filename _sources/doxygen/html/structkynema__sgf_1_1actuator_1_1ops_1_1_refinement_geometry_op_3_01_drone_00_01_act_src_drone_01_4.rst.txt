@@ -1,0 +1,14 @@
+.. meta::d597650322879b81ebf4ab94c6957c530023e7ef5100dd6270661d14e056282498e30564537fa3ad807e7ffd874888441256cfbea059a7c040250df4f0738c97
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::RefinementGeometryOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+
+RefinementGeometryOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+=================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_refinement_geometry_op_3_01_drone_00_01_act_src_drone_01_4.html

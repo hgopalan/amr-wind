@@ -1,0 +1,14 @@
+.. meta::5a2ae3563edc623298970f13b5c678bb137577243f2a7d335dce3099ee7fbf89362ae2ae27a0d2d5b063359cfb305cf8b723d925adb85ba1b3b35f0b2d142a87
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/sampling/MovingVolumeSampler.cpp File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/sampling/MovingVolumeSampler.cpp File Reference
+=================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _moving_volume_sampler_8cpp.html

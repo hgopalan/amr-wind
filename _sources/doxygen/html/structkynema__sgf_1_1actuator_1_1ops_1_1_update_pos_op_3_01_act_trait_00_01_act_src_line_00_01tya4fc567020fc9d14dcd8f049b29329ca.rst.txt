@@ -1,0 +1,14 @@
+.. meta::aa4b747d1ad544c4c7ecaa6f0f9f2c29ef2bdf13d50f74dc44b7a15b9b62c03e84ca0cbeddaaca9a296435ec0211e3219ec8ede4d678eac7e87f3e29efeaffd0
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::UpdatePosOp&lt; ActTrait, ActSrcLine, typename std::enable_if_t&lt; std::is_base_of_v&lt; WingType, ActTrait &gt; &amp;&amp;UseDefaultOp&lt; ActTrait, ActSrcLine &gt;::update_pos &gt; &gt; Struct Template Reference
+
+update\_pos &gt; &gt; Struct Template Reference
+===============================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_update_pos_op_3_01_act_trait_00_01_act_src_line_00_01tya4fc567020fc9d14dcd8f049b29329ca.html

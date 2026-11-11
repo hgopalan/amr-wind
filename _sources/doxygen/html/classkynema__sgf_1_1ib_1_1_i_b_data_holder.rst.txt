@@ -1,0 +1,14 @@
+.. meta::098ddcbdec1f53e02fc771af7705944e38bf76ccde972a18395f5ff52f50bc89666851cce533df22d60bff18a0d3e08ae022568b1a3327e95c642c0f66d7414d
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::IBDataHolder&lt; IBTrait &gt; Class Template Reference
+
+IBDataHolder&lt; IBTrait &gt; Class Template Reference
+======================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1ib_1_1_i_b_data_holder.html

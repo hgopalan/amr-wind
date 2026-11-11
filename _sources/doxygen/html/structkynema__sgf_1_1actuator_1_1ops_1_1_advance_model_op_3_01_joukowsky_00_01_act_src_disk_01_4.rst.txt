@@ -1,0 +1,14 @@
+.. meta::e41979943e27cd8ada654195abf512ba67bcca5e019af7472279f7685ada453aa7076f3eb746fe2cdb92c5bd178f9cf763825c280eaf1980a05dbb53d0e7bbfc
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::AdvanceModelOp&lt; Joukowsky, ActSrcDisk &gt; Struct Reference
+
+AdvanceModelOp&lt; Joukowsky, ActSrcDisk &gt; Struct Reference
+==============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_advance_model_op_3_01_joukowsky_00_01_act_src_disk_01_4.html

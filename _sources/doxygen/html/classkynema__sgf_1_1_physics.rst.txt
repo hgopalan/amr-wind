@@ -1,0 +1,14 @@
+.. meta::a231ad9e43afbbd1e01bd13b87a495f5cdbd0701dfedd4b316510f3415dfbe87fea3348e6b7a0298173b6bf3eb863af89a86ea6e0f6f140256d458862e492388
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::Physics Class Reference
+
+Physics Class Reference
+=======================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_physics.html

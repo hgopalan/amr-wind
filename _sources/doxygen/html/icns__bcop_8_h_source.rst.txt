@@ -1,0 +1,14 @@
+.. meta::8483bb914eb97661af1f87ecb6643acbae7f7f136b10714ba927d2abed5885f1e21ae905ab1d037330c22ef280c3290caceae8795ad6507c64d45b495d3a169c
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/equation_systems/icns/icns_bcop.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/equation\_systems/icns/icns\_bcop.H Source File
+=======================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: icns__bcop_8_h_source.html

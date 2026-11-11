@@ -1,0 +1,14 @@
+.. meta::f68b5e2219645edb0773a57f2d73312b1ea5df3ce6daacb7160e6d21e97219c9c96cc93389b5c45126a4fdc6c8baf3781078ed4bc115227f69e32543867475d7
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::ops::ReadInputsOp&lt; Box &gt; Struct Reference
+
+ReadInputsOp&lt; Box &gt; Struct Reference
+==========================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ib_1_1ops_1_1_read_inputs_op_3_01_box_01_4.html

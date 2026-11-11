@@ -1,0 +1,14 @@
+.. meta::c0de4698cf6cc560d01b3f7e1403c41d949c6f616201cc061495fc257b1b240b6fd5a3add6d4dacb47b050b03091744a7672878fef5af5da8a27d99f21e68507
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/tagging/ActuatorRefinement.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/tagging/ActuatorRefinement.H Source File
+==========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _actuator_refinement_8_h_source.html

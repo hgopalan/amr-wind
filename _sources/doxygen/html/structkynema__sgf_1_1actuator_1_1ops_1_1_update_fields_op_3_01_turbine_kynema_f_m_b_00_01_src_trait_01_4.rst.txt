@@ -1,0 +1,14 @@
+.. meta::0f2f8d51c7db4254609c0235c4919111c1cb8ad8daedab7441f6bad8cbd4978cdeb834034fc986e2fa359ce24895a97a707cc7c6c490ec04d4eb28d575142103
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::UpdateFieldsOp&lt; TurbineKynemaFMB, SrcTrait &gt; Struct Template Reference
+
+UpdateFieldsOp&lt; TurbineKynemaFMB, SrcTrait &gt; Struct Template Reference
+============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_update_fields_op_3_01_turbine_kynema_f_m_b_00_01_src_trait_01_4.html

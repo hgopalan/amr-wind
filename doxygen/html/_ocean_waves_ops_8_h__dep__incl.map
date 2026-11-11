@@ -1,0 +1,29 @@
+<map id="/home/runner/work/amr&#45;wind/amr&#45;wind/src/ocean_waves/OceanWavesOps.H" name="/home/runner/work/amr&#45;wind/amr&#45;wind/src/ocean_waves/OceanWavesOps.H">
+<area shape="rect" id="Node000001" title=" " alt="" coords="475,5,672,67"/>
+<area shape="rect" id="Node000002" href="$_ocean_waves_model_8_h.html" title=" " alt="" coords="219,250,432,312"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="517,74,468,117,402,187,349,252,346,248,397,184,465,113,513,78"/>
+<area shape="rect" id="Node000007" href="$linear__waves__ops_8_h.html" title=" " alt="" coords="5,242,195,320"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="479,75,389,117,268,182,164,243,161,239,265,177,387,113,483,72"/>
+<area shape="rect" id="Node000008" href="$relaxation__zones__ops_8_h.html" title=" " alt="" coords="479,115,668,194"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="575,80,576,116,571,113,572,85"/>
+<area shape="rect" id="Node000010" href="$stokes__waves__ops_8_h.html" title=" " alt="" coords="673,242,863,320"/>
+<area shape="poly" id="edge15_Node000001_Node000010" title=" " alt="" coords="637,74,682,113,706,144,726,178,756,242,751,240,721,180,701,147,678,117,636,79"/>
+<area shape="rect" id="Node000011" href="$waves2amr__ops_8_h.html" title=" " alt="" coords="887,242,1076,320"/>
+<area shape="poly" id="edge16_Node000001_Node000011" title=" " alt="" coords="649,72,725,113,833,178,927,241,922,241,830,183,723,117,648,77"/>
+<area shape="rect" id="Node000003" href="$_ocean_waves_8cpp.html" title=" " alt="" coords="231,377,420,438"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="327,325,328,378,323,375,324,329"/>
+<area shape="rect" id="Node000004" href="$_linear_waves_8cpp.html" title=" " alt="" coords="12,368,201,447"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="262,319,176,370,174,365,257,321"/>
+<area shape="rect" id="Node000005" href="$_stokes_waves_8cpp.html" title=" " alt="" coords="559,368,748,447"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="419,315,561,370,556,371,418,320"/>
+<area shape="rect" id="Node000006" href="$_w2_a_waves_8cpp.html" title=" " alt="" coords="829,368,1019,447"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="427,314,443,318,532,335,601,344,671,351,760,366,832,383,826,383,760,371,670,357,601,349,531,341,442,323,427,319"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="104,334,107,369,102,367,102,338"/>
+<area shape="poly" id="edge9_Node000008_Node000007" title=" " alt="" coords="461,179,340,209,207,244,197,247,194,243,206,239,339,204,466,177"/>
+<area shape="rect" id="Node000009" href="$relaxation__zones__ops_8cpp.html" title=" " alt="" coords="455,242,649,320"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="566,207,561,243,557,240,562,211"/>
+<area shape="poly" id="edge11_Node000008_Node000010" title=" " alt="" coords="647,200,710,241,705,241,646,205"/>
+<area shape="poly" id="edge13_Node000008_Node000011" title=" " alt="" coords="683,183,875,239,889,245,883,245,874,244,683,188"/>
+<area shape="poly" id="edge12_Node000010_Node000005" title=" " alt="" coords="724,331,690,370,688,365,720,333"/>
+<area shape="poly" id="edge14_Node000011_Node000006" title=" " alt="" coords="959,333,943,370,940,366,955,336"/>
+</map>

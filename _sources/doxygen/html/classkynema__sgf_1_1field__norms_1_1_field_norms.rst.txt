@@ -1,0 +1,14 @@
+.. meta::53b371699dd5104943621c049c6deb8948231c8776397a59d6b746fbdb7fa0c0443eb21438cedc68511008f43af519be6218defc45288a9f278e6063714d2e6e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::field_norms::FieldNorms Class Reference
+
+FieldNorms Class Reference
+==========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1field__norms_1_1_field_norms.html

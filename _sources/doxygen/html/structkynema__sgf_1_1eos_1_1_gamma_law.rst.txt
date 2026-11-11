@@ -1,0 +1,14 @@
+.. meta::1b95956131dbbf76effd334384fe100e229d57e3ca87d3e815a45b80b0e69bf4520da15c2007fd19bea01641cbeb5424595de463f836d9c7aa6a1fb3981736a7
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::eos::GammaLaw Struct Reference
+
+GammaLaw Struct Reference
+=========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1eos_1_1_gamma_law.html

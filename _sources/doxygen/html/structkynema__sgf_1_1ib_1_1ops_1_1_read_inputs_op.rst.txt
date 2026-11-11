@@ -1,0 +1,14 @@
+.. meta::a41e42d2f28a95215be8703accac7f3c1d03480c7c64a2022d7f93de2abd3d47a763c49b97343df7112c1cae8415c3e7f62c6e133a89a950c63213cfceef0d2e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::ops::ReadInputsOp&lt; GeomTrait, typename &gt; Struct Template Reference
+
+ReadInputsOp&lt; GeomTrait, typename &gt; Struct Template Reference
+===================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ib_1_1ops_1_1_read_inputs_op.html

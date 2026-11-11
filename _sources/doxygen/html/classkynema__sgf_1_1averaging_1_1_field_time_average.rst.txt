@@ -1,0 +1,14 @@
+.. meta::3f7ccec1f0eef2d3ac4029a0cd511b31cf7ace863c939bc1f420eb72dcf5692c0d8b692030a8578a1ffe07ef653521dc51a6418e848860d9e1335c882da1122f
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::averaging::FieldTimeAverage Class Reference
+
+FieldTimeAverage Class Reference
+================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1averaging_1_1_field_time_average.html

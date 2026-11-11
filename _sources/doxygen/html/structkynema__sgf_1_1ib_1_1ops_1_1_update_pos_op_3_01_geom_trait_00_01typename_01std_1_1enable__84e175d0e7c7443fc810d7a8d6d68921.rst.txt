@@ -1,0 +1,14 @@
+.. meta::57f848d6eb364cb68a2f3c7c851d73282e358a121ae4ce7797cf9059c7a0efa5daebd2505939566bc634b6436a1e2eb011f39c94f4ca6d46dee7e2cf3620704f
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::ops::UpdatePosOp&lt; GeomTrait, typename std::enable_if_t&lt; std::is_base_of_v&lt; BluffBodyType, GeomTrait &gt; &gt; &gt; Struct Template Reference
+
+is\_base\_of\_v&lt; BluffBodyType, GeomTrait &gt; &gt; &gt; Struct Template Reference
+=====================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ib_1_1ops_1_1_update_pos_op_3_01_geom_trait_00_01typename_01std_1_1enable__84e175d0e7c7443fc810d7a8d6d68921.html

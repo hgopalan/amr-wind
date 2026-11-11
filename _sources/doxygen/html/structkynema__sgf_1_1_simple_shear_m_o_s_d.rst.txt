@@ -1,0 +1,14 @@
+.. meta::8333bca71de3867f384dbbb18c5fd76b69873bf35696edac85989ae501be7b16d118542ff01feff523ab08304e83fc3ed87f2acb8dbc8b40e2738adf5885dfe1
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::SimpleShearMOSD Struct Reference
+
+SimpleShearMOSD Struct Reference
+================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1_simple_shear_m_o_s_d.html

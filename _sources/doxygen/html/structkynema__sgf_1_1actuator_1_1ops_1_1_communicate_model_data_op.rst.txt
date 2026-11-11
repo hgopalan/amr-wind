@@ -1,0 +1,14 @@
+.. meta::18619f419a129723c67e1c2dde6055a28d1fd92f0f24bfd8dda82f25bc5dd5083b19b4df53b696af06ae6aacdcb4ea34ad8d1d4dd1384d64020f8f47265aee00
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::CommunicateModelDataOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+
+CommunicateModelDataOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+======================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_communicate_model_data_op.html

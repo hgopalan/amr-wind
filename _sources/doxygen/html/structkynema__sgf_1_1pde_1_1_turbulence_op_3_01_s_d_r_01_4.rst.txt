@@ -1,0 +1,14 @@
+.. meta::0d83aeeb689c8f3fef0bc9fc36794559ace7513f3f73eaba3904829fe0dac6e9fbe7b710869d3589f99305a9a057760b9c9f8a9614209952a6cf336f43195e3e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::TurbulenceOp&lt; SDR &gt; Struct Reference
+
+TurbulenceOp&lt; SDR &gt; Struct Reference
+==========================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1pde_1_1_turbulence_op_3_01_s_d_r_01_4.html

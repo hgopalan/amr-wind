@@ -1,0 +1,18 @@
+<map id="/home/runner/work/amr&#45;wind/amr&#45;wind/src/actuator/sector/actuator_sector_ops.H" name="/home/runner/work/amr&#45;wind/amr&#45;wind/src/actuator/sector/actuator_sector_ops.H">
+<area shape="rect" id="Node000001" title=" " alt="" coords="419,5,633,67"/>
+<area shape="rect" id="Node000002" href="$_drone_8_h.html" title=" " alt="" coords="75,115,279,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="412,74,276,117,274,112,416,70"/>
+<area shape="rect" id="Node000006" href="$_rigid_body_motion_8cpp.html" title=" " alt="" coords="304,115,517,177"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="485,76,444,117,441,112,480,79"/>
+<area shape="rect" id="Node000007" href="$_actuator_sector_8cpp.html" title=" " alt="" coords="541,115,746,177"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="570,75,613,115,608,114,569,80"/>
+<area shape="rect" id="Node000008" href="$actuator__sector__ops_8cpp.html" title=" " alt="" coords="770,115,997,177"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="641,69,786,114,781,115,641,75"/>
+<area shape="rect" id="Node000003" href="$_drone_8cpp.html" title=" " alt="" coords="5,334,210,396"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="150,188,135,226,120,283,113,335,108,333,115,281,130,224,147,193"/>
+<area shape="rect" id="Node000004" href="$drone__ops_8_h.html" title=" " alt="" coords="145,225,350,286"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="205,187,230,224,225,224,204,192"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="198,295,148,336,145,332,194,297"/>
+<area shape="rect" id="Node000005" href="$drone__ops_8cpp.html" title=" " alt="" coords="233,334,438,396"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="283,296,313,334,308,333,280,301"/>
+</map>

@@ -1,0 +1,14 @@
+.. meta::5e2656d5003eac149571fc0feb8214f8c190fb4b0c3715ad904c62feed01cc425f44d753ef65b82a1cd6d3f566e586be2a1d836cbdcd5ef34f65b0d71d95e645
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::PrescribeModelMotionOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+
+PrescribeModelMotionOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+=============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_prescribe_model_motion_op_3_01_actuator_sector_00_01_act_src_sector_01_4.html

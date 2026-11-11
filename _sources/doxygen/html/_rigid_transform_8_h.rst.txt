@@ -1,0 +1,14 @@
+.. meta::daab6aef284ba395064574b5bad0f4613386f6a69cc82b438ce0e6f951b8ff3b1e430cd5fe54328d15b06df5283be4614bbfae35e1c89e4e2f26a1492bd3c9f9
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/motion/RigidTransform.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/motion/RigidTransform.H File Reference
+=======================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _rigid_transform_8_h.html

@@ -1,0 +1,14 @@
+.. meta::25f710fa02faf88e20e649b6736cc31a0b52774530bd9c6e4da63864b576bcfd4851ea5030170062bdc4a1686cafd0ff734e0d08e6f213a5fd0b078c4bc4b953
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::transport::TransportModel Class Reference
+
+TransportModel Class Reference
+==============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1transport_1_1_transport_model.html

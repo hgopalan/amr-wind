@@ -1,0 +1,14 @@
+.. meta::1fe2978e041873877c700252cfbf0d9220fc7cb85b10e813ebce689a3feb2606029de63ad743dd936c7b14664f84f2390f42f52a6008f8626298c18cce652a9f
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ActSrcDisk Struct Reference
+
+ActSrcDisk Struct Reference
+===========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_act_src_disk.html

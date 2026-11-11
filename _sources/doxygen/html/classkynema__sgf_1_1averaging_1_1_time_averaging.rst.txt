@@ -1,0 +1,14 @@
+.. meta::be39e4892b64642fee4b130b3eb6fcf6482f55e09bc3b3605bbd3a5fc3678bd4992f1d9874472a11ba53dc87af313dfb9fecf474ab6eba8d1cdf54af317ad230
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::averaging::TimeAveraging Class Reference
+
+TimeAveraging Class Reference
+=============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1averaging_1_1_time_averaging.html

@@ -1,0 +1,14 @@
+.. meta::9c228d3babe5de041e25ec8d3bddc982c3dcbfecf1c3ee87f8451898fbdfc62b7e2028d3263b06bb661b75fc0a5fe669bdaab6fae1a7ee84bfce7ee65b3e79c8
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/transport_models/TwoPhaseTransport.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/transport\_models/TwoPhaseTransport.H Source File
+=========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _two_phase_transport_8_h_source.html

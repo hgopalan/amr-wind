@@ -1,0 +1,14 @@
+.. meta::358500852946ad1163dd8fabae9a260e130a6baa087be5d9f20e3d92d13a639d84ec27c5c0186631f412ef1decc3d8806b635545296198718675658b2be0950f
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/boundary_conditions/wall_models/ShearStressSimple.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/boundary\_conditions/wall\_models/ShearStressSimple.H File Reference
+============================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _shear_stress_simple_8_h.html

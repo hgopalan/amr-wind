@@ -1,0 +1,14 @@
+.. meta::a50a257ff0e943f2e9c96714fb962c2a3ea345db95d34b66207630c0788436517482f812736a667baa782414011c352dfeed30b458e8a4450746893b81ff2201
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/turbine/kynema_fmb/KynemaFMBIface.cpp File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/turbine/kynema\_fmb/KynemaFMBIface.cpp File Reference
+======================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _kynema_f_m_b_iface_8cpp.html

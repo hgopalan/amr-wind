@@ -1,0 +1,14 @@
+.. meta::b1c170fb460b506721f6f5326ffa070ced4b4077219bddc19ddccdebf1d43a8dc281abb92882564ef711e234c51452c66744883a62a5e375fe0a3f256a441b07
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/physics/EkmanSpiral.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/physics/EkmanSpiral.H Source File
+=========================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _ekman_spiral_8_h_source.html

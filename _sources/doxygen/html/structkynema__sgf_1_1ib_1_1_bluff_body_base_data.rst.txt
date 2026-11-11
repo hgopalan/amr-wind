@@ -1,0 +1,14 @@
+.. meta::f61353c0e7b3eeb6ee8c492fd46006303d398166879b9a0a7ba20bf74340a39201d60b669d33a7ff18c1a408cf57b9e282558362489be8325c3cebca76bd4ed9
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::BluffBodyBaseData Struct Reference
+
+BluffBodyBaseData Struct Reference
+==================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ib_1_1_bluff_body_base_data.html

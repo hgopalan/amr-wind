@@ -1,0 +1,14 @@
+.. meta::0112ed8bb06109cbc7665a9e0456ae83a310d33c4ff44a59a1165ce4a591120790b6f1ce7f9f1f0cf2ac6519fe80784b287f735ba18fba20ca2241c28e56b344
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ScalarAdvection Class Reference
+
+ScalarAdvection Class Reference
+===============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_scalar_advection.html

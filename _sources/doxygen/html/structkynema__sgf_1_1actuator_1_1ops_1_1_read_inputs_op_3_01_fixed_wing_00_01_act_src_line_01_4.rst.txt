@@ -1,0 +1,14 @@
+.. meta::4530b293e51b78974411815cac6f5ad356012b0efb9fbeb54937dbb7f54500a78e76aec64f2251409410533919114e2ca8245fed38a05271dd07c9ebc42b9144
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ReadInputsOp&lt; FixedWing, ActSrcLine &gt; Struct Reference
+
+ReadInputsOp&lt; FixedWing, ActSrcLine &gt; Struct Reference
+============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_read_inputs_op_3_01_fixed_wing_00_01_act_src_line_01_4.html

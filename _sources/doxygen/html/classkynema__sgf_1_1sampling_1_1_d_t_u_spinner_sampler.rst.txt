@@ -1,0 +1,14 @@
+.. meta::2d4ab26b3bb7adb45aaaf5e2e5f4ea0ad5995c9a9aa07f6b73925f45d88af51a52cf92f3c31d1a3f02832f7fa1a391b2b12d3ad7e9685ac8fb17ccad02dd936b
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::sampling::DTUSpinnerSampler Class Reference
+
+DTUSpinnerSampler Class Reference
+=================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1sampling_1_1_d_t_u_spinner_sampler.html

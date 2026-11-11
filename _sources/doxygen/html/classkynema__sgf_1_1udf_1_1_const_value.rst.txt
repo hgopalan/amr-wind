@@ -1,0 +1,14 @@
+.. meta::f2f001b9588245442f7229c7ecb961c10bc861e0682d072a3e85664ae82c95d35ba583d5eaebab762bbbec4fbe4e341c477427f2b629bfc7a270e2af7f05d08a
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::udf::ConstValue Class Reference
+
+ConstValue Class Reference
+==========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1udf_1_1_const_value.html

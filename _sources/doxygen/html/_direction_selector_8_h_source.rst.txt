@@ -1,0 +1,14 @@
+.. meta::c714d927cbb8352b719d082100fa517eb5360e827883ae8a4cdc48798a6e345923b6672c89797b616928a8ed76f992cb1057178488e8a28c204ae3d85dd9f708
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/DirectionSelector.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/DirectionSelector.H Source File
+=================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _direction_selector_8_h_source.html

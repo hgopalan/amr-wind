@@ -1,0 +1,14 @@
+.. meta::50dde2c31106680076789b642a1ef8527d8b73f43a099e79728876297910c0dde8449273d1cb5f10f264197d4feac9fcec0e2e38a63e3b94d178f701d6fc81de
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::BCDensityMod Class Reference
+
+BCDensityMod Class Reference
+============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_b_c_density_mod.html

@@ -1,0 +1,14 @@
+.. meta::2286ce54faed402d942dad385a2e5301b37be31531bd4c83ebb28bb848718d2e5a0170c4db06e5572ca81368b16b249095e11f8986fdd0627c72ecdf4405e969
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/equation_systems/temperature/source_terms Directory Reference
+
+/home/runner/work/amr-wind/amr-wind/src/equation\_systems/temperature/source\_terms Directory Reference
+=======================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: dir_18f02445f5f40a57bf95fe29c751b9cf.html

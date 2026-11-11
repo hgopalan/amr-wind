@@ -1,0 +1,14 @@
+.. meta::41b455060f6d5fc9ba22bc659315b2cb64dab9cd95d0dbd7f11926e75ced30fbf02128925d98bcc42ef644512badf8696667a6a9d21475df0f458ed6e4536d97
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/physics/VortexDipole.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/physics/VortexDipole.H Source File
+==========================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _vortex_dipole_8_h_source.html

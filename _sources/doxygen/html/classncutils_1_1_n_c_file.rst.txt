@@ -1,0 +1,14 @@
+.. meta::1fdb21235de58d6ba04b4b422269e26ec1f716d3843d6950ebb3fe84f3c79a691d9f2020b03167e775099cc5c097c7fce96989e14236ddccb735f4aa4c938e77
+
+:orphan:
+
+.. title:: Kynema-SGF API: ncutils::NCFile Class Reference
+
+NCFile Class Reference
+======================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classncutils_1_1_n_c_file.html

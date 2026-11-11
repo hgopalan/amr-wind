@@ -1,0 +1,14 @@
+.. meta::c3221b5c567efd1591eaf63e5e21580a3f489b81b76ca034f3d903867a71d4c28f510b59e8da1280344f20af67e49ae472981999f66d37c2e9907bc3602d1c64
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::CommunicateModelDataOp&lt; TurbineFromExtSolver&lt; SolverTurbine, SolverData &gt;, SrcTrait &gt; Struct Template Reference
+
+CommunicateModelDataOp&lt; TurbineFromExtSolver&lt; SolverTurbine, SolverData &gt;, SrcTrait &gt; Struct Template Reference
+===========================================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_communicate_model_data_op_3_01_turbine_from_ext_solver_ec88ffe60da0b576f7bf4e4c57137e11.html

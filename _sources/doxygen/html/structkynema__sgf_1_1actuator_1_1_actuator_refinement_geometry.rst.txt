@@ -1,0 +1,14 @@
+.. meta::328aa36aff074c5f38f4b58545aee5702f3c5a1a9371903a3534b0f64f11b7a41ab70f981500a5ff6f706c0346ef8a710c9884be33bad012c4824354266e888c
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ActuatorRefinementGeometry Struct Reference
+
+ActuatorRefinementGeometry Struct Reference
+===========================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_actuator_refinement_geometry.html

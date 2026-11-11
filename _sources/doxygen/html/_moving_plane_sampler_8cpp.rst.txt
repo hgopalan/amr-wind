@@ -1,0 +1,14 @@
+.. meta::9394735907cf026f6018441b595baa40ea31690bf7fc06c901e1711968c566b55210a965c96cfb2c291de206cd053e809f324d173a4b9f33ed8d08db7bf32afc
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/sampling/MovingPlaneSampler.cpp File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/sampling/MovingPlaneSampler.cpp File Reference
+================================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _moving_plane_sampler_8cpp.html

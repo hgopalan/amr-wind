@@ -1,0 +1,14 @@
+.. meta::6075c5451d93b9998f5c63acf483c3861850f9dea8c5a2fd88b08731cd357bd6a3425fa83baaf3630372f2b313225307cfe3e332504948ae8b343cd1931d95fe
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/physics/multiphase/FreeSurfaceDamping.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/physics/multiphase/FreeSurfaceDamping.H Source File
+===========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _free_surface_damping_8_h_source.html

@@ -1,0 +1,14 @@
+.. meta::fbe9755c09a60a8f12148e69c9e2b6652fb65de4bf516ca552b480e403692d7922ee1ca7c5e18170cc2eb464e7eaf2fcbeb0c82ab4e54b7d94f981fa9a7eb27c
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/boundary_conditions/FixedGradientBC.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/boundary\_conditions/FixedGradientBC.H Source File
+==========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _fixed_gradient_b_c_8_h_source.html

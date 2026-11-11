@@ -1,0 +1,14 @@
+.. meta::f11be169c18464040e9823304e55b43d43f1990d63d016f9f8aa9c7ab23f03d18c635714cd4a6558039caa3594f5a72a1c0c414a5e21c59c4591443e317bb604
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::vs::TensorT&lt; T &gt; Struct Template Reference
+
+TensorT&lt; T &gt; Struct Template Reference
+============================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1vs_1_1_tensor_t.html

@@ -1,0 +1,14 @@
+.. meta::e4ed39d9bf4f8c79af5f41dc88c4d252af1b6ea8d1ab0bc2fcb6135db91b85e2cc581d09a02469955c480bce565ab3f798a0dd6fe574ca68df9e6ee1c26538d7
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ZalesakDisk Class Reference
+
+ZalesakDisk Class Reference
+===========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_zalesak_disk.html

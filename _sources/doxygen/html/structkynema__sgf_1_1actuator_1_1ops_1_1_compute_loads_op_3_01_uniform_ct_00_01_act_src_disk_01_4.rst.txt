@@ -1,0 +1,14 @@
+.. meta::03986226b9c8f3ed585c151302530f44f29addda6ab34ab90e1a78cbc619e4317387c19b8c25157375954f06368a6de5ffd78f2b593e8519f8bf057aca4eafec
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ComputeLoadsOp&lt; UniformCt, ActSrcDisk &gt; Struct Reference
+
+ComputeLoadsOp&lt; UniformCt, ActSrcDisk &gt; Struct Reference
+==============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_compute_loads_op_3_01_uniform_ct_00_01_act_src_disk_01_4.html

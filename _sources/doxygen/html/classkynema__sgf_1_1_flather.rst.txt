@@ -1,0 +1,14 @@
+.. meta::0fd17d3eeabd96379c639382b0d7d768d9d0a48e8ad67e97f835ace09036282e7afeb7e581719cf57ff53a27c8eb2aaacb7d030110cc2dca080587fa4ac0643e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::Flather Class Reference
+
+Flather Class Reference
+=======================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_flather.html

@@ -1,0 +1,14 @@
+.. meta::887328e3685ebbbdfc98cde1b5f9cbffb23480fdc857c5c88416f15ce2f501f9b302fcb9543740465bd4e1a69f395ee896a37193f5836a6faf8b356b4ac338c4
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::MomentumSource Class Reference
+
+MomentumSource Class Reference
+==============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1pde_1_1_momentum_source.html

@@ -1,0 +1,14 @@
+.. meta::f9b546a8a44833847c248156ce7e0d4e49a46e97e578814c961376d1d84f3382c84008c053497ee3dd7dd23a75d7c837cbf4ef156fbc14136998a3f265dd92e0
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::PostSolveOp&lt; Levelset &gt; Struct Reference
+
+PostSolveOp&lt; Levelset &gt; Struct Reference
+==============================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1pde_1_1_post_solve_op_3_01_levelset_01_4.html

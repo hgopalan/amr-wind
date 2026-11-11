@@ -1,0 +1,14 @@
+.. meta::868c57dba531e89c0a569601c9d26756de2287b540a79ed36e410d80d311864286cde803089a050cc6972f2f7224635518f5b897b3a60dd0d828e07b773b1da7
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::VorticityMagRefinement Class Reference
+
+VorticityMagRefinement Class Reference
+======================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_vorticity_mag_refinement.html

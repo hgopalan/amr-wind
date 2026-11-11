@@ -1,0 +1,14 @@
+.. meta::a87605897d349e1bedb33daf05010326179c89f43e7d14d13228f032b7680868ffe023b2ea5e7ba39916770b06a0459feef782895dbaeb7bf53ef5b1a7669c9c
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/physics/udfs/PowerLawProfile.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/physics/udfs/PowerLawProfile.H File Reference
+=====================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _power_law_profile_8_h.html

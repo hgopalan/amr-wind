@@ -1,0 +1,14 @@
+.. meta::8a0e21ddbc1f1e1000addb54a36ad4e369db1a0404185a1e738b88d951b37aab5f22bc9781d7becf3f33330d4f8de9f276c32845a20363c017ee98321da87eea
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::Factory&lt; Base, Args &gt;::Register&lt; T &gt; Struct Template Reference
+
+Register&lt; T &gt; Struct Template Reference
+=============================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1_factory_1_1_register.html

@@ -1,0 +1,14 @@
+.. meta::9035a89eb5ecba1c4ac41ca409f2ea51cec490ef70b1d4ee4147802bcc334f0a5d51011ce618ae47e75f67cdda17c88b604b61dcd47f17f3bf097c799eb5bae4
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ModulatedPowerLaw Class Reference
+
+ModulatedPowerLaw Class Reference
+=================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_modulated_power_law.html

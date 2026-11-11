@@ -1,0 +1,14 @@
+.. meta::0d5ab3b2c104345c37f795ef87252e3c006a47b6226113210fead0b3e4ea1254d7bb296685bdaf14203a43e8271edb3591d7848052973f43bdbba2cce2f93015
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ib::IBType Struct Reference
+
+IBType Struct Reference
+=======================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ib_1_1_i_b_type.html

@@ -1,0 +1,14 @@
+.. meta::5e377ec2837a3910193776d4b41fa451cefab348d54904d7ca5da8f4eedd8ef3b88399a09c47b9ca095e049d8d940479e62491e244da8c8f3b8586863d258143
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/physics/multiphase/ZalesakDisk.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/physics/multiphase/ZalesakDisk.H Source File
+====================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _zalesak_disk_8_h_source.html

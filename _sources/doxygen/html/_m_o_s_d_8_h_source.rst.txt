@@ -1,0 +1,14 @@
+.. meta::d9dffc5372b42014558dbd18257c9bdf6889337e465a69b062d237aab866b9252b5411c042959373bb9fee42d0eb952b20ab43646aff7192ccc289f66e21997c
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/boundary_conditions/wall_models/MOSD.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/boundary\_conditions/wall\_models/MOSD.H Source File
+============================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _m_o_s_d_8_h_source.html

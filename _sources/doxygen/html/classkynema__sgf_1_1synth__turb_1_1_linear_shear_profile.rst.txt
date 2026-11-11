@@ -1,0 +1,14 @@
+.. meta::185193fc416a4977d75b62b3a148022fe1d52416809447cc4ea09a79bbe6b50e0a937bda0be45695aa617d3f76ec25f96aaf072b75ce8760d621b66839536e5f
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::synth_turb::LinearShearProfile Class Reference
+
+LinearShearProfile Class Reference
+==================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1synth__turb_1_1_linear_shear_profile.html

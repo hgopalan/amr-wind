@@ -1,0 +1,14 @@
+.. meta::40ff674150242ebdc569f658bcb8cd92c4ee21635710699ad7078dc93c1ffc1b8e54f6cd9d62821dcd98d2489f5a60b3a6f30446845e57452a1c909d0919567d
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::PDEMgr Class Reference
+
+PDEMgr Class Reference
+======================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1pde_1_1_p_d_e_mgr.html

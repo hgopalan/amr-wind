@@ -1,0 +1,14 @@
+.. meta::3816da504bcbd64cd4ca8e489e946b29402d33f78dc413be24368611318a5621838b721a1001ca5651733f25201b74be308efc28d90035ecd9e156637bdebc3c
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::const_map::ConstantMap Class Reference
+
+ConstantMap Class Reference
+===========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1const__map_1_1_constant_map.html

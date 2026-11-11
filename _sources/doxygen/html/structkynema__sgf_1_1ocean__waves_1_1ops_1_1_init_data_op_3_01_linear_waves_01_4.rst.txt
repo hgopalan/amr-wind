@@ -1,0 +1,14 @@
+.. meta::42c727127c29b3457d66e3ce9402a26d2588013fa8bfa2c031cc0ed239b23feb5a95fd111a398703add674643990040216ed33a1323167a04af911f2aadb459f
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ocean_waves::ops::InitDataOp&lt; LinearWaves &gt; Struct Reference
+
+InitDataOp&lt; LinearWaves &gt; Struct Reference
+================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ocean__waves_1_1ops_1_1_init_data_op_3_01_linear_waves_01_4.html

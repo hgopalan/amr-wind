@@ -1,0 +1,14 @@
+.. meta::abf57304524252c85c2a65c7401c94766c252b920eace2fdf4724e361e9155c96206aae4ad5b20e37b7f71e805cda594be60ca187eb4949290dce8b4582985c9
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::PDESystem&lt; PDE, Scheme &gt; Class Template Reference
+
+PDESystem&lt; PDE, Scheme &gt; Class Template Reference
+=======================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1pde_1_1_p_d_e_system.html

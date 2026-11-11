@@ -1,0 +1,14 @@
+.. meta::c842a3234c8713d6a3df70e5a1e38429a032f9f54bb56d79768e5cb1d31571f7492041aa3c9ea4f8af33cbb8f2ec11225c2d76fcc1253e53fef29ddbc1faa616
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/ascent/ascent.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/ascent/ascent.H File Reference
+================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: ascent_8_h.html

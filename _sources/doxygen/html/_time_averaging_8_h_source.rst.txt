@@ -1,0 +1,14 @@
+.. meta::d9be0b80f2816ddfa5df96a418d12d02b40f8ec64e5bc7e17488cf18140989f18ceaa3a00c322ef4934b579cdf55a6a5a07e5de16ceeeac89d3daae5d6c67175
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/averaging/TimeAveraging.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/averaging/TimeAveraging.H Source File
+=======================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _time_averaging_8_h_source.html

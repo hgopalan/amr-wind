@@ -1,0 +1,14 @@
+.. meta::a2a02e58228e135cc22912c566085106e2f05dbd54cf6ab408690595de90ff284aa0377a793d33cab2efd90f724e55c9bbb915887cef8ecd8bfc11d9ae2b6abe
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ComputeLoadsOp&lt; TurbineKynemaFMB, SrcTrait &gt; Struct Template Reference
+
+ComputeLoadsOp&lt; TurbineKynemaFMB, SrcTrait &gt; Struct Template Reference
+============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_compute_loads_op_3_01_turbine_kynema_f_m_b_00_01_src_trait_01_4.html

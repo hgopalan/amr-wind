@@ -1,0 +1,14 @@
+.. meta::e1404d1d7f976d642d724b6004c5f9df8c541867967b033e5bec44968282e52d6c7b48c7efb54828d836d90edc6aecd5ce498fff30b10ffd4ad72c9aa96d5b52
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ReadInputsOp&lt; FlatPlate, ActSrcLine &gt; Struct Reference
+
+ReadInputsOp&lt; FlatPlate, ActSrcLine &gt; Struct Reference
+============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_read_inputs_op_3_01_flat_plate_00_01_act_src_line_01_4.html

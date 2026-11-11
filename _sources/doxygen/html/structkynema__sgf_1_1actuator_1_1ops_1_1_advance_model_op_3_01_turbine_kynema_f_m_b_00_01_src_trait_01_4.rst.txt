@@ -1,0 +1,14 @@
+.. meta::65ada498510a350e028bd46bc7e9b8aab46d9138c1cd81d770414cad87f39cac8b98196b9e92e19d95160cc25293311d43f70cbf8910ac53ccbb0265a0f3eca1
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::AdvanceModelOp&lt; TurbineKynemaFMB, SrcTrait &gt; Struct Template Reference
+
+AdvanceModelOp&lt; TurbineKynemaFMB, SrcTrait &gt; Struct Template Reference
+============================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_advance_model_op_3_01_turbine_kynema_f_m_b_00_01_src_trait_01_4.html

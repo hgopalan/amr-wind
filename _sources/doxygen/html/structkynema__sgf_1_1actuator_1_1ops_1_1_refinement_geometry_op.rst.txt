@@ -1,0 +1,14 @@
+.. meta::e85d4c740dd78a8d4bb6c3dacbce8c48934655d2fad31092f59dc8dc177d0525af6b3d2a4d6ef07d2a94ed49b6ac4a91a93d8edd3387b54cd5f660139c6308e3
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::RefinementGeometryOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+
+RefinementGeometryOp&lt; ActTrait, SrcTrait, typename &gt; Struct Template Reference
+====================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_refinement_geometry_op.html

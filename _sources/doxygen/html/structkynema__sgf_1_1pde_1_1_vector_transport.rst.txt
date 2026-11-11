@@ -1,0 +1,14 @@
+.. meta::d68d879b856c931f4e621a3f14aa6eb31a2560ff3d8335f33b2858742151277e5091bb4f1216a8f8b5c0ef98881f00a507f147e3472b209a0597d6d29d3dd5ef
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::VectorTransport Struct Reference
+
+VectorTransport Struct Reference
+================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1pde_1_1_vector_transport.html

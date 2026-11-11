@@ -1,0 +1,14 @@
+.. meta::8244965767708ab8ed98cd79a8e59ef79373d4abfa0455563c98018c8893050da53ff629133c9972abf046022c4fa6de9b7c9fd4f12c64bba772a56af03f9a75
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ComputeLoadsOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+
+ComputeLoadsOp&lt; ActuatorSector, ActSrcSector &gt; Struct Reference
+=====================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_compute_loads_op_3_01_actuator_sector_00_01_act_src_sector_01_4.html

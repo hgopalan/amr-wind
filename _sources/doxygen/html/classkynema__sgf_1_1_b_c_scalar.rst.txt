@@ -1,0 +1,14 @@
+.. meta::e8ea1f19b1b2f3b87490802e521e44cd23e355ea6a38fc604b074c1ef25290c6f7662ada85d16912511ac59f2ccd461b64d105cf98156cfb024a4fb164addffa
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::BCScalar Class Reference
+
+BCScalar Class Reference
+========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_b_c_scalar.html

@@ -1,0 +1,14 @@
+.. meta::90dd857770471186af5c8bec323dc0739e6f780f455e5d3f0632afb763605cfd7402c760047a0c275a0af53d5048ff073998d11be0228f3b6d0ca9b4a9a2c9ff
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/boundary_conditions/BCInterface.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/boundary\_conditions/BCInterface.H Source File
+======================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _b_c_interface_8_h_source.html

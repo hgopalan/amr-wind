@@ -1,0 +1,14 @@
+.. meta::65184e0041eba7034c6153d2d5057ddfce7306d96706949f00390f6a50ace3e8e4c8cb9ef9bb6611937ec1962dfce3c08299b05bd087520a4e965a137fbc8bf0
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::AdvanceModelOp&lt; UniformCt, ActSrcDisk &gt; Struct Reference
+
+AdvanceModelOp&lt; UniformCt, ActSrcDisk &gt; Struct Reference
+==============================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_advance_model_op_3_01_uniform_ct_00_01_act_src_disk_01_4.html

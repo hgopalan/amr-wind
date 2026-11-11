@@ -1,0 +1,14 @@
+.. meta::580228dbb3a899dc2bc1bf5ca43d2454b0916e5b64d89bf48740bfaecaf3f2b5f83b2ebe530d833c07495f181e7edce1096966f3c75ea9de413ed460e2af4eb0
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::derived::MaskTerrain Struct Reference
+
+MaskTerrain Struct Reference
+============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1derived_1_1_mask_terrain.html

@@ -1,0 +1,14 @@
+.. meta::11e167bddd00914c8f3e9a6749ed8465035d1780f684c8797222398eb6279c25394d3d71cebedd77f883cebac66ab87c66caef25e38363026a61e54063bc5ae4
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/equation_systems/vof/vof_bciface.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/equation\_systems/vof/vof\_bciface.H File Reference
+===========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: vof__bciface_8_h.html

@@ -1,0 +1,14 @@
+.. meta::50652891595e4a3dfc82d19779b55ebb5fa6c4d5fd4ec09f3130ae26368ed6599f728efda6bb658b4e630b93b7bd68c4268a694a2745943d07592aa63712f816
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/core/ExtSolver.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/core/ExtSolver.H File Reference
+=======================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _ext_solver_8_h.html

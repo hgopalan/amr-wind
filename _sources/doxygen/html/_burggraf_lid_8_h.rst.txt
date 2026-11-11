@@ -1,0 +1,14 @@
+.. meta::23f76e85b22bcae46109e153c68abaf7b8ee9d02c2b8e25f95a0f44e703ce6242c6a23f94fdcbbac12903afd9f64e8a588b8cdd3742ccfc20a60f22ab94db798
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/physics/udfs/BurggrafLid.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/physics/udfs/BurggrafLid.H File Reference
+=================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _burggraf_lid_8_h.html

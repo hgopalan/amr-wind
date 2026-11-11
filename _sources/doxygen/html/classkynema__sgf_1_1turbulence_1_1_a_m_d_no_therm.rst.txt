@@ -1,0 +1,14 @@
+.. meta::f99906a26c1a9f3c842339fbd4298220abeef867438dbdeec2b8e3f462d4284cff791ff53256d836d3bd5afcba35bed06f00a0c9bc64c8f7b939be89630ff938
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::turbulence::AMDNoTherm&lt; Transport &gt; Class Template Reference
+
+AMDNoTherm&lt; Transport &gt; Class Template Reference
+======================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1turbulence_1_1_a_m_d_no_therm.html

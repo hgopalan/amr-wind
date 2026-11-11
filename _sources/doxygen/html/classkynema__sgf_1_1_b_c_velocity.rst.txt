@@ -1,0 +1,14 @@
+.. meta::30d3ea954849e6345a15fa352238efb37e729062e4b267121c7640c94c51a16c3f387dd6074715a38adbafafe464bf741be4795f16d258e66875b2c129552a41
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::BCVelocity Class Reference
+
+BCVelocity Class Reference
+==========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_b_c_velocity.html

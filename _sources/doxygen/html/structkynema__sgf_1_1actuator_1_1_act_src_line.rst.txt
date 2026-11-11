@@ -1,0 +1,14 @@
+.. meta::f5315a934ac11836a5599dd5e9210c1c5857896021a030ed3853ffa2196a1ec971d87a7a7448139c320486fa836bacf5b3a3fecbbe5f464f90137c5b7ad5f421
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ActSrcLine Struct Reference
+
+ActSrcLine Struct Reference
+===========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_act_src_line.html

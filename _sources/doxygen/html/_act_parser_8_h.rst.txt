@@ -1,0 +1,14 @@
+.. meta::1e0fbacba014db34cd3a3dfa2bfc65f5d42111dc7b3fe0e2eab7ff432389f58a4098de87bcb6c79fd6bcdf0b83786555662c33e380f1fabee53792c6f2289a43
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/ActParser.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/ActParser.H File Reference
+===========================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _act_parser_8_h.html

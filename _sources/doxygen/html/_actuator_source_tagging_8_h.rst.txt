@@ -1,0 +1,14 @@
+.. meta::009e4becc5acbb7ca7518ebd3b0c463c35e69a9d29747e68f5395edc8ddf4c2abd3624b5d0422899f354fef2294533fba5accb35981c288e9b7dc7fcbaf6c85d
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/physics/ActuatorSourceTagging.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/physics/ActuatorSourceTagging.H File Reference
+======================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _actuator_source_tagging_8_h.html

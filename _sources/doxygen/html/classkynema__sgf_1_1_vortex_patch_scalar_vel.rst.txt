@@ -1,0 +1,14 @@
+.. meta::b20bda428b235c10b83ea383ad62b18b273b7749aee7727f8b03744bd3eaf273ff6258eeb95e90dcfc287be69de21dfd50e456322510af23503e8b9857cc8f5e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::VortexPatchScalarVel Class Reference
+
+VortexPatchScalarVel Class Reference
+====================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_vortex_patch_scalar_vel.html

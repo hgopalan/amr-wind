@@ -1,0 +1,14 @@
+.. meta::940d38b32954b5a6109b533281b3d3b7f22051ba04a19f1dcea7dcab6d4f5698023d5c87112699d85596234d42e83141df4fc9968a15b0e3bd0187a998ed768d
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::SimpleShearLogLaw Struct Reference
+
+SimpleShearLogLaw Struct Reference
+==================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1_simple_shear_log_law.html

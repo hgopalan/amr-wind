@@ -1,0 +1,14 @@
+.. meta::336425e6c140ce6baeb680f10b0691c14c6618a648e73cc9fdec53eef3f32f2baa228fb4fd6033a04cd88e0d01a24f309a33836f6670bb0ab677b477eec53262
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::VelPlaneAveraging Class Reference
+
+VelPlaneAveraging Class Reference
+=================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_vel_plane_averaging.html

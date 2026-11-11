@@ -1,0 +1,14 @@
+.. meta::e930f68732aa5c910421ee6dfb9974fa8332e0a543e7d07df05e71265866f3392f0d7fde08383c2c677e0fdcdf2e8b01e1515aa3bef2b2849a0486d2f6ec9e72
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::AirfoilTable Class Reference
+
+AirfoilTable Class Reference
+============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1actuator_1_1_airfoil_table.html

@@ -1,0 +1,22 @@
+<map id="/home/runner/work/amr&#45;wind/amr&#45;wind/src/actuator/sector/ActuatorSector.H" name="/home/runner/work/amr&#45;wind/amr&#45;wind/src/actuator/sector/ActuatorSector.H">
+<area shape="rect" id="Node000001" title=" " alt="" coords="231,5,435,67"/>
+<area shape="rect" id="Node000002" href="$_drone_8_h.html" title=" " alt="" coords="75,225,279,286"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="301,82,201,226,196,223,304,78"/>
+<area shape="rect" id="Node000006" href="$_actuator_sector_8cpp.html" title=" " alt="" coords="303,225,507,286"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="338,80,347,128,361,176,386,224,381,224,356,178,342,129,336,85"/>
+<area shape="rect" id="Node000007" href="$actuator__sector__ops_8_h.html" title=" " alt="" coords="370,115,584,177"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="385,74,439,114,434,115,385,79"/>
+<area shape="rect" id="Node000003" href="$_drone_8cpp.html" title=" " alt="" coords="5,444,210,506"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="150,298,135,335,120,392,113,444,108,442,115,391,130,333,147,302"/>
+<area shape="rect" id="Node000004" href="$drone__ops_8_h.html" title=" " alt="" coords="145,334,350,396"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="205,297,230,334,225,334,204,302"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="198,405,148,446,145,441,194,407"/>
+<area shape="rect" id="Node000005" href="$drone__ops_8cpp.html" title=" " alt="" coords="233,444,438,506"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="283,405,313,444,308,443,280,410"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="376,184,262,226,260,222,380,181"/>
+<area shape="poly" id="edge10_Node000007_Node000006" title=" " alt="" coords="450,188,427,226,423,222,446,191"/>
+<area shape="rect" id="Node000008" href="$_rigid_body_motion_8cpp.html" title=" " alt="" coords="532,225,745,286"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="535,183,596,224,590,224,534,188"/>
+<area shape="rect" id="Node000009" href="$actuator__sector__ops_8cpp.html" title=" " alt="" coords="768,225,996,286"/>
+<area shape="poly" id="edge11_Node000007_Node000009" title=" " alt="" coords="599,177,771,223,765,225,599,182"/>
+</map>

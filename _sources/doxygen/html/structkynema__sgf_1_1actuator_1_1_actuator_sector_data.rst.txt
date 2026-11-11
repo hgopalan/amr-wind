@@ -1,0 +1,14 @@
+.. meta::36b6e45796116ff33625b595a7cf2b5b76efed7c72277b591195506e45d19d730bb46575508277e9ff0e99aed070463ba50621587f1de92c58bce088cbafa99b
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ActuatorSectorData Struct Reference
+
+ActuatorSectorData Struct Reference
+===================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_actuator_sector_data.html

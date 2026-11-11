@@ -1,0 +1,14 @@
+.. meta::2d641ce03151643a395f61e0ab66cb3daa64e294b4f8bd0327ff22c04de51e3e90b52fa1cb890bee070b6f3178bee019e5f9031ec59e8d85cfa59804b8903576
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/utilities/tagging/CartBoxRefinement.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/utilities/tagging/CartBoxRefinement.H Source File
+=========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _cart_box_refinement_8_h_source.html

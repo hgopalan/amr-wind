@@ -1,0 +1,14 @@
+.. meta::2f4abd6ba1da8b299a39e668108f30186fd0b23b43ea891be230fb4fa13f0e4ecaaa65fc58a13894402da5357545d1fc86c386873e1a62172eae54deb12be2a6
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::motion::RigidBodyMotion Class Reference
+
+RigidBodyMotion Class Reference
+===============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1actuator_1_1motion_1_1_rigid_body_motion.html

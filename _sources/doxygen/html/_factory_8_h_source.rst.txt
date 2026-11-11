@@ -1,0 +1,14 @@
+.. meta::abe15ff6e468a3ba96d47c3fbed96f3372ef953a3b6a972edb1ec7c34e8b7506687273058568fe73645a6b9d6d78bbcd4a8540303918d89338a375e1e66a376a
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/core/Factory.H Source File
+
+/home/runner/work/amr-wind/amr-wind/src/core/Factory.H Source File
+==================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _factory_8_h_source.html

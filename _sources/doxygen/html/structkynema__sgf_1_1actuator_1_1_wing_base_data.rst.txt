@@ -1,0 +1,14 @@
+.. meta::cc5f6e22f20129fc061dd6961328ceb23240a9e1f0240f3875bce1f9bdb3536bf3b5b28943d36c2a8c56a41d4c53f9edfb3613d860193640c3e69d46962a6389
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::WingBaseData Struct Reference
+
+WingBaseData Struct Reference
+=============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1_wing_base_data.html

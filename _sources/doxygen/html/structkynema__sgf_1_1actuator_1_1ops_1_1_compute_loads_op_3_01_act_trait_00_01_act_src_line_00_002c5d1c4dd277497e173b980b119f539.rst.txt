@@ -1,0 +1,14 @@
+.. meta::2f398659e3b81602179ab0792c1c861580c3171242cc752cf79199d398047b09e08657ec362f3e61d455d1dfcc3ea951330dce3af23167b55afda82c63d3c46d
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ComputeLoadsOp&lt; ActTrait, ActSrcLine, typename std::enable_if_t&lt; std::is_base_of_v&lt; WingType, ActTrait &gt; &amp;&amp;UseDefaultOp&lt; ActTrait, ActSrcLine &gt;::compute_loads &gt; &gt; Struct Template Reference
+
+compute\_loads &gt; &gt; Struct Template Reference
+==================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_compute_loads_op_3_01_act_trait_00_01_act_src_line_00_002c5d1c4dd277497e173b980b119f539.html

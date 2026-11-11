@@ -1,0 +1,14 @@
+.. meta::53b0e65f4c3ca50250dba914cd6a5766a274a95410f6b50be60795f7b317d343b47d71a1e867dd959a480722ec2616b3dd9c4611f9fad4f4df37b451b1cb85a0
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::subvolume::RectangularSubvolume Class Reference
+
+RectangularSubvolume Class Reference
+====================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1subvolume_1_1_rectangular_subvolume.html

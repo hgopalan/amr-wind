@@ -1,0 +1,14 @@
+.. meta::d4c164b24395eeab2471d94b01e25f39f438bc122f0800a0ee9e4d3358dc607b64ea0588cd12ed6d4b0b9296f012408705ffced2670e0b086df808edf756d170
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::actuator::ops::ReadInputsOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+
+ReadInputsOp&lt; Drone, ActSrcDrone &gt; Struct Reference
+=========================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1actuator_1_1ops_1_1_read_inputs_op_3_01_drone_00_01_act_src_drone_01_4.html

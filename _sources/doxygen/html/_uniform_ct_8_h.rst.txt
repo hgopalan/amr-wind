@@ -1,0 +1,14 @@
+.. meta::466954fc65717982d9c1e5246005aa0669b9ea6db15c57b1260a4302d5c094984f95ae0e67919cb379733595043d5bbd8fbd8eb4796452852fcef9ae878cc49e
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/disk/UniformCt.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/disk/UniformCt.H File Reference
+================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _uniform_ct_8_h.html

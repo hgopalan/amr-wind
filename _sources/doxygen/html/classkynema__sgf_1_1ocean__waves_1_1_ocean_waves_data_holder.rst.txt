@@ -1,0 +1,14 @@
+.. meta::864b6d04861f2a2dcab74fc8f8c36029a979d0e1665ae74834dd973478a1ccbde8e896ae2b4d873fdff17c650212ef77ae29822af6754ad4b9209fbd2dfa02ae
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ocean_waves::OceanWavesDataHolder&lt; OceanWavesTrait &gt; Class Template Reference
+
+OceanWavesDataHolder&lt; OceanWavesTrait &gt; Class Template Reference
+======================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1ocean__waves_1_1_ocean_waves_data_holder.html

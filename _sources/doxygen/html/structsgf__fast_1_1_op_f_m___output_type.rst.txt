@@ -1,0 +1,14 @@
+.. meta::9b8b31fd7dd2af40b0503853c229a71e828eb3a03f8c5fc265a30f1ab0852678c0c841ca68205297ebee30719d62d8d905a1b57892a9692086c5498320beb9a3
+
+:orphan:
+
+.. title:: Kynema-SGF API: sgf_fast::OpFM_OutputType Struct Reference
+
+OpFM\_OutputType Struct Reference
+=================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structsgf__fast_1_1_op_f_m___output_type.html

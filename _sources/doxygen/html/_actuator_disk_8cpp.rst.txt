@@ -1,0 +1,14 @@
+.. meta::c2e48ef3e8603e83b4266482d47dabd17a7645d6e4a411a2bb2e32c720ba563b7053670d93e45e4a752019f233b22f1a86a150d829868f4739a5a3ade53b9266
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/disk/ActuatorDisk.cpp File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/disk/ActuatorDisk.cpp File Reference
+=====================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _actuator_disk_8cpp.html

@@ -1,0 +1,14 @@
+.. meta::d3098acf893f90fc3e4ee4f06543172557dd95c36e226a54d9b22e1d1d05107992866ae60842c8ef379af4b12842f89d38f07161b726ac1bb79b6bb719eb5e48
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::ocean_waves::ops::ReadInputsOp&lt; LinearWaves &gt; Struct Reference
+
+ReadInputsOp&lt; LinearWaves &gt; Struct Reference
+==================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1ocean__waves_1_1ops_1_1_read_inputs_op_3_01_linear_waves_01_4.html

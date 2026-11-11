@@ -1,0 +1,14 @@
+.. meta::57dcd9eb75968039a7f691463ca1805d30be71710066efb6a7f260f26d9a24bcc20b83e073b4e9561892954c873a9b690f5114423c63dae39d2623aa2a567b0a
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/drone/drone_ops.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/drone/drone\_ops.H File Reference
+==================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: drone__ops_8_h.html

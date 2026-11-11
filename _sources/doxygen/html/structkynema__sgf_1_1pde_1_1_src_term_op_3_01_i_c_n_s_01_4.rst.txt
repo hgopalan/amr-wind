@@ -1,0 +1,14 @@
+.. meta::36e2c248d7969664575686946b2c507a7718aca7f2e1f47e11295bf5ffbd1d0fd3fb0573301b7d357555a1291c3d5c62d1c5672f0af82433132bd81bd104c311
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::pde::SrcTermOp&lt; ICNS &gt; Struct Reference
+
+SrcTermOp&lt; ICNS &gt; Struct Reference
+========================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1pde_1_1_src_term_op_3_01_i_c_n_s_01_4.html

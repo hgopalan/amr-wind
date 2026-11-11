@@ -1,0 +1,14 @@
+.. meta::7ea901d5b87374c0282debfce666f2246762e05206447faa013a943d3759266cb3710d293f771fc6e950306281b5feda450bc66aee8d898df01402de552567ba
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::VortexRing Class Reference
+
+VortexRing Class Reference
+==========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_vortex_ring.html

@@ -1,0 +1,14 @@
+.. meta::defa1247adcc7b9a3cb9763e8faf84f72e2bf9a7e5ff5acbd014c956e3e569e24fd2500d1d5998379ebfe14e97f52f1ae9f0f83fd8c4f0ecb80b416328329a37
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::udf::LinearProfile Struct Reference
+
+LinearProfile Struct Reference
+==============================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: structkynema__sgf_1_1udf_1_1_linear_profile.html

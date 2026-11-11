@@ -1,0 +1,14 @@
+.. meta::02595d7d03dfeb0141bfdf9d9bc54f1d39baf9575186090d97a38cdc2f5f21f1f9a7455f98314990c1298a4ab9cf51e2281ba3d93d3ac1c30f3464578cee840e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::DamBreak Class Reference
+
+DamBreak Class Reference
+========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1_dam_break.html

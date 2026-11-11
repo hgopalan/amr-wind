@@ -1,0 +1,14 @@
+.. meta::9acab339906432d2c1863fb5b4dea8d9d64c731b6ce9bc5a2a127bcf24aebf1decd0407bb41e36bf05b1404b3dff1e8a5a262bcb6f3bc01849aec24b21f52cc2
+
+:orphan:
+
+.. title:: Kynema-SGF API: /home/runner/work/amr-wind/amr-wind/src/actuator/motion/RigidBodyMotion.H File Reference
+
+/home/runner/work/amr-wind/amr-wind/src/actuator/motion/RigidBodyMotion.H File Reference
+========================================================================================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: _rigid_body_motion_8_h.html

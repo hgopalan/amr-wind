@@ -1,0 +1,14 @@
+.. meta::203370e429958cdfcf8c10d0ca261fa0b46d2129af7f155856e645ad401a0c13e9fdcb1fcc387b77e6c7be8e9e8fba2347c9d3006e41ffd7e56ca5ea7c8e3f1e
+
+:orphan:
+
+.. title:: Kynema-SGF API: kynema_sgf::tagging::UDFRefiner Class Reference
+
+UDFRefiner Class Reference
+==========================
+
+.. container:: doxygen-content
+
+   
+   .. raw:: html
+     :file: classkynema__sgf_1_1tagging_1_1_u_d_f_refiner.html
