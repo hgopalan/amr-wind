@@ -1,0 +1,105 @@
+{
+ "title": "T6 shear-free diffusion",
+ "pass": true,
+ "checks": [
+  {
+   "name": "elevated, k at 50 m above the boundary",
+   "value": 0.5854717928398,
+   "reference": 0.5856934514354719,
+   "error": 0.00037845496672128665,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "elevated, k at 100 m above the boundary",
+   "value": 0.350467852260371,
+   "reference": 0.35057292636043996,
+   "error": 0.0002997210912998316,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "elevated, k at 200 m above the boundary",
+   "value": 0.121747045428799,
+   "reference": 0.12176283264225758,
+   "error": 0.0001296554384946358,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "elevated, k at 300 m above the boundary",
+   "value": 0.0538550303161556,
+   "reference": 0.053851987529686604,
+   "error": 5.650277006608029e-05,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "ground, k at z = 20 m",
+   "value": 0.00437529837150674,
+   "reference": 0.004375619349234003,
+   "error": 7.335595298496589e-05,
+   "tolerance": 0.03,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "ground, k at z = 50 m",
+   "value": 0.0126657380008686,
+   "reference": 0.012664473021095697,
+   "error": 9.988412236294764e-05,
+   "tolerance": 0.03,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "ground, k at z = 100 m",
+   "value": 0.037505313930159,
+   "reference": 0.03750429986243936,
+   "error": 2.7038705517901107e-05,
+   "tolerance": 0.03,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "ground, k at z = 200 m",
+   "value": 0.188865517975147,
+   "reference": 0.18888102710702492,
+   "error": 8.211058630647194e-05,
+   "tolerance": 0.03,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "ground, k at z = 300 m",
+   "value": 0.757288376675004,
+   "reference": 0.7574112597477145,
+   "error": 0.00016224088449834362,
+   "tolerance": 0.03,
+   "kind": "rel",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "elevated, largest change over the last output interval",
+   "value": 0.0
+  },
+  {
+   "name": "elevated, e-folding length of k far from the top [m]",
+   "value": 93.449142177412
+  },
+  {
+   "name": "ground, largest change over the last output interval",
+   "value": 0.0
+  },
+  {
+   "name": "ground, exponent of the power law near the ground",
+   "value": 0.7829432918766634
+  }
+ ]
+}

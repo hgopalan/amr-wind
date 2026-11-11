@@ -1,0 +1,102 @@
+{
+ "title": "T3 homogeneous shear",
+ "pass": true,
+ "checks": [
+  {
+   "name": "k0 = 0.1, t = 100 s",
+   "value": 0.345548056763769,
+   "reference": 0.34567145228969165,
+   "error": 0.00035697343562879347,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 0.1, t = 400 s",
+   "value": 0.9682339572144664,
+   "reference": 0.9681571082378608,
+   "error": 7.937655567635815e-05,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 0.1, t = 1000 s",
+   "value": 1.1591363106630364,
+   "reference": 1.1591197875105907,
+   "error": 1.4254913619504705e-05,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 0.1, t = 2000 s",
+   "value": 1.1643548312314624,
+   "reference": 1.164354745359286,
+   "error": 7.375087096583854e-08,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 4.0, t = 100 s",
+   "value": 2.2297835705115037,
+   "reference": 2.2312341544270344,
+   "error": 0.0006501262597888857,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 4.0, t = 400 s",
+   "value": 1.2876180986645,
+   "reference": 1.287989753032708,
+   "error": 0.0002885538237651364,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 4.0, t = 1000 s",
+   "value": 1.167228811877345,
+   "reference": 1.1672455141570746,
+   "error": 1.4309140216828276e-05,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 4.0, t = 2000 s",
+   "value": 1.16437147789285,
+   "reference": 1.1643715404823471,
+   "error": 5.3753887785390475e-08,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "k0 = 0.1: shear at end, mid box [1/s]",
+   "value": 0.020000000003242837,
+   "reference": 0.02
+  },
+  {
+   "name": "k0 = 0.1: spread of k over the box at end",
+   "value": 1.9369696164057854e-09
+  },
+  {
+   "name": "k0 = 4.0: shear at end, mid box [1/s]",
+   "value": 0.020000000000104618,
+   "reference": 0.02
+  },
+  {
+   "name": "k0 = 4.0: spread of k over the box at end",
+   "value": 1.8598619158490157e-09
+  },
+  {
+   "name": "k_eq [m2/s2]",
+   "value": 1.1643656013544486
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "title": "C3 Galilean invariance",
+ "pass": true,
+ "checks": [
+  {
+   "name": "neutral: largest relative difference in k, U = 10 against U = 0",
+   "value": 2.10900186203844e-11,
+   "reference": 0.0,
+   "error": 2.10900186203844e-11,
+   "tolerance": 1e-08,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "neutral: largest relative difference in k, U = 20 against U = 0",
+   "value": 2.10900186203844e-11,
+   "reference": 0.0,
+   "error": 2.10900186203844e-11,
+   "tolerance": 1e-08,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "stratified: largest relative difference in k, U = 10 against U = 0",
+   "value": 2.2192156268641128e-05,
+   "reference": 0.0,
+   "error": 2.2192156268641128e-05,
+   "tolerance": 0.0001,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "stratified: largest relative difference in k, U = 20 against U = 0",
+   "value": 5.615904993261367e-06,
+   "reference": 0.0,
+   "error": 5.615904993261367e-06,
+   "tolerance": 0.0001,
+   "kind": "abs",
+   "pass": true
+  }
+ ],
+ "notes": []
+}

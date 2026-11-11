@@ -1,0 +1,110 @@
+{
+ "title": "C7 density weighting of the production terms",
+ "pass": true,
+ "checks": [
+  {
+   "name": "buoyancy: k at t = 100 s against f = rho",
+   "value": 0.468271850586292,
+   "reference": 0.46881429474212744,
+   "error": 0.0011570554949349443,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "buoyancy: k at t = 300 s against f = rho",
+   "value": 0.117003940525139,
+   "reference": 0.11736449761114512,
+   "error": 0.0030721137426134026,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "buoyancy: k at t = 500 s against f = rho",
+   "value": 0.0168535001092642,
+   "reference": 0.01696036418750586,
+   "error": 0.006300812710164805,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "buoyancy: time of k = 0 against f = rho [s]",
+   "value": 645.0,
+   "reference": 645.9094556704645,
+   "error": 0.0014080234659522572,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "shear: k at t = 400 s against f = rho",
+   "value": 1.2269967794145749,
+   "reference": 1.226895348264011,
+   "error": 8.267302562314782e-05,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "shear: k at t = 1000 s against f = rho",
+   "value": 1.4228277615052036,
+   "reference": 1.4228138863408004,
+   "error": 9.7519180382033e-06,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "shear: k at t = 2000 s against f = rho",
+   "value": 1.42634412346043,
+   "reference": 1.4263440866596997,
+   "error": 2.5800738212566898e-08,
+   "tolerance": 0.003,
+   "kind": "rel",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "buoyancy: k at t = 100 s against f = 1",
+   "value": 0.468271850586292,
+   "reference": 0.4862016462806481
+  },
+  {
+   "name": "buoyancy: k at t = 300 s against f = 1",
+   "value": 0.117003940525139,
+   "reference": 0.1394031663614719
+  },
+  {
+   "name": "buoyancy: k at t = 500 s against f = 1",
+   "value": 0.0168535001092642,
+   "reference": 0.032520360088360296
+  },
+  {
+   "name": "buoyancy: time of k = 0 for f = 1 [s]",
+   "value": 741.092257287843
+  },
+  {
+   "name": "shear: k at t = 400 s against f = 1",
+   "value": 1.2269967794145749,
+   "reference": 0.9681571082378608
+  },
+  {
+   "name": "shear: k at t = 1000 s against f = 1",
+   "value": 1.4228277615052036,
+   "reference": 1.1591197875105907
+  },
+  {
+   "name": "shear: k at t = 2000 s against f = 1",
+   "value": 1.42634412346043,
+   "reference": 1.164354745359286
+  },
+  {
+   "name": "shear: k_eq for f = rho",
+   "value": 1.4263478616591998,
+   "reference": 1.1643656013544486
+  }
+ ]
+}

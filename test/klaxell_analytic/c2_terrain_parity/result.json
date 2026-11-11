@@ -1,0 +1,52 @@
+{
+ "title": "C2 terrain-branch parity",
+ "pass": true,
+ "checks": [
+  {
+   "name": "neutral: largest relative difference in k",
+   "value": 0.0,
+   "reference": 0.0,
+   "error": 0.0,
+   "tolerance": 1e-08,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "neutral: largest relative difference in mu_turb",
+   "value": 0.0,
+   "reference": 0.0,
+   "error": 0.0,
+   "tolerance": 1e-08,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "stratified: largest relative difference in k",
+   "value": 0.0,
+   "reference": 0.0,
+   "error": 0.0,
+   "tolerance": 1e-08,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "stratified: largest relative difference in mu_turb",
+   "value": 0.0,
+   "reference": 0.0,
+   "error": 0.0,
+   "tolerance": 1e-08,
+   "kind": "abs",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "neutral: largest difference in U [m/s]",
+   "value": 0.0
+  },
+  {
+   "name": "stratified: largest difference in U [m/s]",
+   "value": 0.0
+  }
+ ]
+}

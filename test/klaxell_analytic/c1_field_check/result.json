@@ -1,0 +1,42 @@
+{
+ "title": "C1 eddy-viscosity field check",
+ "pass": true,
+ "checks": [
+  {
+   "name": "largest difference in mu_turb, stable cells",
+   "value": 1.226151913136242e-05,
+   "reference": 0.0,
+   "error": 1.226151913136242e-05,
+   "tolerance": 0.001,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "largest difference in mu_turb, unstable cells",
+   "value": 5.472045049081942e-06,
+   "reference": 0.0,
+   "error": 5.472045049081942e-06,
+   "tolerance": 0.001,
+   "kind": "abs",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "Rt range in the column, min",
+   "value": -2.17784293364687
+  },
+  {
+   "name": "Rt range in the column, max",
+   "value": 1.8791184715193576
+  },
+  {
+   "name": "change of the reference length scale in its last iteration",
+   "value": 0.0
+  },
+  {
+   "name": "largest change of k from its initial value",
+   "value": 0.0030998068108319954
+  }
+ ]
+}

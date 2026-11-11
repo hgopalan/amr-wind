@@ -1,0 +1,65 @@
+{
+ "title": "T1 neutral decay",
+ "pass": true,
+ "checks": [
+  {
+   "name": "k at t = 50 s",
+   "value": 0.7649148817776346,
+   "reference": 0.7651076129303812,
+   "error": 0.000251900712382791,
+   "tolerance": 0.002,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k at t = 350 s",
+   "value": 0.24913942071432388,
+   "reference": 0.2493252553611061,
+   "error": 0.0007453502715282223,
+   "tolerance": 0.002,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k at t = 1000 s",
+   "value": 0.06689654976429527,
+   "reference": 0.06694686560391547,
+   "error": 0.0007515787209201319,
+   "tolerance": 0.002,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k at t = 3500 s",
+   "value": 0.00822012805683828,
+   "reference": 0.008223974258512798,
+   "error": 0.0004676816285673624,
+   "tolerance": 0.002,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "log slope against (1 + t/tau)",
+   "value": -1.999714072517774,
+   "reference": -2.0,
+   "error": 0.00014296374111300025,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "length scale l [m]",
+   "value": 29.997805108887086
+  },
+  {
+   "name": "tau [s]",
+   "value": 349.0559940381421
+  },
+  {
+   "name": "largest spread of k over the box",
+   "value": 7.231131751719726e-09
+  }
+ ]
+}

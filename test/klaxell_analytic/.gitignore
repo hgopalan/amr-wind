@@ -1,0 +1,5 @@
+runs/
+run.log
+result_mutant_*.json
+__pycache__/
+*.pptx

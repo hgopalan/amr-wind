@@ -1,0 +1,171 @@
+{
+ "title": "T2 stratified decay",
+ "pass": true,
+ "checks": [
+  {
+   "name": "flux off, z = 500 m, t = 100 s",
+   "value": 0.485648579889346,
+   "reference": 0.4862016462806481,
+   "error": 0.0011375247194923555,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux off, z = 500 m, t = 300 s",
+   "value": 0.138979549931454,
+   "reference": 0.1394031663614719,
+   "error": 0.0030387862849503566,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux off, z = 500 m, t = 500 s",
+   "value": 0.0323570133548729,
+   "reference": 0.032520360088360296,
+   "error": 0.005022906666579674,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux off, z = 500 m, time of k = 0 [s]",
+   "value": 740.0,
+   "reference": 741.092257287843,
+   "error": 0.001473847927976446,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux off, z = 900 m, t = 100 s",
+   "value": 0.495171951196596,
+   "reference": 0.4955639198976497,
+   "error": 0.0007909548805220545,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux off, z = 900 m, t = 300 s",
+   "value": 0.142334758844562,
+   "reference": 0.14263324250380327,
+   "error": 0.0020926654544315415,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux off, z = 900 m, t = 500 s",
+   "value": 0.0316663366549334,
+   "reference": 0.031806933611853334,
+   "error": 0.004420324154339017,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux off, z = 900 m, time of k = 0 [s]",
+   "value": 725.0,
+   "reference": 726.208033948594,
+   "error": 0.0016634819392256084,
+   "tolerance": 0.01,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, z = 500 m, t = 100 s",
+   "value": 0.390508830729815,
+   "reference": 0.3910232648476871,
+   "error": 0.001315610001037859,
+   "tolerance": 0.015,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, z = 500 m, t = 300 s",
+   "value": 0.0752178152318685,
+   "reference": 0.0754389336203885,
+   "error": 0.0029310911211003488,
+   "tolerance": 0.015,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, z = 500 m, t = 500 s",
+   "value": 0.0158095880333698,
+   "reference": 0.01587470653816443,
+   "error": 0.004102028887153164,
+   "tolerance": 0.015,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, z = 500 m, t = 800 s",
+   "value": 0.00156836580704065,
+   "reference": 0.0015773989463936783,
+   "error": 0.005726604150256498,
+   "tolerance": 0.015,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, z = 900 m, t = 100 s",
+   "value": 0.396814303105522,
+   "reference": 0.3972702693500429,
+   "error": 0.0011477482200388245,
+   "tolerance": 0.015,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, z = 900 m, t = 300 s",
+   "value": 0.0771787364426103,
+   "reference": 0.0773857982064646,
+   "error": 0.002675707541348493,
+   "tolerance": 0.015,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, z = 900 m, t = 500 s",
+   "value": 0.0162513951457495,
+   "reference": 0.016316557677094723,
+   "error": 0.0039936445318179414,
+   "tolerance": 0.015,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, z = 900 m, t = 800 s",
+   "value": 0.00161245988100729,
+   "reference": 0.001622086205818142,
+   "error": 0.005934533427584876,
+   "tolerance": 0.015,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "flux on, decay rate 500-900 s [1/s]",
+   "value": 0.007698045978781685,
+   "reference": 0.007677600006310512,
+   "error": 0.002663068205476682,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "flux off, z = 100 m, t = 300 s (diffusion acts here)",
+   "value": 0.101930942101142,
+   "reference": 0.10601487028238868
+  },
+  {
+   "name": "flux on, z = 100 m, t = 300 s (diffusion acts here)",
+   "value": 0.0581698037893383,
+   "reference": 0.059241729635347434
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+{
+ "title": "C4 TKE sponge",
+ "pass": true,
+ "checks": [
+  {
+   "name": "largest |k - profile| / profile above 516 m",
+   "value": 7.468671105759217e-05,
+   "reference": 0.0,
+   "error": 7.468671105759217e-05,
+   "tolerance": 0.001,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "largest |k - k0| / k0 below 484 m",
+   "value": 0.0017361432334149773,
+   "reference": 0.0,
+   "error": 0.0017361432334149773,
+   "tolerance": 0.01,
+   "kind": "abs",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "mean (profile - k) above 516 m, against dt * dissipation",
+   "value": 2.8496354818895154e-05,
+   "reference": 2.8301965031997864e-05
+  },
+  {
+   "name": "k / profile - 1 in the first cell above the start height",
+   "value": 0.004337858106444825
+  }
+ ]
+}

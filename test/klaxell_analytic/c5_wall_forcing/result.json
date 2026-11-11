@@ -1,0 +1,44 @@
+{
+ "title": "C5 first-cell TKE forcing",
+ "pass": true,
+ "checks": [
+  {
+   "name": "F = 5: ratio of successive increments",
+   "value": 0.7980414925763166,
+   "reference": 0.8,
+   "error": 0.0024481342796042194,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "F = 20: ratio of successive increments",
+   "value": 0.9458328304715922,
+   "reference": 0.95,
+   "error": 0.004386494240429251,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "F = 5: first-cell k after 40 steps",
+   "value": 0.196583705434399,
+   "reference": 0.18344999487729205
+  },
+  {
+   "name": "F = 5: second-cell k after 40 steps",
+   "value": 0.903427684868855
+  },
+  {
+   "name": "F = 20: first-cell k after 40 steps",
+   "value": 0.32542424588974,
+   "reference": 0.18344999487729205
+  },
+  {
+   "name": "F = 20: second-cell k after 40 steps",
+   "value": 0.929010088413012
+  }
+ ]
+}

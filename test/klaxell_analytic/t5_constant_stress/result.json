@@ -1,0 +1,65 @@
+{
+ "title": "T5 constant-stress layer",
+ "pass": true,
+ "checks": [
+  {
+   "name": "k Cmu^2 / u*^2, mean over 10-100 m",
+   "value": 1.0007986131803321,
+   "reference": 1.0,
+   "error": 0.0007986131803321417,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "(dU/dz) l_s / u*, mean over 10-100 m",
+   "value": 0.9996008400862468,
+   "reference": 1.0,
+   "error": 0.0003991599137531665,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "u* against the value set by the lid [m/s]",
+   "value": 0.46544314589029895,
+   "reference": 0.4605405475782533,
+   "error": 0.01064531307357397,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "largest profile difference over 10-100 m / U_lid",
+   "value": 0.0008893330284736933,
+   "reference": 0.0,
+   "error": 0.0008893330284736933,
+   "tolerance": 0.003,
+   "kind": "abs",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "stress spread over 10-100 m (std / mean)",
+   "value": 0.0016028636265168817
+  },
+  {
+   "name": "change of u* over the last output interval",
+   "value": 1.1313172620930345e-13
+  },
+  {
+   "name": "first-cell k Cmu^2 / u*^2",
+   "value": 0.7434252946070019,
+   "reference": 1.0
+  },
+  {
+   "name": "k range over 10-100 m, min",
+   "value": 0.700332810220442
+  },
+  {
+   "name": "k range over 10-100 m, max",
+   "value": 0.706037360937098
+  }
+ ]
+}

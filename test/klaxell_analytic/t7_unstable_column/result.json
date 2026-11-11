@@ -1,0 +1,84 @@
+{
+ "title": "T7 unstable column",
+ "pass": true,
+ "checks": [
+  {
+   "name": "k0 = 0.01, t = 200 s",
+   "value": 0.06003245918903119,
+   "reference": 0.060060040295207145,
+   "error": 0.00045922556895383604,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 0.01, t = 1000 s",
+   "value": 0.2511999121525486,
+   "reference": 0.25119418377391134,
+   "error": 2.2804583096558417e-05,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 0.01, t = 4000 s",
+   "value": 0.28555690231825653,
+   "reference": 0.2855569114535851,
+   "error": 3.19912710766701e-08,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 1.00, t = 200 s",
+   "value": 0.5545382933563685,
+   "reference": 0.5547208676069403,
+   "error": 0.0003291281457634687,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 1.00, t = 1000 s",
+   "value": 0.3022251757786141,
+   "reference": 0.3022537935628572,
+   "error": 9.468130707568356e-05,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "k0 = 1.00, t = 4000 s",
+   "value": 0.28556231825606865,
+   "reference": 0.2855623266831475,
+   "error": 2.951047139987395e-08,
+   "tolerance": 0.005,
+   "kind": "rel",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "k0 = 0.01: dT/dz at end, mid box [K/m]",
+   "value": -0.002999998981312757,
+   "reference": -0.003
+  },
+  {
+   "name": "k0 = 0.01: largest |w| at end [m/s]",
+   "value": 1.79947754989235e-09
+  },
+  {
+   "name": "k0 = 1.00: dT/dz at end, mid box [K/m]",
+   "value": -0.003000000038376527,
+   "reference": -0.003
+  },
+  {
+   "name": "k0 = 1.00: largest |w| at end [m/s]",
+   "value": 1.3393866392505e-09
+  },
+  {
+   "name": "k_eq [m2/s2]",
+   "value": 0.2855606637321786
+  }
+ ]
+}

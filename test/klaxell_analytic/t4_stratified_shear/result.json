@@ -1,0 +1,196 @@
+{
+ "title": "T4 stratified homogeneous shear",
+ "pass": true,
+ "checks": [
+  {
+   "name": "Ri = 0.05, k at t = 100 s",
+   "value": 0.15974782232934137,
+   "reference": 0.16012370621276578,
+   "error": 0.0023474593007792866,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.05, k at t = 300 s",
+   "value": 7.583714985939656,
+   "reference": 7.592568367156389,
+   "error": 0.0011660588075874667,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.05, k at t = 600 s",
+   "value": 12.347479268458613,
+   "reference": 12.34742678019273,
+   "error": 4.250947733375199e-06,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.05, growth rate 10-40 s [1/s]",
+   "value": 0.027859186138214188,
+   "reference": 0.02797616472771197,
+   "error": 0.00011697858949778067,
+   "tolerance": 0.0003,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.10, k at t = 100 s",
+   "value": 0.020011106499534397,
+   "reference": 0.02001267784361271,
+   "error": 7.851743232922814e-05,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.10, k at t = 300 s",
+   "value": 0.07883061597489623,
+   "reference": 0.07884795044827857,
+   "error": 0.00021984684806375387,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.10, k at t = 600 s",
+   "value": 0.5219645015562917,
+   "reference": 0.5221180538670056,
+   "error": 0.00029409500318300363,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.10, growth rate 10-40 s [1/s]",
+   "value": 0.00694426625943633,
+   "reference": 0.006979424512259198,
+   "error": 3.515825282286809e-05,
+   "tolerance": 0.0003,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.15, k at t = 100 s",
+   "value": 0.009957168148670455,
+   "reference": 0.00995717307210575,
+   "error": 4.944611546875421e-07,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.15, k at t = 300 s",
+   "value": 0.009872359050309115,
+   "reference": 0.00987236460818392,
+   "error": 5.629730085443541e-07,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.15, k at t = 600 s",
+   "value": 0.009747218299844533,
+   "reference": 0.00974722526965389,
+   "error": 7.150557377322286e-07,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.15, growth rate 10-40 s [1/s]",
+   "value": -4.294985976852868e-05,
+   "reference": -1.948889289172629e-05,
+   "error": 2.3460966876802393e-05,
+   "tolerance": 0.0003,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.25, k at t = 100 s",
+   "value": 0.005692014432063897,
+   "reference": 0.00569310482240461,
+   "error": 0.00019152823893586746,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.25, k at t = 300 s",
+   "value": 0.0018471555360615012,
+   "reference": 0.0018482137572138914,
+   "error": 0.0005725642655022289,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.25, k at t = 600 s",
+   "value": 0.0003419724808116874,
+   "reference": 0.0003423640103859968,
+   "error": 0.001143606110548756,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.25, growth rate 10-40 s [1/s]",
+   "value": -0.0056372283782879515,
+   "reference": -0.0056186196170124655,
+   "error": 1.8608761275486045e-05,
+   "tolerance": 0.0003,
+   "kind": "abs",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.50, k at t = 100 s",
+   "value": 0.003740756582113604,
+   "reference": 0.0037425648407970282,
+   "error": 0.00048316028187755933,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.50, k at t = 300 s",
+   "value": 0.0005242463374849763,
+   "reference": 0.0005250057997684796,
+   "error": 0.001446578845106461,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.50, k at t = 600 s",
+   "value": 2.7523567876901387e-05,
+   "reference": 2.7603374600263196e-05,
+   "error": 0.002891194446966172,
+   "tolerance": 0.02,
+   "kind": "rel",
+   "pass": true
+  },
+  {
+   "name": "Ri = 0.50, growth rate 10-40 s [1/s]",
+   "value": -0.009835344966147484,
+   "reference": -0.00981796766010302,
+   "error": 1.7377306044464788e-05,
+   "tolerance": 0.0003,
+   "kind": "abs",
+   "pass": true
+  }
+ ],
+ "notes": [
+  {
+   "name": "stationary Richardson number",
+   "value": 0.14979144837744554
+  },
+  {
+   "name": "Rt in the limit l_b << l_s",
+   "value": 2.115588842227788
+  }
+ ]
+}
