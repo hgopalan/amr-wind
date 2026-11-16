@@ -67,8 +67,7 @@ TEST(TurbineExternalViews, hub_first_velocity_offset_zero)
         const auto& cv = blades[ib];
         const int start = ib * npb;
         EXPECT_EQ(std::distance(grid.vel.data(), cv.vel.data()), start);
-        EXPECT_EQ(
-            std::distance(grid.vel_pos.data(), cv.vel_pos.data()), start);
+        EXPECT_EQ(std::distance(grid.vel_pos.data(), cv.vel_pos.data()), start);
         // Entry k is the velocity point of force point k - 1
         for (int k = 1; k < npb; ++k) {
             EXPECT_EQ(vs::mag(cv.vel_pos[k] - cv.pos[k - 1]), 0.0_rt)
@@ -125,8 +124,7 @@ TEST(TurbineExternalViews, fllc_relative_velocity_with_different_point_counts)
     meta.fllc.resize(num_blades);
     for (int ib = 0; ib < num_blades; ++ib) {
         meta.fllc[ib].epsilon = 2.0_rt;
-        kynema_sgf::actuator::fllc_init(
-            meta.fllc[ib], meta.blades[ib], 1.0_rt);
+        kynema_sgf::actuator::fllc_init(meta.fllc[ib], meta.blades[ib], 1.0_rt);
     }
 
     kynema_sgf::actuator::ops::update_vel_op(data);
@@ -223,8 +221,8 @@ TEST(TurbineExternalViews, bound_box_holds_the_gaussians)
     // Box made from the inputs of a turbine at the origin with a rotor
     // radius of 5: 1.25 radii around it. The points are up to 5 away from
     // the hub
-    data.info().bound_box = amrex::RealBox(
-        -6.25_rt, -6.25_rt, -6.25_rt, 6.25_rt, 6.25_rt, 6.25_rt);
+    data.info().bound_box =
+        amrex::RealBox(-6.25_rt, -6.25_rt, -6.25_rt, 6.25_rt, 6.25_rt, 6.25_rt);
     meta.eps_inp = vs::Vector{2.0_rt, 2.0_rt, 2.0_rt};
     kynema_sgf::actuator::external::init_epsilon(data);
 

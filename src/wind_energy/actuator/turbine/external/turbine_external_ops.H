@@ -240,8 +240,8 @@ void update_vel_op(datatype& data)
             }
             // Same first points as the blade views (make_component_views)
             const int start = ib * tdata.num_pts_blade + 1;
-            const int start_vel = ib * tdata.num_vel_pts_blade +
-                                  tdata.velocity_points_offset;
+            const int start_vel =
+                ib * tdata.num_vel_pts_blade + tdata.velocity_points_offset;
             for (int i = 0; i < tdata.num_vel_pts_blade; ++i) {
                 fluid_vel[i][0] = uvel[start_vel + i];
                 fluid_vel[i][1] = vvel[start_vel + i];
@@ -253,11 +253,10 @@ void update_vel_op(datatype& data)
                     static_cast<amrex::Real>(ydot[start + i]),
                     static_cast<amrex::Real>(zdot[start + i])};
                 if (fllc.mismatched_points) {
-                    blade.vel_rel[i] =
-                        interp::linear(
-                            fllc.span_distance_vel, fluid_vel,
-                            fllc.span_distance_force[i]) -
-                        solid_vel;
+                    blade.vel_rel[i] = interp::linear(
+                                           fllc.span_distance_vel, fluid_vel,
+                                           fllc.span_distance_force[i]) -
+                                       solid_vel;
                 } else {
                     blade.vel_rel[i] = fluid_vel[i] - solid_vel;
                 }
@@ -327,8 +326,7 @@ bool external_read_checkpoint(datatype& data, const std::string& chkname)
     auto& tdata = data.meta();
     std::ifstream is;
     if (!restart::open_file(
-            is, chkname, data.info().label,
-            data.sim().time().current_time())) {
+            is, chkname, data.info().label, data.sim().time().current_time())) {
         return false;
     }
     int num_blades = 0;
