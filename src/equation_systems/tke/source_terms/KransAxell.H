@@ -56,7 +56,6 @@ private:
     const transport::TransportModel& m_transport;
 
     bool m_horizontal_sponge{false};
-    amrex::Real m_sponge_strength{1.0_rt};
     amrex::Real m_sponge_distance_west{0.0_rt};
     amrex::Real m_sponge_distance_east{0.0_rt};
     amrex::Real m_sponge_distance_south{0.0_rt};
