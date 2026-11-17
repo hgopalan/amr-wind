@@ -372,6 +372,20 @@ This section is for setting atmospheric boundary layer parameters.
    this input argument allows the temperature sponge start (involved in `TemperatureFreeAtmosphereForcing`)
    to be differentiated from the value specified by :input_param:`ABL.meso_sponge_start`.
 
+.. input_param:: ABL.horizontal_sponge_tke
+
+   **type:** Boolean, optional, default = false
+
+   With `TKE.source_terms = KransAxell`, relaxes the turbulent kinetic energy to the
+   :input_param:`ABL.rans_1dprofile_file` profile inside the `DragForcing` horizontal
+   sponge zones (`DragForcing.sponge_west`, `sponge_east`, `sponge_south`,
+   `sponge_north`), with or without `TerrainDrag`. Before, it had no effect without
+   `TerrainDrag`. When true, at least one sponge side must be on,
+   `DragForcing.sponge_distance_west` and `sponge_distance_south` must be < 0 and
+   `sponge_distance_east` and `sponge_distance_north` must be > 0; the run aborts
+   otherwise. Inside a sponge zone the turbulent kinetic energy is set to the profile
+   value in one time step.
+
 .. input_param:: ABL.wall_het_model
 
    **type:** String, optional, default = "none"

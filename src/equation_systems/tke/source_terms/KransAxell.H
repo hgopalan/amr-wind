@@ -55,9 +55,6 @@ private:
     //! Transport model
     const transport::TransportModel& m_transport;
 
-    //! Reference temperature
-    std::unique_ptr<ScratchField> m_ref_theta;
-    mutable std::unique_ptr<ScratchField> m_ref_theta_scratch;
     bool m_horizontal_sponge{false};
     amrex::Real m_sponge_strength{1.0_rt};
     amrex::Real m_sponge_distance_west{0.0_rt};

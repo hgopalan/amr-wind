@@ -190,9 +190,13 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         utils::powi(Cmu, 3) *
                         std::pow(tke_arrs[nbx](i, j, k), 1.5_rt) /
                         (tlscale_arrs[nbx](i, j, k) + tiny);
+                    // k = 0 gives epsilon = 0 and 0/0; every term that uses Rt
+                    // is multiplied by sqrt(k) = 0 there, so take Rt = 0
                     amrex::Real Rt =
-                        utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
-                        stratification;
+                        (tke_arrs[nbx](i, j, k) > 0.0_rt)
+                            ? utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
+                                  stratification
+                            : 0.0_rt;
                     Rt = (Rt > Rtc)
                              ? Rt
                              : amrex::max<amrex::Real>(
@@ -255,8 +259,10 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                           (gradT_arrs[nbx](i, j, k, 2) * gravity[2])) *
                         beta_arrs[nbx](i, j, k);
                     const amrex::Real z = problo[2] + ((k + 0.5_rt) * dz);
+                    // Distance from the wall at prob_lo[2]
+                    const amrex::Real zwall = (k + 0.5_rt) * dz;
                     const amrex::Real lscale_s =
-                        (lambda * kappa * z) / (lambda + kappa * z);
+                        (lambda * kappa * zwall) / (lambda + kappa * zwall);
                     const amrex::Real lscale_b =
                         Cb_stable *
                         std::sqrt(
@@ -266,9 +272,13 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         utils::powi(Cmu, 3) *
                         std::pow(tke_arrs[nbx](i, j, k), 1.5_rt) /
                         (tlscale_arrs[nbx](i, j, k) + tiny);
+                    // k = 0 gives epsilon = 0 and 0/0; every term that uses Rt
+                    // is multiplied by sqrt(k) = 0 there, so take Rt = 0
                     amrex::Real Rt =
-                        utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
-                        stratification;
+                        (tke_arrs[nbx](i, j, k) > 0.0_rt)
+                            ? utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
+                                  stratification
+                            : 0.0_rt;
                     Rt = (Rt > Rtc)
                              ? Rt
                              : amrex::max<amrex::Real>(
@@ -376,9 +386,13 @@ void KLAxell<Transport>::update_alphaeff(Field& alphaeff)
                 amrex::Real epsilon = utils::powi(Cmu, 3) *
                                       std::pow(tke_arrs[nbx](i, j, k), 1.5_rt) /
                                       tlscale_arrs[nbx](i, j, k);
+                // k = 0 or l = 0 gives 0/0; mu_t = 0 there, so take Rt = 0
                 amrex::Real Rt =
-                    utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
-                    stratification;
+                    ((tke_arrs[nbx](i, j, k) > 0.0_rt) &&
+                     (tlscale_arrs[nbx](i, j, k) > 0.0_rt))
+                        ? utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
+                              stratification
+                        : 0.0_rt;
                 Rt = (Rt > Rtc) ? Rt
                                 : amrex::max<amrex::Real>(
                                       Rt, Rt - (utils::powi(Rt - Rtc, 2) /
