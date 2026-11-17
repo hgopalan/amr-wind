@@ -24,7 +24,7 @@ TEST(Rans1DProfile, reads_five_columns)
         os << "1000 15 0 0 1.5e-08\n";
     }
     const auto prof = kynema_sgf::ioutils::read_rans_1d_profile(fname);
-    ASSERT_EQ(prof.z.size(), 4);
+    ASSERT_EQ(prof.z.size(), 4u);
     const amrex::Vector<amrex::Real> z{0.0_rt, 500.0_rt, 500.0_rt, 1000.0_rt};
     const amrex::Vector<amrex::Real> u{3.5_rt, 15.0_rt, 15.0_rt, 15.0_rt};
     const amrex::Vector<amrex::Real> v{0.5_rt, -1.0_rt, -1.0_rt, 0.0_rt};

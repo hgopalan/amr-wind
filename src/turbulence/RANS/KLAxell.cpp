@@ -258,7 +258,8 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         std::sqrt(tke_arrs[nbx](i, j, k)) *
                         (1.0_rt - blank_arrs[nbx](i, j, k));
                     buoy_prod_arrs[nbx](i, j, k) = -muPrime * stratification;
-                    // Pr_t from the same Rt, so mu_t / Pr_t matches muPrime
+                    // Pr_t from the same Rt as mu_t and muPrime (mu_t / Pr_t is
+                    // within 1% of muPrime for Rt in [-3, 100])
                     prandtl_arrs[nbx](i, j, k) =
                         (1.0_rt + 0.193_rt * Rt) / (1.0_rt + 0.0302_rt * Rt);
                     shear_prod_arrs[nbx](i, j, k) *=
@@ -341,7 +342,8 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         tlscale_arrs[nbx](i, j, k) *
                         std::sqrt(tke_arrs[nbx](i, j, k));
                     buoy_prod_arrs[nbx](i, j, k) = -muPrime * stratification;
-                    // Pr_t from the same Rt, so mu_t / Pr_t matches muPrime
+                    // Pr_t from the same Rt as mu_t and muPrime (mu_t / Pr_t is
+                    // within 1% of muPrime for Rt in [-3, 100])
                     prandtl_arrs[nbx](i, j, k) =
                         (1.0_rt + 0.193_rt * Rt) / (1.0_rt + 0.0302_rt * Rt);
                     shear_prod_arrs[nbx](i, j, k) *=
@@ -389,10 +391,9 @@ void KLAxell<Transport>::update_alphaeff(Field& alphaeff)
             amrex::ParallelFor(
                 mu_turb(lev),
                 [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
-                    alphaeff_arrs[nbx](i, j, k) =
-                        lam_diff_arrs[nbx](i, j, k) +
-                        (muturb_arrs[nbx](i, j, k) /
-                         prandtl_arrs[nbx](i, j, k));
+                    alphaeff_arrs[nbx](i, j, k) = lam_diff_arrs[nbx](i, j, k) +
+                                                  (muturb_arrs[nbx](i, j, k) /
+                                                   prandtl_arrs[nbx](i, j, k));
                 });
         }
         amrex::Gpu::streamSynchronize();
