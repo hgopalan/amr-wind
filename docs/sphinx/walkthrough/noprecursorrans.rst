@@ -30,7 +30,7 @@ The first step in the setup is to enable the following flags in the input file:
 
 ``ABL.rans_1dprofile_file                     = "rans_1d.info"``
 
-The profile file specifies the external forcing file. The file contains `z u v w tke` (in that order, five columns per line).As the 
+The profile file specifies the external forcing file. The file contains `z u v w tke` (in that order, five columns per line). As the
 temperature profile is used with other parts of the code, it is not specified in this file but is added in the input file 
 as follows: 
 
