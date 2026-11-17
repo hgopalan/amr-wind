@@ -22,12 +22,48 @@ Section: Temperature Sources
    This value specifies the coefficient for the forcing term in the immersed boundary forcing method. It is currently
    recommended to use the default value to avoid initial numerical stability. 
 
+.. input_param:: DragTempForcing.soil_temperature
+
+   **type:** Real, optional, default = 300.0
+
+   Temperature (K) toward which ``DragTempForcing`` relaxes the blanked
+   (terrain) cells, unless :input_param:`DragTempForcing.blank_follow_fluid`
+   is on.
+
 .. input_param:: DragTempForcing.bc_forcing_time_factor
 
    **type:** Real, optional, default = 5.0
 
    This value modifies the time scale of the BC forcing component of DragTempForcing relative to
    the time step size.
+
+.. input_param:: DragTempForcing.blank_follow_fluid
+
+   **type:** Boolean, optional, default = false (true with
+   :input_param:`TerrainDrag.wall_treatment` ``= improved``)
+
+   Relaxes the blanked (terrain) cells toward the temperature of the cell
+   above them instead of ``DragTempForcing.soil_temperature``.
+   Held at the soil temperature under air of another temperature, the
+   blanked column conducts heat through its top face into the drag cell, a
+   surface heat flux on top of the one the drag-cell forcing sets. With this
+   option no gradient forms across the blanked face. The relaxation is
+   integrated exactly over the time step,
+
+   .. math::
+
+      S = -\frac{1 - e^{-C_d \Delta t}}{\Delta t}\,(\theta_k - \theta_{k+1}),
+      \qquad
+      C_d = \min\left(\frac{c_d}{\Delta z\,|\mathbf{u}|}, \frac{10}{\Delta z}\right),
+
+   with :math:`c_d` = :input_param:`DragTempForcing.drag_coefficient`. This
+   is the rate the blanked cells already use with the soil temperature, so
+   :math:`c_d` carries units of m\ :sup:`2`/s and the 10 of the cap
+   units of m/s. With the cap, the explicit rate reaches 2 per step at
+   :math:`\Delta z` = 5 m and :math:`\Delta t` = 1 s, which the exact
+   integration keeps bounded. The drag cells are not changed. The target is the
+   cell directly above, so on slopes a blanked cell next to the air on its
+   side still follows the cell above it.
 
 
 The following list of inputs are used with the `Temperature.source_terms = PerturbationForcing` option to add perturbation to the 
