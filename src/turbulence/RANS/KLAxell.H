@@ -62,10 +62,10 @@ private:
     Field* m_tke{nullptr};
     //! Turbulence constant
     amrex::Real m_Cmu{0.556_rt};
-    amrex::Real m_Cmu_prime{0.556_rt};
     amrex::Real m_Cb_stable{0.25_rt};
     amrex::Real m_Cb_unstable{0.35_rt};
-    amrex::Real m_prandtl{1.0_rt};
+    //! von Karman constant (ABL.kappa), shared with KransAxell
+    amrex::Real m_kappa{0.41_rt};
     Field& m_temperature;
     //! Gravity vector (m/s^2)
     amrex::Vector<amrex::Real> m_gravity{0.0_rt, 0.0_rt, -9.81_rt};

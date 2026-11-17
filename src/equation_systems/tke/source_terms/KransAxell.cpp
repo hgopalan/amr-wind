@@ -24,9 +24,20 @@ KransAxell::KransAxell(const CFDSim& sim)
     , m_transport(sim.transport_model())
 {
     AMREX_ALWAYS_ASSERT(sim.turbulence_model().model_name() == "KLAxell");
-    auto coeffs = sim.turbulence_model().model_coeffs();
+    // Dissipation and the wall value of k use the C_mu of the eddy viscosity
+    const auto coeffs = sim.turbulence_model().model_coeffs();
+    m_Cmu = coeffs.at("Cmu");
     amrex::ParmParse pp("ABL");
-    pp.query("Cmu", m_Cmu);
+    if (pp.contains("Cmu")) {
+        amrex::Real abl_cmu = m_Cmu;
+        pp.get("Cmu", abl_cmu);
+        if (abl_cmu != m_Cmu) {
+            amrex::Abort(
+                "KransAxell: ABL.Cmu differs from KLAxell_coeffs.Cmu. "
+                "KransAxell now takes C_mu from KLAxell_coeffs.Cmu; remove "
+                "ABL.Cmu or set both to the same value.");
+        }
+    }
     pp.query("kappa", m_kappa);
     pp.query("surface_roughness_z0", m_z0);
     pp.query("surface_temp_flux", m_heat_flux);
@@ -58,6 +69,9 @@ KransAxell::KransAxell(const CFDSim& sim)
 
     amrex::ParmParse pp_drag("DragForcing");
     pp_drag.query("bc_forcing_time_factor", m_forcing_time_factor);
+    if (!(m_forcing_time_factor > 0.0_rt)) {
+        amrex::Abort("KransAxell: DragForcing.bc_forcing_time_factor must be > 0");
+    }
     pp_drag.query("sponge_west", m_sponge_west);
     pp_drag.query("sponge_east", m_sponge_east);
     pp_drag.query("sponge_south", m_sponge_south);

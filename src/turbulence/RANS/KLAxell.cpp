@@ -40,10 +40,14 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
     // The friction velocity comes from ABL.monin_obukhov_length and the TKE
     // boundary condition from ABL.surface_temp_flux, both taken from the same
     // 1-D RANS solution
-    surface_stability::require_obukhov_length(
-        surface_stability::parse(
-            identifier(), this->m_transport.reference_temperature()),
-        identifier());
+    {
+        const auto stability = surface_stability::parse(
+            identifier(), this->m_transport.reference_temperature());
+        surface_stability::require_obukhov_length(stability, identifier());
+        // The length scale uses the same ABL.kappa as the KransAxell wall
+        // boundary condition; parse() aborts unless it is > 0
+        m_kappa = stability.kappa;
+    }
 
     {
         amrex::ParmParse pp("incflo");
@@ -63,10 +67,29 @@ void KLAxell<Transport>::parse_model_coeffs()
     const std::string coeffs_dict = this->model_name() + "_coeffs";
     amrex::ParmParse pp(coeffs_dict);
     pp.query("Cmu", this->m_Cmu);
-    pp.query("Cmu_prime", this->m_Cmu_prime);
     pp.query("Cb_stable", this->m_Cb_stable);
     pp.query("Cb_unstable", this->m_Cb_unstable);
-    pp.query("prandtl", this->m_prandtl);
+    // The stability functions fix C_mu' = C_mu / (1 + 0.277 Rt) and
+    // Pr_t = (1 + 0.193 Rt) / (1 + 0.0302 Rt); these keys were read and
+    // never used
+    for (const std::string key : {"Cmu_prime", "prandtl"}) {
+        if (pp.contains(key.c_str())) {
+            amrex::Abort(
+                coeffs_dict + "." + key +
+                " is not used by KLAxell: C_mu' and the turbulent Prandtl "
+                "number follow from " +
+                coeffs_dict + ".Cmu and the Richardson number. Remove it.");
+        }
+    }
+    if (!(this->m_Cmu > 0.0_rt)) {
+        amrex::Abort(coeffs_dict + ".Cmu must be > 0");
+    }
+    if (!(this->m_Cb_stable > 0.0_rt)) {
+        amrex::Abort(coeffs_dict + ".Cb_stable must be > 0");
+    }
+    if (!(this->m_Cb_unstable > 0.0_rt)) {
+        amrex::Abort(coeffs_dict + ".Cb_unstable must be > 0");
+    }
 }
 
 template <typename Transport>
@@ -74,10 +97,8 @@ TurbulenceModel::CoeffsDictType KLAxell<Transport>::model_coeffs() const
 {
     return TurbulenceModel::CoeffsDictType{
         {"Cmu", this->m_Cmu},
-        {"Cmu_prime", this->m_Cmu_prime},
         {"Cb_stable", this->m_Cb_stable},
-        {"Cb_unstable", this->m_Cb_unstable},
-        {"prandtl", this->m_prandtl}};
+        {"Cb_unstable", this->m_Cb_unstable}};
 }
 
 template <typename Transport>
@@ -119,7 +140,7 @@ void KLAxell<Transport>::update_turbulent_viscosity(
     const amrex::Real Rtc = -1.0_rt;
     const amrex::Real Rtmin = -3.0_rt;
     const amrex::Real lambda = 30.0_rt;
-    const amrex::Real kappa = 0.41_rt;
+    const amrex::Real kappa = m_kappa;
     const amrex::Real surf_flux = m_surf_flux;
     const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
     const amrex::Real lengthscale_switch = m_meso_sponge_start;
