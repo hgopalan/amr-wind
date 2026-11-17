@@ -28,6 +28,9 @@ Kosovic<Transport>::Kosovic(CFDSim& sim)
 {
     amrex::ParmParse pp("Kosovic");
     pp.query("Cb", m_Cb);
+    if (m_Cb < 0.0_rt) {
+        amrex::Abort("Kosovic.Cb must be >= 0");
+    }
     m_Cs = std::sqrt(
         8.0_rt * (1.0_rt + m_Cb) /
         (27.0_rt * std::numbers::pi_v<amrex::Real> *
@@ -39,6 +42,12 @@ Kosovic<Transport>::Kosovic(CFDSim& sim)
         m_surfaceFactor = 1.0_rt;
         pp.query("switchLoc", m_switchLoc);
         pp.query("surfaceRANSExp", m_surfaceRANSExp);
+        if (m_switchLoc <= 0.0_rt) {
+            amrex::Abort("Kosovic.switchLoc must be > 0");
+        }
+        if (m_surfaceRANSExp <= 0.0_rt) {
+            amrex::Abort("Kosovic.surfaceRANSExp must be > 0");
+        }
     } else {
         m_surfaceFactor = 0.0_rt;
     }
@@ -48,15 +57,16 @@ Kosovic<Transport>::Kosovic(CFDSim& sim)
         this->m_sim.io_manager().register_io_var("divNij");
     }
     pp.query(
-        "LESTurbOff_transition_zaglstart",
-        m_LESTurbOff_transition_zaglstart);
-    pp.query(
-        "LESTurbOff_transition_zaglend", m_LESTurbOff_transition_zaglend);
+        "LESTurbOff_transition_zaglstart", m_LESTurbOff_transition_zaglstart);
+    pp.query("LESTurbOff_transition_zaglend", m_LESTurbOff_transition_zaglend);
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
         m_LESTurbOff_transition_zaglstart <= m_LESTurbOff_transition_zaglend,
         "Kosovic.LESTurbOff_transition_zaglstart must be <= "
         "Kosovic.LESTurbOff_transition_zaglend");
     pp.query("muCoeff", m_muCoeff);
+    if (m_muCoeff < 0.0_rt) {
+        amrex::Abort("Kosovic.muCoeff must be >= 0");
+    }
     amrex::ParmParse pp_abl("ABL");
     m_stability = surface_stability::parse(
         identifier(), this->m_transport.reference_temperature());
@@ -90,6 +100,10 @@ void Kosovic<Transport>::update_turbulent_viscosity(
     surface_stability::update(stability, this->m_sim.time().current_time());
     const bool local_stability = stability.is_local();
     const amrex::Real kappa = stability.kappa;
+    // Momentum stability function coefficients (ABL.mo_beta_m unstable,
+    // ABL.mo_gamma_m stable), also used by psi_m
+    const amrex::Real beta_m = stability.beta_m;
+    const amrex::Real gamma_m = stability.gamma_m;
     const amrex::Real surface_roughness_z0 = m_surface_roughness_z0;
     const amrex::Real z0_min = 1.0e-4_rt;
     const amrex::Real dMdz_min = 0.01_rt;
@@ -187,25 +201,30 @@ void Kosovic<Transport>::update_turbulent_viscosity(
         amrex::ParallelFor(
             mu_turb(lev), [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
                 const amrex::Real rho = rho_arrs[nbx](i, j, k);
-                amrex::Real x3 = problo[2] + ((k + 0.5_rt) * dz);
-                x3 = (has_terrain)
-                         ? amrex::max<amrex::Real>(
-                               x3 - height_arrs[nbx](i, j, k, 0), 0.5_rt * dz)
-                         : x3;
+                // Height of the cell centre (x3) and of its top face
+                // (wall_distance) above the ground: the lower domain face
+                // without terrain, the terrain height with it
+                const amrex::Real x3 =
+                    (has_terrain) ? amrex::max<amrex::Real>(
+                                        problo[2] + ((k + 0.5_rt) * dz) -
+                                            height_arrs[nbx](i, j, k, 0),
+                                        0.5_rt * dz)
+                                  : (k + 0.5_rt) * dz;
                 const amrex::Real fmu = std::exp(-x3 / locSwitchLoc);
                 const amrex::Real phiM =
                     (monin_obukhov_length < 0)
                         ? std::pow(
-                              1.0_rt - (16.0_rt * x3 / monin_obukhov_length),
+                              1.0_rt - (beta_m * x3 / monin_obukhov_length),
                               -0.25_rt)
-                        : 1.0_rt + (5.0_rt * x3 / monin_obukhov_length);
+                        : 1.0_rt + (gamma_m * x3 / monin_obukhov_length);
                 const amrex::Real wall_distance =
-                    (has_terrain)
-                        ? amrex::max<amrex::Real>(
-                              ((k + 1) * dz) - height_arrs[nbx](i, j, k, 0), dz)
-                        : (k + 1) * dz;
+                    (has_terrain) ? amrex::max<amrex::Real>(
+                                        problo[2] + ((k + 1) * dz) -
+                                            height_arrs[nbx](i, j, k, 0),
+                                        dz)
+                                  : (k + 1) * dz;
                 const amrex::Real ransL =
-                    utils::powi(0.41_rt * wall_distance / phiM, 2);
+                    utils::powi(kappa * wall_distance / phiM, 2);
                 // Cosine-squared taper that smoothly drives the LES
                 // contribution from 1 (below zstart) to 0 (above zend).
                 // When zstart == zend the cosine branch is bypassed and the
@@ -342,6 +361,9 @@ void Kosovic<Transport>::parse_model_coeffs()
     const std::string coeffs_dict = this->model_name() + "_coeffs";
     amrex::ParmParse pp(coeffs_dict);
     pp.query("Cs", this->m_Cs);
+    if (this->m_Cs <= 0.0_rt) {
+        amrex::Abort("Kosovic_coeffs.Cs must be > 0");
+    }
 }
 
 template <typename Transport>
