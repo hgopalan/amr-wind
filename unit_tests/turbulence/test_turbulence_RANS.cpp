@@ -4,6 +4,7 @@
 #include "ks_test_utils/test_utils.H"
 #include "src/utilities/math_ops.H"
 #include "src/equation_systems/tke/source_terms/KransAxell.H"
+#include "src/utilities/constants.H"
 #include <fstream>
 
 using namespace amrex::literals;
@@ -428,6 +429,221 @@ TEST_F(TurbRANSTest, test_1eqKrans_canopy_length_on)
         EXPECT_EQ(
             utils::field_probe(mu, 0, 5, 5, k),
             utils::field_probe(mu_free, 0, 5, 5, k));
+    }
+}
+
+namespace {
+// Set up KLAxell + KransAxell after the inputs are in ParmParse. When
+// zlo_wall is given, the domain spans [zlo_wall, zlo_wall + 1024] in z.
+void setup_klaxell(
+    kynema_sgf::CFDSim& sim,
+    const amrex::Real rho0,
+    const amrex::Real tke_val,
+    const amrex::Real tgrad)
+{
+    sim.pde_manager().register_icns();
+    sim.init_physics();
+    sim.create_transport_model();
+    sim.create_turbulence_model();
+    sim.turbulence_model().post_init_actions();
+    auto& repo = sim.repo();
+    init_strain_field(repo.get_field("velocity"), 0.01_rt);
+    repo.get_field("density").setVal(rho0);
+    init_temperature_field(repo.get_field("temperature"), tgrad);
+    repo.get_field("turb_lscale").setVal(10.0_rt);
+    repo.get_field("tke").setVal(tke_val);
+}
+
+amrex::Real neutral_lscale(const amrex::Real kappa, const amrex::Real z)
+{
+    const amrex::Real lambda = 30.0_rt;
+    return (lambda * kappa * z) / (lambda + kappa * z);
+}
+} // namespace
+
+// KransAxell builds dissipation from KLAxell_coeffs.Cmu, and KLAxell builds
+// its length scale from ABL.kappa. Before, KransAxell used ABL.Cmu (default
+// 0.556) and KLAxell a fixed kappa = 0.41.
+TEST_F(TurbRANSTest, test_1eqKrans_shared_cmu_kappa)
+{
+    const amrex::Real rho0 = 1.2_rt;
+    const amrex::Real Cmu = 0.5_rt;
+    const amrex::Real kappa = 0.4_rt;
+    add_klaxell_inputs(265.0_rt, 10.0_rt, rho0);
+    {
+        amrex::ParmParse pp("KLAxell_coeffs");
+        pp.add("Cmu", Cmu);
+    }
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("kappa", kappa);
+    }
+    populate_parameters();
+    initialize_mesh();
+    const amrex::Real tke_val = 0.1_rt;
+    setup_klaxell(sim(), rho0, tke_val, 0.0_rt);
+    auto& repo = sim().repo();
+    sim().turbulence_model().update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    sim().time().delta_t() = 0.5_rt;
+    auto& src = repo.declare_field("src_cmu", 1, 0, 1);
+    src.setVal(0.0_rt);
+    kynema_sgf::pde::tke::KransAxell krans(sim());
+    krans(0, kynema_sgf::FieldState::New, src(0));
+
+    const auto& tlscale = repo.get_field("turb_lscale");
+    const auto& dissip = repo.get_field("dissipation");
+    const amrex::Real dz = 16.0_rt;
+    for (int k = 1; k < 64; k += 9) {
+        const amrex::Real l = neutral_lscale(kappa, (k + 0.5_rt) * dz);
+        EXPECT_NEAR(
+            utils::field_probe(tlscale, 0, 5, 5, k), l,
+            1.0e-12_rt * l);
+        const amrex::Real eps = Cmu * Cmu * Cmu * std::pow(tke_val, 1.5_rt) /
+                                (l + kynema_sgf::constants::EPS);
+        EXPECT_NEAR(
+            utils::field_probe(dissip, 0, 5, 5, k), eps, 1.0e-12_rt * eps);
+    }
+}
+
+// The flat-ground length scale and the wall value of k are measured from
+// prob_lo[2], not from z = 0
+TEST_F(TurbRANSTest, test_1eqKrans_wall_distance_problo)
+{
+    const amrex::Real rho0 = 1.2_rt;
+    const amrex::Real zlo = 100.0_rt;
+    add_klaxell_inputs(265.0_rt, 10.0_rt, rho0);
+    populate_parameters();
+    {
+        amrex::ParmParse pp("geometry");
+        amrex::Vector<amrex::Real> problo{{0.0_rt, 0.0_rt, zlo}};
+        amrex::Vector<amrex::Real> probhi{
+            {1024.0_rt, 1024.0_rt, zlo + 1024.0_rt}};
+        pp.addarr("prob_lo", problo);
+        pp.addarr("prob_hi", probhi);
+    }
+    initialize_mesh();
+    ASSERT_EQ(mesh().Geom(0).ProbLo(2), zlo);
+    const amrex::Real tke_val = 0.1_rt;
+    setup_klaxell(sim(), rho0, tke_val, 0.0_rt);
+    auto& repo = sim().repo();
+    sim().turbulence_model().update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    const amrex::Real dt = 0.5_rt;
+    sim().time().delta_t() = dt;
+    auto& src = repo.declare_field("src_problo", 1, 0, 1);
+    src.setVal(0.0_rt);
+    kynema_sgf::pde::tke::KransAxell krans(sim());
+    krans(0, kynema_sgf::FieldState::New, src(0));
+
+    const amrex::Real kappa = 0.41_rt;
+    const amrex::Real dz = 16.0_rt;
+    const auto& tlscale = repo.get_field("turb_lscale");
+    for (int k = 0; k < 4; ++k) {
+        const amrex::Real l = neutral_lscale(kappa, (k + 0.5_rt) * dz);
+        EXPECT_NEAR(
+            utils::field_probe(tlscale, 0, 5, 5, k), l, 1.0e-12_rt * l);
+    }
+
+    // First cell: production - dissipation + (k_wall - k) / (5 dt), with
+    // k_wall = u*^2 / Cmu^2 and u* from the cell above at 3 dz / 2
+    const amrex::Real Cmu = 0.556_rt;
+    const amrex::Real z0 = 0.1_rt;
+    const auto& vel = repo.get_field("velocity");
+    const amrex::Real ux = utils::field_probe(vel, 0, 5, 5, 1, 0);
+    const amrex::Real uy = utils::field_probe(vel, 0, 5, 5, 1, 1);
+    const amrex::Real ustar =
+        std::sqrt((ux * ux) + (uy * uy)) * kappa / std::log(1.5_rt * dz / z0);
+    const amrex::Real k_wall = ustar * ustar / (Cmu * Cmu);
+    const amrex::Real expected =
+        utils::field_probe(repo.get_field("shear_prod"), 0, 5, 5, 0) +
+        utils::field_probe(repo.get_field("buoy_prod"), 0, 5, 5, 0) -
+        utils::field_probe(repo.get_field("dissipation"), 0, 5, 5, 0) +
+        ((k_wall - tke_val) / (5.0_rt * dt));
+    EXPECT_NEAR(
+        utils::field_probe(src, 0, 5, 5, 0), expected,
+        1.0e-10_rt * std::abs(expected));
+}
+
+// k = 0 in a stratified run: Rt was 0/0 and mu_t NaN
+TEST_F(TurbRANSTest, test_1eqKrans_zero_tke_stratified)
+{
+    const amrex::Real rho0 = 1.2_rt;
+    add_klaxell_inputs(265.0_rt, 10.0_rt, rho0);
+    {
+        // Non-neutral, so the neutral switch does not set Rt = 0
+        amrex::ParmParse pp("ABL");
+        pp.add("surface_temp_flux", -0.05_rt);
+    }
+    populate_parameters();
+    initialize_mesh();
+    // Stable gradient, so N^2 > 0 and the Rt = (k / eps)^2 N^2 branch runs
+    setup_klaxell(sim(), rho0, 0.0_rt, 0.01_rt);
+    sim().turbulence_model().update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    auto& repo = sim().repo();
+    EXPECT_FALSE(repo.get_field("mu_turb")(0).contains_nan());
+    EXPECT_FALSE(repo.get_field("buoy_prod")(0).contains_nan());
+    EXPECT_FALSE(repo.get_field("shear_prod")(0).contains_nan());
+    EXPECT_FALSE(repo.get_field("turb_lscale")(0).contains_nan());
+    EXPECT_EQ(utils::field_max(repo.get_field("mu_turb")), 0.0_rt);
+    // The thermal diffusivity from update_alphaeff, with l > 0 as left by an
+    // earlier step (k = 0 and l = 0 together is also caught by epsilon = 0/0)
+    repo.get_field("turb_lscale").setVal(10.0_rt);
+    auto& alpha = repo.declare_cc_field("alpha_test", 1, 1, 1);
+    alpha.set_default_fillpatch_bc(sim().time());
+    alpha.setVal(0.0_rt);
+    sim().turbulence_model().update_alphaeff(alpha);
+    EXPECT_FALSE(alpha(0).contains_nan());
+}
+
+// ABL.horizontal_sponge_tke on flat ground: k is set to the profile value in
+// one step inside the east sponge and unchanged outside. Before, the sponge
+// ran only with TerrainDrag.
+TEST_F(TurbRANSTest, test_1eqKrans_flat_horizontal_sponge)
+{
+    const amrex::Real rho0 = 1.2_rt;
+    add_klaxell_inputs(265.0_rt, 10.0_rt, rho0);
+    populate_parameters();
+    initialize_mesh();
+    const amrex::Real tke_val = 0.3_rt;
+    setup_klaxell(sim(), rho0, tke_val, 0.0_rt);
+    auto& repo = sim().repo();
+    sim().turbulence_model().update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    const amrex::Real dt = 0.5_rt;
+    sim().time().delta_t() = dt;
+
+    auto& src_off = repo.declare_field("src_sponge_off", 1, 0, 1);
+    auto& src_on = repo.declare_field("src_sponge_on", 1, 0, 1);
+    src_off.setVal(0.0_rt);
+    src_on.setVal(0.0_rt);
+    kynema_sgf::pde::tke::KransAxell krans_off(sim());
+    krans_off(0, kynema_sgf::FieldState::New, src_off(0));
+    {
+        amrex::ParmParse pp("ABL");
+        pp.add("horizontal_sponge_tke", true);
+    }
+    {
+        amrex::ParmParse pp("DragForcing");
+        pp.add("sponge_east", true);
+        pp.add("sponge_distance_east", 200.0_rt);
+    }
+    kynema_sgf::pde::tke::KransAxell krans_on(sim());
+    krans_on(0, kynema_sgf::FieldState::New, src_on(0));
+    amrex::MultiFab::Subtract(src_on(0), src_off(0), 0, 0, 1, 0);
+
+    // Profile k = 0.1 at every height; the sponge starts at x = 824 m
+    const amrex::Real expected = -(tke_val - 0.1_rt) / dt;
+    for (int k = 2; k < 64; k += 15) {
+        for (int i = 8; i < 10; ++i) {
+            EXPECT_NEAR(
+                utils::field_probe(src_on, 0, i, 5, k), expected,
+                1.0e-9_rt * std::abs(expected));
+        }
+        for (int i = 0; i < 8; ++i) {
+            EXPECT_EQ(utils::field_probe(src_on, 0, i, 5, k), 0.0_rt);
+        }
     }
 }
 
