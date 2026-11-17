@@ -386,10 +386,10 @@ void KLAxell<Transport>::update_alphaeff(Field& alphaeff)
                 amrex::Real epsilon = utils::powi(Cmu, 3) *
                                       std::pow(tke_arrs[nbx](i, j, k), 1.5_rt) /
                                       tlscale_arrs[nbx](i, j, k);
-                // k = 0 or l = 0 gives 0/0; mu_t = 0 there, so take Rt = 0
+                // k = 0 gives 0/0; mu_t = 0 there, so take Rt = 0. With
+                // k > 0 and l = 0, epsilon is infinite and Rt = 0 already.
                 amrex::Real Rt =
-                    ((tke_arrs[nbx](i, j, k) > 0.0_rt) &&
-                     (tlscale_arrs[nbx](i, j, k) > 0.0_rt))
+                    (tke_arrs[nbx](i, j, k) > 0.0_rt)
                         ? utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
                               stratification
                         : 0.0_rt;
