@@ -70,6 +70,7 @@ void KLAxell<Transport>::parse_model_coeffs()
     pp.query("Cmu", this->m_Cmu);
     pp.query("Cb_stable", this->m_Cb_stable);
     pp.query("Cb_unstable", this->m_Cb_unstable);
+    pp.query("legacy_alphaeff", m_legacy_alphaeff);
     // The stability functions fix C_mu' = C_mu / (1 + 0.277 Rt) and
     // Pr_t = (1 + 0.193 Rt) / (1 + 0.0302 Rt); these keys were read and
     // never used
@@ -106,12 +107,21 @@ template <typename Transport>
 void KLAxell<Transport>::post_init_actions()
 {
     m_gradT = this->m_sim.repo().create_scratch_field(3, 0);
+    // Pr_t = 1 (Rt = 0) until the first update_turbulent_viscosity
+    m_prandtl_rt = this->m_sim.repo().create_scratch_field(1, 0);
+    for (int lev = 0; lev < this->m_sim.repo().num_active_levels(); ++lev) {
+        (*m_prandtl_rt)(lev).setVal(1.0_rt);
+    }
 }
 
 template <typename Transport>
 void KLAxell<Transport>::post_regrid_actions()
 {
     m_gradT = this->m_sim.repo().create_scratch_field(3, 0);
+    m_prandtl_rt = this->m_sim.repo().create_scratch_field(1, 0);
+    for (int lev = 0; lev < this->m_sim.repo().num_active_levels(); ++lev) {
+        (*m_prandtl_rt)(lev).setVal(1.0_rt);
+    }
 }
 
 template <typename Transport>
@@ -158,6 +168,7 @@ void KLAxell<Transport>::update_turbulent_viscosity(
         const auto& buoy_prod_arrs = (this->m_buoy_prod)(lev).arrays();
         const auto& shear_prod_arrs = (this->m_shear_prod)(lev).arrays();
         const auto& beta_arrs = (*beta)(lev).const_arrays();
+        const auto& prandtl_arrs = (*m_prandtl_rt)(lev).arrays();
 
         //! Add terrain components
         const bool has_terrain =
@@ -247,6 +258,9 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         std::sqrt(tke_arrs[nbx](i, j, k)) *
                         (1.0_rt - blank_arrs[nbx](i, j, k));
                     buoy_prod_arrs[nbx](i, j, k) = -muPrime * stratification;
+                    // Pr_t from the same Rt, so mu_t / Pr_t matches muPrime
+                    prandtl_arrs[nbx](i, j, k) =
+                        (1.0_rt + 0.193_rt * Rt) / (1.0_rt + 0.0302_rt * Rt);
                     shear_prod_arrs[nbx](i, j, k) *=
                         shear_prod_arrs[nbx](i, j, k) * mu_arrs[nbx](i, j, k);
                 });
@@ -327,6 +341,9 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         tlscale_arrs[nbx](i, j, k) *
                         std::sqrt(tke_arrs[nbx](i, j, k));
                     buoy_prod_arrs[nbx](i, j, k) = -muPrime * stratification;
+                    // Pr_t from the same Rt, so mu_t / Pr_t matches muPrime
+                    prandtl_arrs[nbx](i, j, k) =
+                        (1.0_rt + 0.193_rt * Rt) / (1.0_rt + 0.0302_rt * Rt);
                     shear_prod_arrs[nbx](i, j, k) *=
                         shear_prod_arrs[nbx](i, j, k) * mu_arrs[nbx](i, j, k);
                 });
@@ -359,14 +376,38 @@ void KLAxell<Transport>::update_alphaeff(Field& alphaeff)
     auto lam_alpha = (this->m_transport).alpha();
     auto& mu_turb = this->m_mu_turb;
     auto& repo = mu_turb.repo();
+    const int nlevels = repo.num_active_levels();
 
+    if (!m_legacy_alphaeff) {
+        // alpha_t = mu_t / Pr_t(Rt), with the Rt of the last
+        // update_turbulent_viscosity (neutral switch and clipping included)
+        for (int lev = 0; lev < nlevels; ++lev) {
+            const auto& muturb_arrs = mu_turb(lev).const_arrays();
+            const auto& alphaeff_arrs = alphaeff(lev).arrays();
+            const auto& lam_diff_arrs = (*lam_alpha)(lev).const_arrays();
+            const auto& prandtl_arrs = (*m_prandtl_rt)(lev).const_arrays();
+            amrex::ParallelFor(
+                mu_turb(lev),
+                [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                    alphaeff_arrs[nbx](i, j, k) =
+                        lam_diff_arrs[nbx](i, j, k) +
+                        (muturb_arrs[nbx](i, j, k) /
+                         prandtl_arrs[nbx](i, j, k));
+                });
+        }
+        amrex::Gpu::streamSynchronize();
+        alphaeff.fillpatch(this->m_sim.time().current_time());
+        return;
+    }
+
+    // KLAxell_coeffs.legacy_alphaeff = true: Rt recomputed from the current
+    // l, without the neutral switch of update_turbulent_viscosity
     fvm::gradient(*m_gradT, m_temperature);
     auto& gradT = *m_gradT;
     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> gravity{
         m_gravity[0], m_gravity[1], m_gravity[2]};
     const auto beta = (this->m_transport).beta();
     const amrex::Real Cmu = m_Cmu;
-    const int nlevels = repo.num_active_levels();
     for (int lev = 0; lev < nlevels; ++lev) {
         const auto& muturb_arrs = mu_turb(lev).arrays();
         const auto& alphaeff_arrs = alphaeff(lev).arrays();

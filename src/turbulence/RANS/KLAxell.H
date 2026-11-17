@@ -72,8 +72,13 @@ private:
     amrex::Real m_surf_flux{0};
     //! ABL.meso_sponge_start, same default as KransAxell
     amrex::Real m_meso_sponge_start;
+    //! KLAxell_coeffs.legacy_alphaeff: recompute Rt in update_alphaeff
+    bool m_legacy_alphaeff{false};
 
     std::unique_ptr<ScratchField> m_gradT;
+    //! Pr_t(Rt) from the last update_turbulent_viscosity, used by
+    //! update_alphaeff
+    std::unique_ptr<ScratchField> m_prandtl_rt;
 
     //! Canopy length scale limit (ForestDrag.canopy_tke, canopy_length_alpha)
     forestdrag::CanopyTurbulence m_canopy;

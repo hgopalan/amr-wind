@@ -671,4 +671,69 @@ TEST_F(TurbRANSTest, test_1eqKrans_meso_start_default)
     EXPECT_LT(utils::field_probe(tlscale, 0, 5, 5, 40), 0.9_rt * l_above);
 }
 
+namespace {
+// Neutral run with a stable gradient; returns alpha_eff - alpha_lam and
+// mu_t at height index k
+std::pair<amrex::Real, amrex::Real> klaxell_alpha_t(
+    kynema_sgf::CFDSim& sim, const amrex::Real rho0, const int k)
+{
+    setup_klaxell(sim, rho0, 0.1_rt, 0.01_rt);
+    sim.turbulence_model().update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    auto& repo = sim.repo();
+    auto& alpha = repo.declare_cc_field("alpha_t_test", 1, 1, 1);
+    alpha.set_default_fillpatch_bc(sim.time());
+    alpha.setVal(0.0_rt);
+    sim.turbulence_model().update_alphaeff(alpha);
+    const auto lam = sim.transport_model().alpha();
+    // Constant laminar diffusivity
+    const amrex::Real alpha_lam = (*lam)(0).max(0);
+    EXPECT_EQ((*lam)(0).min(0), alpha_lam);
+    const amrex::Real alpha_t =
+        utils::field_probe(alpha, 0, 5, 5, k) - alpha_lam;
+    return {alpha_t, utils::field_probe(repo.get_field("mu_turb"), 0, 5, 5, k)};
+}
+} // namespace
+
+// alpha_t = mu_t / Pr_t(Rt) with the Rt of update_turbulent_viscosity. Below
+// meso_sponge_start in a neutral run Rt = 0, so alpha_t = mu_t, matching the
+// buoyancy production built from C_mu'(0) = C_mu.
+TEST_F(TurbRANSTest, test_1eqKrans_alphaeff_same_rt)
+{
+    const amrex::Real rho0 = 1.2_rt;
+    add_klaxell_inputs(265.0_rt, 10.0_rt, rho0);
+    populate_parameters();
+    initialize_mesh();
+    const auto [alpha_t, mu_t] = klaxell_alpha_t(sim(), rho0, 10);
+    ASSERT_GT(mu_t, 0.0_rt);
+    EXPECT_NEAR(alpha_t, mu_t, 1.0e-12_rt * mu_t);
+}
+
+// KLAxell_coeffs.legacy_alphaeff = true keeps the earlier form: Rt
+// recomputed from the current l, without the neutral switch
+TEST_F(TurbRANSTest, test_1eqKrans_alphaeff_legacy)
+{
+    const amrex::Real rho0 = 1.2_rt;
+    const amrex::Real Tref = 265.0_rt;
+    const amrex::Real gravz = 10.0_rt;
+    add_klaxell_inputs(Tref, gravz, rho0);
+    {
+        amrex::ParmParse pp("KLAxell_coeffs");
+        pp.add("legacy_alphaeff", true);
+    }
+    populate_parameters();
+    initialize_mesh();
+    const int k = 10;
+    const auto [alpha_t, mu_t] = klaxell_alpha_t(sim(), rho0, k);
+    const amrex::Real Cmu = 0.556_rt;
+    const amrex::Real tke = 0.1_rt;
+    const amrex::Real l = neutral_lscale(0.41_rt, (k + 0.5_rt) * 16.0_rt);
+    const amrex::Real N2 = gravz / Tref * 0.01_rt;
+    const amrex::Real eps = Cmu * Cmu * Cmu * std::pow(tke, 1.5_rt) / l;
+    const amrex::Real Rt = (tke / eps) * (tke / eps) * N2;
+    ASSERT_GT(Rt, 0.0_rt);
+    const amrex::Real Pr = (1.0_rt + 0.193_rt * Rt) / (1.0_rt + 0.0302_rt * Rt);
+    EXPECT_NEAR(alpha_t, mu_t / Pr, 1.0e-10_rt * mu_t);
+}
+
 } // namespace kynema_sgf_tests
