@@ -69,8 +69,11 @@ KransAxell::KransAxell(const CFDSim& sim)
 
     amrex::ParmParse pp_drag("DragForcing");
     pp_drag.query("bc_forcing_time_factor", m_forcing_time_factor);
-    if (!(m_forcing_time_factor > 0.0_rt)) {
-        amrex::Abort("KransAxell: DragForcing.bc_forcing_time_factor must be > 0");
+    // The wall relaxation -(k - k_exact) / (factor dt) is explicit: below 1
+    // it overshoots in one step (0.5) or grows over two passes (MOL)
+    if (!(m_forcing_time_factor >= 1.0_rt)) {
+        amrex::Abort(
+            "KransAxell: DragForcing.bc_forcing_time_factor must be >= 1");
     }
     pp_drag.query("sponge_west", m_sponge_west);
     pp_drag.query("sponge_east", m_sponge_east);
@@ -294,12 +297,14 @@ void KransAxell::operator()(
                     (static_cast<int>(has_terrain) *
                      (sponge_forcing - bcforcing));
             });
-
     }
 
     // Horizontal TKE sponge (ABL.horizontal_sponge_tke), with or without
-    // terrain. Inside any active DragForcing sponge zone, k is set to the
-    // 1-D profile value in one time step: the source is -(k - k_ref) / dt.
+    // terrain. Inside any active DragForcing sponge zone and at or below
+    // ABL.meso_sponge_start, the source is -(k - k_ref) / dt toward the 1-D
+    // profile value. Above meso_sponge_start the vertical sponge already
+    // applies this source; adding it twice gives -2 (k - k_ref) / dt, which
+    // does not decay.
     if (m_horizontal_sponge) {
         const amrex::Real start_east = probhi[0] - m_sponge_distance_east;
         const amrex::Real start_west = problo[0] - m_sponge_distance_west;
@@ -317,6 +322,9 @@ void KransAxell::operator()(
                 const amrex::Real x = problo[0] + ((i + 0.5_rt) * dx[0]);
                 const amrex::Real y = problo[1] + ((j + 0.5_rt) * dx[1]);
                 const amrex::Real z = problo[2] + ((k + 0.5_rt) * dx[2]);
+                if (z > sponge_start) {
+                    return;
+                }
                 const bool in_sponge = (sponge_west && (x < start_west)) ||
                                        (sponge_east && (x > start_east)) ||
                                        (sponge_south && (y < start_south)) ||
@@ -325,13 +333,11 @@ void KransAxell::operator()(
                     return;
                 }
                 const amrex::Real ref_tke =
-                    (vsize > 0)
-                        ? interp::linear(
-                              wind_heights_d, wind_heights_d + vsize,
-                              tke_values_d, z)
-                        : tke_arr(i, j, k, 0);
-                src_arrs[nbx](i, j, k, 0) -=
-                    (tke_arr(i, j, k) - ref_tke) / dt;
+                    (vsize > 0) ? interp::linear(
+                                      wind_heights_d, wind_heights_d + vsize,
+                                      tke_values_d, z)
+                                : tke_arr(i, j, k, 0);
+                src_arrs[nbx](i, j, k, 0) -= (tke_arr(i, j, k) - ref_tke) / dt;
             });
     }
 
@@ -347,6 +353,8 @@ void KransAxell::operator()(
             m_velocity.state(field_impl::dof_state(fstate))(lev), m_tke(lev),
             m_canopy.m_beta_p, m_canopy.m_beta_d, dt);
     }
+    // ref_theta is freed on return; the kernels above read it
+    amrex::Gpu::streamSynchronize();
 }
 
 } // namespace kynema_sgf::pde::tke

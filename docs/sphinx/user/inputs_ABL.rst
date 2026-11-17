@@ -387,8 +387,10 @@ This section is for setting atmospheric boundary layer parameters.
    `TerrainDrag`. When true, at least one sponge side must be on,
    `DragForcing.sponge_distance_west` and `sponge_distance_south` must be < 0 and
    `sponge_distance_east` and `sponge_distance_north` must be > 0; the run aborts
-   otherwise. Inside a sponge zone the turbulent kinetic energy is set to the profile
-   value in one time step.
+   otherwise. Inside a sponge zone, at and below :input_param:`ABL.meso_sponge_start`,
+   the source is :math:`-(k - k_{ref})/\Delta t`. Above that height the vertical
+   TKE sponge already applies the same source, so the horizontal sponge is not
+   added there.
 
 .. input_param:: ABL.wall_het_model
 

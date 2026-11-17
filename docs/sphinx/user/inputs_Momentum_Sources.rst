@@ -251,7 +251,9 @@ Section: Momentum Sources
    **type:** Real, optional, default = 5.0
 
    This value modifies the time scale of the BC forcing component of DragForcing relative to
-   the time step size.
+   the time step size. With `TKE.source_terms = KransAxell` the same value sets the
+   near-wall TKE relaxation time, `bc_forcing_time_factor` times the time step, and
+   must be >= 1; the run aborts otherwise.
 
 .. input_param:: DragForcing.sponge_west
 
