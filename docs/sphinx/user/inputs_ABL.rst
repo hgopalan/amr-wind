@@ -325,7 +325,12 @@ This section is for setting atmospheric boundary layer parameters.
 
    **type:** String, optional, default = ""
 
-   This input is required when the ABL.initial_wind_profile is set to True. 
+   This input is required when the ABL.initial_wind_profile is set to True.
+   Each line holds five numbers, ``z u v w tke``: height (m), the three
+   velocity components (m/s) and the turbulent kinetic energy (m^2/s^2).
+   Blank lines and lines that start with ``#`` are skipped. The run aborts if a
+   line does not hold exactly five numbers, if the file has no rows, or if the
+   heights decrease.
 
 .. input_param:: ABL.minimum_vertical_position 
 

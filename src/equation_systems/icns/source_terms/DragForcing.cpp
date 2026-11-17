@@ -6,6 +6,7 @@
 #include "src/wind_energy/ABL.H"
 #include "src/physics/TerrainDrag.H"
 #include "src/utilities/linear_interpolation.H"
+#include "src/utilities/io_utils.H"
 #include "src/utilities/constants.H"
 #include "AMReX_REAL.H"
 #include <fstream>
@@ -122,17 +123,11 @@ DragForcing::DragForcing(const CFDSim& sim)
     pp_abl.query("minimum_vertical_position", m_min_z);
     pp_abl.query("rans_1dprofile_file", m_1d_rans);
     if (!m_1d_rans.empty()) {
-        std::ifstream ransfile(m_1d_rans, std::ios::in);
-        if (!ransfile.good()) {
-            amrex::Abort("Cannot find 1-D RANS profile file " + m_1d_rans);
-        }
-        amrex::Real value1, value2, value3, value4, value5;
-        while (ransfile >> value1 >> value2 >> value3 >> value4 >> value5) {
-            m_wind_heights.push_back(value1);
-            m_u_values.push_back(value2);
-            m_v_values.push_back(value3);
-            m_w_values.push_back(value4);
-        }
+        const auto prof = ioutils::read_rans_1d_profile(m_1d_rans);
+        m_wind_heights = prof.z;
+        m_u_values = prof.u;
+        m_v_values = prof.v;
+        m_w_values = prof.w;
         int num_wind_values = static_cast<int>(m_wind_heights.size());
         m_windht_d.resize(num_wind_values);
         m_prof_u_d.resize(num_wind_values);

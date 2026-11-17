@@ -6,6 +6,7 @@
 #include "src/utilities/linear_interpolation.H"
 #include "src/utilities/constants.H"
 #include "src/utilities/math_ops.H"
+#include "src/utilities/io_utils.H"
 
 using namespace amrex::literals;
 namespace kynema_sgf::pde::tke {
@@ -33,15 +34,9 @@ KransAxell::KransAxell(const CFDSim& sim)
     pp.query("rans_1dprofile_file", m_1d_rans);
     pp.query("horizontal_sponge_tke", m_horizontal_sponge);
     if (!m_1d_rans.empty()) {
-        std::ifstream ransfile(m_1d_rans, std::ios::in);
-        if (!ransfile.good()) {
-            amrex::Abort("Cannot find 1-D RANS profile file " + m_1d_rans);
-        }
-        amrex::Real value1, value2, value3, value4, value5;
-        while (ransfile >> value1 >> value2 >> value3 >> value4 >> value5) {
-            m_wind_heights.push_back(value1);
-            m_tke_values.push_back(value5);
-        }
+        const auto prof = ioutils::read_rans_1d_profile(m_1d_rans);
+        m_wind_heights = prof.z;
+        m_tke_values = prof.tke;
         int num_wind_values = static_cast<int>(m_wind_heights.size());
         m_wind_heights_d.resize(num_wind_values);
         m_tke_values_d.resize(num_wind_values);

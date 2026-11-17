@@ -1,6 +1,7 @@
 #include "src/equation_systems/icns/source_terms/VelocityFreeAtmosphereForcing.H"
 #include "src/utilities/IOManager.H"
 #include "src/utilities/linear_interpolation.H"
+#include "src/utilities/io_utils.H"
 
 #include "AMReX_ParmParse.H"
 #include "AMReX_Gpu.H"
@@ -20,18 +21,11 @@ VelocityFreeAtmosphereForcing::VelocityFreeAtmosphereForcing(const CFDSim& sim)
     amrex::ParmParse pp_abl("ABL");
     pp_abl.query("rans_1dprofile_file", m_1d_rans_filename);
     if (!m_1d_rans_filename.empty()) {
-        std::ifstream ransfile(m_1d_rans_filename, std::ios::in);
-        if (!ransfile.good()) {
-            amrex::Abort(
-                "Cannot find 1-D RANS profile file " + m_1d_rans_filename);
-        }
-        amrex::Real value1, value2, value3, value4, value5;
-        while (ransfile >> value1 >> value2 >> value3 >> value4 >> value5) {
-            m_wind_heights.push_back(value1);
-            m_u_values.push_back(value2);
-            m_v_values.push_back(value3);
-            m_w_values.push_back(value4);
-        }
+        const auto prof = ioutils::read_rans_1d_profile(m_1d_rans_filename);
+        m_wind_heights = prof.z;
+        m_u_values = prof.u;
+        m_v_values = prof.v;
+        m_w_values = prof.w;
     } else {
         amrex::Abort("Cannot find 1-D RANS profile file " + m_1d_rans_filename);
     }

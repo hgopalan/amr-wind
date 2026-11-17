@@ -56,4 +56,51 @@ void read_flat_grid_file(
 
     file.close();
 }
+Rans1DProfile read_rans_1d_profile(const std::string& fname)
+{
+    std::ifstream ifh(fname, std::ios::in);
+    if (!ifh.good()) {
+        amrex::Abort("Cannot find 1-D RANS profile file " + fname);
+    }
+    Rans1DProfile prof;
+    std::string line;
+    int lineno = 0;
+    while (std::getline(ifh, line)) {
+        ++lineno;
+        const auto first = line.find_first_not_of(" \t\r");
+        if ((first == std::string::npos) || (line[first] == '#')) {
+            continue;
+        }
+        std::istringstream iss(line);
+        amrex::Vector<amrex::Real> vals;
+        amrex::Real val;
+        while (iss >> val) {
+            vals.push_back(val);
+        }
+        const bool bad_token = !iss.eof();
+        if (bad_token || (vals.size() != 5)) {
+            amrex::Abort(
+                "ABL.rans_1dprofile_file: line " + std::to_string(lineno) +
+                " of " + fname +
+                " must hold exactly five numbers, z u v w tke; found " +
+                (bad_token ? std::string("a non-numeric entry")
+                           : std::to_string(vals.size()) + " numbers"));
+        }
+        if (!prof.z.empty() && (vals[0] < prof.z.back())) {
+            amrex::Abort(
+                "ABL.rans_1dprofile_file: heights in " + fname +
+                " must not decrease (line " + std::to_string(lineno) + ")");
+        }
+        prof.z.push_back(vals[0]);
+        prof.u.push_back(vals[1]);
+        prof.v.push_back(vals[2]);
+        prof.w.push_back(vals[3]);
+        prof.tke.push_back(vals[4]);
+    }
+    if (prof.z.empty()) {
+        amrex::Abort("ABL.rans_1dprofile_file: no rows in " + fname);
+    }
+    return prof;
+}
+
 } // namespace kynema_sgf::ioutils
