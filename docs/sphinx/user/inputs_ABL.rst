@@ -347,6 +347,10 @@ This section is for setting atmospheric boundary layer parameters.
    in the free atmosphere. Recommended for use with RANS model and optionally to run 
    LES with non canonical flow conditions. If not specified in the input file, the 
    default value is active for the TKE source term but not for velocity or temperature.
+   The `KLAxell` model uses the same height, with the same default, for its neutral
+   switch: when `ABL.surface_temp_flux` is below :math:`10^{-5}` in magnitude, the
+   length scale is the neutral one and :math:`R_t = 0` at and below this height.
+   Before, `KLAxell` used a default of 2000 m.
    For this value to be used, the source terms must be included as input arguments 
    as follows, for temperature, velocity, or TKE, respectively.
    

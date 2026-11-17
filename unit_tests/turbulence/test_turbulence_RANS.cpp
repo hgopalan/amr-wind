@@ -647,4 +647,28 @@ TEST_F(TurbRANSTest, test_1eqKrans_flat_horizontal_sponge)
     }
 }
 
+// ABL.meso_sponge_start defaults to 600 m in KLAxell, as in KransAxell and
+// the docs (KLAxell used 2000 m). Neutral run, stable gradient: l = l_s at
+// and below 600 m, the stratified length scale above.
+TEST_F(TurbRANSTest, test_1eqKrans_meso_start_default)
+{
+    const amrex::Real rho0 = 1.2_rt;
+    add_klaxell_inputs(265.0_rt, 10.0_rt, rho0);
+    populate_parameters();
+    initialize_mesh();
+    setup_klaxell(sim(), rho0, 0.1_rt, 0.01_rt);
+    sim().turbulence_model().update_turbulent_viscosity(
+        kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
+    const auto& tlscale = sim().repo().get_field("turb_lscale");
+    const amrex::Real kappa = 0.41_rt;
+    const amrex::Real dz = 16.0_rt;
+    // z = 584 m and 648 m
+    const amrex::Real l_below = neutral_lscale(kappa, (36 + 0.5_rt) * dz);
+    const amrex::Real l_above = neutral_lscale(kappa, (40 + 0.5_rt) * dz);
+    EXPECT_NEAR(
+        utils::field_probe(tlscale, 0, 5, 5, 36), l_below,
+        1.0e-12_rt * l_below);
+    EXPECT_LT(utils::field_probe(tlscale, 0, 5, 5, 40), 0.9_rt * l_above);
+}
+
 } // namespace kynema_sgf_tests

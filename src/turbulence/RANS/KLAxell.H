@@ -70,7 +70,8 @@ private:
     //! Gravity vector (m/s^2)
     amrex::Vector<amrex::Real> m_gravity{0.0_rt, 0.0_rt, -9.81_rt};
     amrex::Real m_surf_flux{0};
-    amrex::Real m_meso_sponge_start{2000};
+    //! ABL.meso_sponge_start, same default as KransAxell
+    amrex::Real m_meso_sponge_start;
 
     std::unique_ptr<ScratchField> m_gradT;
 

@@ -24,6 +24,7 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
     , m_dissip(sim.repo().declare_field("dissipation", 1))
     , m_rho(sim.repo().get_field("density"))
     , m_temperature(sim.repo().get_field("temperature"))
+    , m_meso_sponge_start(pde::default_meso_sponge_start)
 {
     auto& tke_eqn =
         sim.pde_manager().register_transport_pde(pde::TKE::pde_name());
