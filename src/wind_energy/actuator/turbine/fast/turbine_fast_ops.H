@@ -163,6 +163,14 @@ determine_influenced_procs<TurbineFast>(typename TurbineFast::DataType& data)
 
 // Note: inline is necessary here to avoid duplicate symbol errors
 template <>
+inline void write_checkpoint<TurbineFast>(
+    typename TurbineFast::DataType& data, const std::string& chkname)
+{
+    external_write_checkpoint<TurbineFast::DataType>(data, chkname);
+}
+
+// Note: inline is necessary here to avoid duplicate symbol errors
+template <>
 inline void determine_root_proc<TurbineFast>(
     typename TurbineFast::DataType& data, amrex::Vector<int>& act_proc_count)
 {
@@ -183,6 +191,10 @@ struct InitDataOp<TurbineFast, SrcTrait>
         check_fast_sim_time(data);
 
         init_data_op<TurbineFast::DataType>(data);
+        // The bounding box of the turbine now holds the reach of the
+        // Gaussians (init_epsilon): make the list of the processes with
+        // patches inside of it again
+        external_determine_influenced_procs<TurbineFast::DataType>(data);
     }
 
     void check_fast_sim_time(TurbineFast::DataType& data)

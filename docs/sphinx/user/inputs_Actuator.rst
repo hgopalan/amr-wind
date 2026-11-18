@@ -12,6 +12,10 @@ in the momentum equation.
 There are capabilities to simulate fixed wings as actuator lines and wind
 turbines as actuator disks and actuator line models.
 
+The points of an actuator where the velocity is sampled must be inside the
+domain. The run stops when one of them is beyond a boundary that is not
+periodic; a point on a high boundary counts as outside.
+
 
 .. input_param:: Actuator.labels
 
@@ -74,13 +78,19 @@ Example for ``FixedWingLine``::
 
 .. input_param:: Actuator.FixedWingLine.epsilon
 
-   **type:** List of 3 real numbers, mandatory
+   **type:** List of 1 or 3 real numbers, optional
 
-   This is the value of epsilon in the chord, thickness and spanwise directions.
+   This is the value of epsilon in the chord, thickness and spanwise
+   directions. A single value is used in all three directions. Either
+   ``epsilon`` or ``epsilon_chord`` must be given; with ``fllc = 1`` both
+   are required. The three values act along the x axis and the z axis, both
+   turned by ``pitch`` about the span, and along the y axis: these are the
+   chord, thickness and span directions of a wing whose span is along y. For
+   a span in another direction the third value does not act along the span.
 
 .. input_param:: Actuator.FixedWingLine.epsilon_chord
 
-   **type:** List of 3 real numbers, optional
+   **type:** List of 1 or 3 real numbers, optional
 
    This is the value of epsilon/chord. This value will be used to compute
    epsilon as a function of the chord at every actuator point. A value of
@@ -100,6 +110,12 @@ Example for ``FixedWingLine``::
   and an optimal ``epsilon_chord`` as an input. The recommended value is 0.25
   in all directions for ``epsilon_chord`` and a value of ``epsilon`` in all directions
   that would be greater than at least 2.5 times the grid size ``dx``.
+  The correction is computed from the lift at the actuator points, so these
+  points have to resolve the optimal epsilon (``epsilon_chord * chord``). When
+  the correction starts, a warning is printed if the optimal epsilon is smaller
+  than the spacing of the actuator points somewhere along the line: use more
+  actuator points or a larger ``epsilon_chord`` in that case. The chord must be
+  larger than `0` at every actuator point.
   The default is `0`.
 
 .. input_param:: Actuator.FixedWingLine.fllc_type
@@ -119,6 +135,7 @@ Example for ``FixedWingLine``::
 
   The relaxation factor to be applied to the updated velocity see:
   `Martinez-Tossas and Meneveau (2019) <https://doi.org/10.1017/jfm.2018.994>`_
+  It must be larger than `0` and not larger than `1`.
   The default value is `0.1`.
 
 .. input_param:: Actuator.FixedWingLine.fllc_start_time
@@ -141,9 +158,10 @@ Example for ``FixedWingLine``::
 
   **type:** Double, optional
 
-  The ratio of epsilon to actuator point spacing used to create a non-uniform distribution.
-  A value of `1` or greater is recommended.
-  The default value is `1`.
+  The ratio of the optimal epsilon (``epsilon_chord`` times the chord) to the
+  spacing of the non-uniform points that the fllc uses when
+  ``fllc_nonuniform`` is true. It must be larger than `0`. Values from `1`
+  to `3` are recommended. The default value is `3`.
 
 .. input_param:: Actuator.FixedWingLine.pitch
 
@@ -309,7 +327,12 @@ Example for ``TurbineFastLine``::
 
    **type:** Real number, required
 
-   This is the rotor diameter of the turbine to be simulated.
+   This is the rotor diameter of the turbine to be simulated. With
+   ``base_position`` and ``hub_height`` it places the region of the mesh
+   that receives the forces of the turbine: a box of 1.25 rotor radii around
+   the turbine, enlarged by 4 times the largest epsilon. These three inputs
+   must agree with the OpenFAST model. A warning is printed when the force
+   of an actuator point reaches beyond this region, where it is lost.
 
 .. input_param:: Actuator.TurbineFastLine.hub_height
 
@@ -321,7 +344,11 @@ Example for ``TurbineFastLine``::
 
    **type:** int, required
 
-   This the number of actuator points along the blades.
+   This is the number of actuator points (force points) along each blade.
+   OpenFAST places them along the blade and returns the force at each of
+   them. The velocity is sampled at the AeroDyn blade nodes, whose number
+   comes from OpenFAST; the two numbers do not have to be equal (see
+   :ref:`alm_fllc`).
 
 .. input_param:: Actuator.TurbineFastLine.num_points_tower
 
@@ -331,7 +358,16 @@ Example for ``TurbineFastLine``::
 
 .. input_param:: Actuator.TurbineFastLine.epsilon
 
-   Same as :input_param:`Actuator.FixedWingLine.epsilon`.
+   **type:** List of 1 or 3 real numbers, optional
+
+   This is the value of epsilon in the chord, thickness and spanwise
+   directions of the blade points. A single value is used in all three
+   directions. Either ``epsilon`` or ``epsilon_chord`` must be given; with
+   ``fllc = 1`` both are required. The directions are the axes of the
+   orientation that OpenFAST sends for each actuator point. Per direction,
+   a blade point uses the largest of ``epsilon``, ``epsilon_chord`` times
+   the chord and ``epsilon_min``, and a tower point the largest of
+   ``epsilon``, ``epsilon_tower`` and ``epsilon_min``.
 
 .. input_param:: Actuator.TurbineFastLine.epsilon_chord
 
@@ -340,6 +376,17 @@ Example for ``TurbineFastLine``::
 .. input_param:: Actuator.TurbineFastLine.fllc
 
    Same as :input_param:`Actuator.FixedWingLine.fllc`.
+   The correction uses scalar widths: the optimal epsilon is the second
+   value of ``epsilon_chord`` times the chord, and the resolved epsilon is
+   the largest of the first value of ``epsilon``, the first value of
+   ``epsilon_min`` and the optimal epsilon (a fixed wing has no
+   ``epsilon_min`` and uses the first value of the other two inputs). Give
+   ``epsilon``, ``epsilon_chord`` and ``epsilon_min`` the same value in all
+   three directions when the correction is on.
+   Once the correction has started, its state is written into every
+   checkpoint (directory ``actuator`` inside it), and a run that restarts
+   from the checkpoint goes on from that state, unless OpenFAST starts the
+   turbine anew (``openfast_sim_mode = init``).
 
 .. input_param:: Actuator.TurbineFastLine.fllc_relaxation_factor
 
@@ -348,6 +395,75 @@ Example for ``TurbineFastLine``::
 .. input_param:: Actuator.TurbineFastLine.fllc_type
 
    Same as :input_param:`Actuator.FixedWingLine.fllc_type`.
+
+.. input_param:: Actuator.TurbineFastLine.fllc_start_time
+
+   Same as :input_param:`Actuator.FixedWingLine.fllc_start_time`.
+
+.. input_param:: Actuator.TurbineFastLine.fllc_nonuniform
+
+   Same as :input_param:`Actuator.FixedWingLine.fllc_nonuniform`.
+
+.. input_param:: Actuator.TurbineFastLine.fllc_epsilon_dr_ratio
+
+   Same as :input_param:`Actuator.FixedWingLine.fllc_epsilon_dr_ratio`.
+
+.. input_param:: Actuator.TurbineFastLine.epsilon_min
+
+   **type:** List of 1 or 3 real numbers, optional, default = 0 0 0
+
+   Lower bound of the epsilon of the blade points, the tower points and the
+   nacelle point, per direction, in the order of ``epsilon``. With
+   ``fllc = 1`` its first value is also the lower bound of the epsilon that
+   the correction takes as resolved.
+
+.. input_param:: Actuator.TurbineFastLine.epsilon_tower
+
+   **type:** List of 1 or 3 real numbers, optional, default = 0 0 0
+
+   Epsilon of the tower points, in the order of ``epsilon``. A tower point
+   uses, per direction, the largest of ``epsilon_tower``, ``epsilon`` and
+   ``epsilon_min``, so a value smaller than ``epsilon`` has no effect; a
+   warning says so. The run stops if all three are 0 in some direction.
+
+.. input_param:: Actuator.TurbineFastLine.num_blades
+
+   **type:** int, optional, default = 3
+
+   Number of blades given to OpenFAST when the turbine is initialized. The
+   actuator then uses the number of blades that OpenFAST returns.
+
+.. input_param:: Actuator.TurbineFastLine.openfast_sim_mode
+
+   **type:** String, optional
+
+   How OpenFAST starts: ``init``, ``restart`` or ``replay``. The default is
+   ``restart`` when ``openfast_start_time`` is larger than 0, and ``init``
+   otherwise. ``init`` and ``replay`` read ``openfast_input_file``.
+   ``replay`` then advances OpenFAST to ``openfast_start_time`` with the
+   velocities that an earlier run stored for this turbine in
+   ``fast_velocity_data/<label>.nc``. ``restart`` reads the OpenFAST
+   checkpoint ``openfast_restart_file``. An OpenFAST checkpoint
+   ``<fst root>.<OpenFAST step>.chkp`` is written with every checkpoint of
+   the flow solver. With ``incflo.prescribe_velocity`` the checkpoints have
+   to be asked for with ``time.checkpoint_interval``: the run stops at
+   start-up when ``time.checkpoint_time_interval`` is set, because OpenFAST
+   would write its checkpoints one time step after the flow solver.
+
+.. input_param:: Actuator.WTG01.openfast_restart_file
+
+   **type:** String, required with ``openfast_sim_mode = restart``
+
+   OpenFAST checkpoint file to restart from, without the extension
+   ``.chkp``. ``openfast_input_file`` is not read in this mode.
+
+.. input_param:: Actuator.TurbineFastLine.override_density_check
+
+   **type:** Bool, optional, default = false
+
+   The run stops when ``density`` differs from ``incflo.density`` or from
+   ``ConstValue.density.value``, when either of them is given. With this
+   input set to true, a warning is printed instead.
 
 .. input_param:: Actuator.TurbineFastLine.openfast_start_time
 
@@ -385,10 +501,10 @@ Example for ``TurbineFastLine``::
 
 .. input_param:: Actuator.TurbineFastLine.density
 
-   **type:** Real, optional
+   **type:** Real, required
 
    This is the density of the fluid specified in openfast. This is used to
-   non-dimensionalize the forces from openfast.
+   non-dimensionalize the forces from openfast. It must be larger than `0`.
 
 .. input_param:: Actuator.WTG01.openfast_input_file
 
