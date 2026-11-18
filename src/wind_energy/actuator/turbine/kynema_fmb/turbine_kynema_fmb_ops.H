@@ -114,6 +114,13 @@ void determine_influenced_procs<TurbineKynemaFMB>(
 }
 
 template <>
+void write_checkpoint<TurbineKynemaFMB>(
+    typename TurbineKynemaFMB::DataType& data, const std::string& chkname)
+{
+    external_write_checkpoint<TurbineKynemaFMB::DataType>(data, chkname);
+}
+
+template <>
 void determine_root_proc<TurbineKynemaFMB>(
     typename TurbineKynemaFMB::DataType& data,
     amrex::Vector<int>& act_proc_count)
@@ -130,6 +137,10 @@ struct InitDataOp<TurbineKynemaFMB, SrcTrait>
     {
         BL_PROFILE("kynema-sgf::InitDataOp<TurbineKynemaFMB>");
         init_data_op<TurbineKynemaFMB::DataType>(data);
+        // The bounding box of the turbine now holds the reach of the
+        // Gaussians (init_epsilon): make the list of the processes with
+        // patches inside of it again
+        external_determine_influenced_procs<TurbineKynemaFMB::DataType>(data);
     }
 };
 

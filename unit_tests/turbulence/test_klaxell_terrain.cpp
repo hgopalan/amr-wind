@@ -231,12 +231,15 @@ protected:
             kynema_sgf::FieldState::New, DiffusionType::Crank_Nicolson);
     }
 
-    //! Resolved strain rate sqrt(shear_prod / mu_turb) of a cell
+    //! Resolved strain rate sqrt(rho shear_prod / mu_turb) of a cell: the
+    //! production is per unit mass, S^2 mu_t / rho
     [[nodiscard]] amrex::Real strain(const int i, const int j, const int k)
     {
         const auto& mu = sim().repo().get_field("mu_turb");
         const auto& prod = sim().repo().get_field("shear_prod");
+        const auto& rho = sim().repo().get_field("density");
         return std::sqrt(
+            utils::field_probe(rho, 0, i, j, k) *
             utils::field_probe(prod, 0, i, j, k) /
             utils::field_probe(mu, 0, i, j, k));
     }

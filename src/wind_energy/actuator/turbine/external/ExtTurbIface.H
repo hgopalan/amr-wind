@@ -1,10 +1,17 @@
 #ifndef EXTTURBIFACE_H
 #define EXTTURBIFACE_H
 
+#include <cmath>
+#include <iomanip>
+#include <limits>
 #include <map>
+#include <sstream>
+#include <string>
 #include <vector>
+#include "src/CFDSim.H"
 #include "src/core/ExtSolver.H"
 #include "src/wind_energy/actuator/turbine/external/external_base_types.H"
+#include "AMReX_ParmParse.H"
 #include "AMReX_REAL.H"
 
 using namespace amrex::literals;
@@ -13,11 +20,74 @@ namespace ncutils {
 class NCFile;
 }
 
-namespace kynema_sgf {
-class CFDSim;
+namespace ext_turb {
+
+/** Number of time steps that make up a time interval, which has to be whole
+ *
+ *  Gives the steps of the external solver in one CFD time step and the CFD
+ *  time steps up to the start time of a replay. The ratio is computed in
+ *  floating point, where 0.3 / 0.1 is 2.9999999999999996: the nearest integer
+ *  is taken, and the run stops when the ratio is further from it than
+ *  rounding explains.
+ *
+ *  \param interval Length of the interval
+ *  \param dt Time step
+ *  \param interval_name What the interval is, the start of the abort message
+ *  \param dt_name What the time steps are, in the plural
+ */
+inline int num_whole_steps(
+    const amrex::Real interval,
+    const amrex::Real dt,
+    const std::string& interval_name,
+    const std::string& dt_name)
+{
+    // The rounding error of the ratio is a few units of machine precision
+    constexpr amrex::Real tol =
+        1.0e4_rt * std::numeric_limits<amrex::Real>::epsilon();
+    constexpr auto max_steps =
+        static_cast<amrex::Real>(std::numeric_limits<int>::max());
+
+    const amrex::Real ratio = (dt > 0.0_rt) ? interval / dt : -1.0_rt;
+    const amrex::Real nearest = std::round(ratio);
+    if (!(ratio >= 0.0_rt) || !(nearest < max_steps) ||
+        (std::abs(ratio - nearest) > tol * ratio)) {
+        std::ostringstream msg;
+        msg << std::setprecision(12) << interval_name << " (" << interval
+            << ") is not a whole number of " << dt_name << " (" << dt << ")";
+        amrex::Abort(msg.str());
+    }
+    return static_cast<int>(nearest);
 }
 
-namespace ext_turb {
+/** Stops a run whose inputs put the checkpoints of the external solver off
+ *  those of the CFD solver
+ *
+ *  With incflo.prescribe_velocity the actuators advance before the time of the
+ *  new step is set. A checkpoint interval in time is then tested against the
+ *  time of the step before, and the external solver would write each of its
+ *  checkpoints one time step after the CFD solver: a restart finds no
+ *  checkpoint of the external solver for its step. A checkpoint interval in
+ *  steps is not affected.
+ */
+inline void check_checkpoint_inputs()
+{
+    bool prescribe_vel = false;
+    amrex::ParmParse pp_incflo("incflo");
+    pp_incflo.query("prescribe_velocity", prescribe_vel);
+
+    amrex::Real chkpt_t_interval = -1.0_rt;
+    amrex::ParmParse pp_time("time");
+    pp_time.query("checkpoint_time_interval", chkpt_t_interval);
+
+    if (prescribe_vel && (chkpt_t_interval > 0.0_rt)) {
+        amrex::Abort(
+            "ExtTurbIface: time.checkpoint_time_interval cannot be used with "
+            "incflo.prescribe_velocity and an external turbine solver. The "
+            "turbine solver would write its checkpoints one time step after "
+            "the CFD solver. Use time.checkpoint_interval, an interval in "
+            "time steps");
+    }
+}
 
 template <typename SolverTurbine, typename SolverData>
 class ExtTurbIface
@@ -33,6 +103,11 @@ public:
     int register_turbine(SolverTurbine& data);
 
     void init_turbine(const int local_id);
+
+    //! Bring the turbine to the time of the CFD solver: the initial solution
+    //! of a new turbine, nothing right after a restart or a replay, one CFD
+    //! time step otherwise
+    void step_turbine(const int local_id);
 
     void advance_turbine(const int local_id);
 
@@ -92,12 +167,16 @@ protected:
     SolverData m_solver_data;
 
     bool m_is_initialized{false};
+
+    //! Time of the CFD solver, which says when a checkpoint is written
+    const ::kynema_sgf::SimTime& m_time;
 };
 
 // General implementations of some functions
 template <typename SolverTurbine, typename SolverData>
 ExtTurbIface<SolverTurbine, SolverData>::ExtTurbIface(
-    const kynema_sgf::CFDSim& /*unused*/)
+    const kynema_sgf::CFDSim& sim)
+    : m_time(sim.time())
 {}
 
 template <typename SolverTurbine, typename SolverData>
@@ -120,6 +199,7 @@ void ExtTurbIface<SolverTurbine, SolverData>::init_turbine(const int local_id)
 {
     AMREX_ALWAYS_ASSERT(local_id < static_cast<int>(m_turbine_data.size()));
     if (!m_is_initialized) {
+        check_checkpoint_inputs();
         allocate_ext_turbines();
     }
     auto& fi = *m_turbine_data[local_id];
@@ -134,14 +214,41 @@ void ExtTurbIface<SolverTurbine, SolverData>::init_turbine(const int local_id)
     case ::ext_turb::SimMode::replay: {
         ext_init_turbine(fi);
         ext_replay_turbine(fi);
+        fi.is_solution0 = false;
+        fi.is_at_cfd_time = true;
         break;
     }
 
     case ::ext_turb::SimMode::restart: {
         ext_restart_turbine(fi);
         prepare_netcdf_file(fi);
+        fi.is_solution0 = false;
+        fi.is_at_cfd_time = true;
         break;
     }
+    }
+}
+
+template <typename SolverTurbine, typename SolverData>
+void ExtTurbIface<SolverTurbine, SolverData>::step_turbine(const int local_id)
+{
+    AMREX_ALWAYS_ASSERT(local_id < static_cast<int>(m_turbine_data.size()));
+    auto& fi = *m_turbine_data[local_id];
+
+    if (fi.is_at_cfd_time) {
+        // The checkpoint read at restart, or the steps taken again in a
+        // replay, hold the state and the loads at the time the CFD solver
+        // starts from. An initial solution would compute them again from an
+        // extrapolation history that starts over, and a step would leave the
+        // turbine one CFD time step ahead of the flow.
+        fi.is_at_cfd_time = false;
+        return;
+    }
+
+    if (fi.is_solution0) {
+        init_solution(local_id);
+    } else {
+        advance_turbine(local_id);
     }
 }
 
@@ -175,8 +282,12 @@ void ExtTurbIface<SolverTurbine, SolverData>::advance_turbine(
         do_turbine_step(fi);
     }
 
-    if (fi.chkpt_interval > 0 &&
-        (fi.time_index / fi.num_substeps) % fi.chkpt_interval == 0) {
+    // The checkpoint of the external solver goes with the one the CFD solver
+    // writes at the end of this time step: on its step or time interval,
+    // after its delay, counted from the restart, and at the last step of the
+    // run when that one is off the interval
+    if (m_time.write_checkpoint() ||
+        (!m_time.continue_simulation() && m_time.write_last_checkpoint())) {
         write_turbine_checkpoint(fi.tid_local);
     }
 }

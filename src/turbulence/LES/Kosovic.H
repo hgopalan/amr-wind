@@ -77,4 +77,4 @@ private:
 
 } // namespace kynema_sgf::turbulence
 
-#endif /* SMAGORINSKY_H */
+#endif /* KOSOVIC_H */

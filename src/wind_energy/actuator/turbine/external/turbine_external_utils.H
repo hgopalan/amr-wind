@@ -2,6 +2,7 @@
 #define TURBINE_EXTERNAL_UTILS_H
 
 #include <numbers>
+#include <string>
 #include "src/wind_energy/actuator/turbine/turbine_utils.H"
 #include "src/wind_energy/actuator/actuator_ops.H"
 #include "src/wind_energy/actuator/actuator_utils.H"
@@ -85,17 +86,53 @@ void make_component_views(datatype& data)
     }
 }
 
+/** Abort when a point of a blade or of the tower has no width to spread its
+ *  force with
+ *
+ *  The Gaussian of a point with an epsilon of 0 is 0 everywhere on the mesh:
+ *  the force of that point would be left out of the momentum source without
+ *  any message.
+ */
+inline void check_epsilon(
+    const ComponentView& cv,
+    const int npts,
+    const std::string& label,
+    const std::string& inputs)
+{
+    for (int i = 0; i < npts; ++i) {
+        for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+            if (!(cv.epsilon[i][n] > 0.0_rt)) {
+                amrex::Abort(
+                    "Actuator " + label +
+                    ": epsilon is not larger than 0 at "
+                    "point " +
+                    std::to_string(i) +
+                    ", so its force would "
+                    "not reach the mesh. Set one of " +
+                    inputs);
+            }
+        }
+    }
+}
+
 template <typename datatype>
 void init_epsilon(datatype& data)
 {
     auto& tdata = data.meta();
 
-    // Swap order of epsilon based on turbine orientation
-    // Input order is (chord, span, thickness)
-    // Output order should depend on turbine type; currently ...
-    // -- this function is correct for Kynema
-    // -- this function is erroneous for OpenFAST but has been in use
-    // (Does not matter when epsilon is uniform)
+    // Order of the epsilon components. The inputs are read in the order of
+    // the documentation, (chord, thickness, span). The Gaussian of a point
+    // applies component n of its epsilon along row n of its orientation
+    // matrix (ActSrcLineOp). The swap below stores (thickness, chord, span):
+    // the first input value acts along row 1, the second along row 0 and
+    // the third along row 2 of the orientation sent by the solver.
+    // OpenFAST: row 0 is normal to the chord, row 1 is along the chord and
+    // row 2 is along the span (blade frame of AeroDyn), so each input value
+    // acts in its documented direction. The tower points use the same swap.
+    // The FLLC does not use these components: it reads the first value of
+    // epsilon (fllc_parse) and of epsilon_min (read_inputs), and component
+    // 0 of the swapped eps_chord, which is the second input value of
+    // epsilon_chord (compute_force_op).
     swap_epsilon(tdata.eps_inp);
     swap_epsilon(tdata.eps_min);
     swap_epsilon(tdata.eps_chord);
@@ -124,6 +161,10 @@ void init_epsilon(datatype& data)
                     tdata.eps_min[n], tdata.eps_inp[n], eps_crd[n]);
             }
         }
+        check_epsilon(
+            cv, tdata.num_pts_blade,
+            data.info().label + " blade " + std::to_string(ib),
+            "epsilon, epsilon_chord or epsilon_min");
     }
     {
         auto& cv = tdata.tower;
@@ -133,7 +174,103 @@ void init_epsilon(datatype& data)
                     tdata.eps_min[n], tdata.eps_inp[n], tdata.eps_tower[n]);
             }
         }
+        check_epsilon(
+            cv, tdata.num_pts_tower, data.info().label + " tower",
+            "epsilon, epsilon_tower or epsilon_min");
+
+        // epsilon_tower is one of three lower bounds. Tell the user when it
+        // is given and is not the value that the tower points get
+        bool tower_eps_unused = false;
+        for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+            if ((tdata.eps_tower[n] > 0.0_rt) &&
+                (tdata.eps_tower[n] <
+                 amrex::max<amrex::Real>(tdata.eps_min[n], tdata.eps_inp[n]))) {
+                tower_eps_unused = true;
+            }
+        }
+        if (tower_eps_unused && (tdata.num_pts_tower > 0)) {
+            amrex::Print()
+                << "\nWARNING: Actuator " << data.info().label
+                << ": epsilon_tower is smaller than epsilon or epsilon_min. "
+                << "The tower points use the largest of the three in each "
+                << "direction, so the value given for epsilon_tower is not "
+                << "the one used." << std::endl;
+        }
     }
+    {
+        // Patches and MPI ranks that do not touch the bounding box of the
+        // turbine receive no force. The box was sized from the rotor
+        // diameter alone (utils::read_inputs), before any epsilon was
+        // known: add the distance up to which the Gaussian of a point is
+        // not zero
+        amrex::Real eps_max = 0.0_rt;
+        for (const auto& eps : data.grid().epsilon) {
+            eps_max =
+                amrex::max<amrex::Real>(eps_max, eps.x(), eps.y(), eps.z());
+        }
+        const auto reach =
+            ::kynema_sgf::actuator::utils::gaussian3d_cutoff() * eps_max;
+        auto& bbox = data.info().bound_box;
+        for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+            bbox.setLo(n, bbox.lo(n) - reach);
+            bbox.setHi(n, bbox.hi(n) + reach);
+        }
+    }
+}
+
+/** Tell the user, once, when the Gaussian of a point reaches beyond the
+ *  bounding box of the turbine
+ *
+ *  The box is made when the turbine is created, from base_position,
+ *  hub_height, rotor_diameter and the largest epsilon, and it does not follow
+ *  the turbine. Patches outside of it receive no force. The Gaussian of a
+ *  point leaves the box when the rotor of the external solver is not where
+ *  these inputs put it, or when the turbine moves by more than a quarter of
+ *  the rotor radius (a floating platform).
+ *
+ *  \return Number of points with a Gaussian that leaves the box
+ */
+template <typename datatype>
+int check_bound_box(datatype& data)
+{
+    const auto& grid = data.grid();
+    const auto& bbox = data.info().bound_box;
+    const auto cutoff = ::kynema_sgf::actuator::utils::gaussian3d_cutoff();
+    // Tolerance for a point that is on a face of the box of the inputs
+    const auto tol = 1.0e-8_rt * (bbox.hi(0) - bbox.lo(0));
+    const int npts = static_cast<int>(grid.pos.size());
+    int num_out = 0;
+    amrex::Real dist_max = 0.0_rt;
+    for (int i = 0; i < npts; ++i) {
+        const auto& eps = grid.epsilon[i];
+        const auto reach =
+            cutoff * amrex::max<amrex::Real>(eps.x(), eps.y(), eps.z());
+        amrex::Real dist = 0.0_rt;
+        for (int n = 0; n < AMREX_SPACEDIM; ++n) {
+            dist = amrex::max<amrex::Real>(
+                dist, bbox.lo(n) - (grid.pos[i][n] - reach),
+                (grid.pos[i][n] + reach) - bbox.hi(n));
+        }
+        if (dist > tol) {
+            ++num_out;
+            dist_max = amrex::max<amrex::Real>(dist_max, dist);
+        }
+    }
+    if ((num_out > 0) && !data.meta().bound_box_warned) {
+        data.meta().bound_box_warned = true;
+        amrex::OutStream()
+            << "\nWARNING: Actuator " << data.info().label << ": the force of "
+            << num_out << " of " << npts << " points reaches up to " << dist_max
+            << " beyond the region reserved for this turbine on "
+            << "the mesh, and patches outside of this region receive no "
+            << "force. The region is the box that base_position, "
+            << "hub_height and rotor_diameter give (1.25 rotor radii around "
+            << "the turbine), enlarged by " << cutoff
+            << " times the largest epsilon. Check these inputs against the "
+            << "model of the external solver; for a turbine that moves this "
+            << "far, give a larger rotor_diameter." << std::endl;
+    }
+    return num_out;
 }
 
 template <typename datatype>
@@ -178,11 +315,7 @@ void ext_step(datatype& data)
 
     auto& meta = data.meta();
     auto& tf = data.meta().ext_data;
-    if (tf.is_solution0) {
-        meta.ext_ptr->init_solution(tf.tid_local);
-    } else {
-        meta.ext_ptr->advance_turbine(tf.tid_local);
-    }
+    meta.ext_ptr->step_turbine(tf.tid_local);
 
     meta.ext_ptr->get_hub_stats(tf.tid_local);
 
@@ -313,6 +446,10 @@ void scatter_data(datatype& data)
         const auto yvec = vs::Vector::khat() ^ xvec;
         const auto zvec = xvec ^ yvec;
         meta.rotor_frame.rows(xvec, yvec.unit(), zvec.unit());
+    }
+
+    if (data.info().is_root_proc) {
+        check_bound_box<datatype>(data);
     }
 }
 

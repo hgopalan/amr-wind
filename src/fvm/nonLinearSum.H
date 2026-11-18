@@ -98,12 +98,12 @@ struct NonLinearSum
                 // N22
                 strphi(i, j, k, 4) = (vx * uy + vy * vy + vz * wy) -
                                      (vx * vx + vy * vy + vz * vz) +
-                                     (3 * (uy * vx + vy * vy + wy * wy)) +
+                                     (3 * (uy * uy + vy * vy + wy * wy)) +
                                      (uy * vx + vy * vy + wy * vz);
                 // N23
                 strphi(i, j, k, 5) = (vx * uz + vy * vz + vz * wz) -
                                      (vx * wx + vy * wy + vz * wz) +
-                                     (3 * (uy * wx + vy * vz + wy * wz)) +
+                                     (3 * (uy * uz + vy * vz + wy * wz)) +
                                      (uy * wx + vy * wy + wy * wz);
                 // N31
                 strphi(i, j, k, 6) = (wx * ux + wy * vx + wz * wx) -
