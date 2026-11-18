@@ -36,17 +36,11 @@ void ABLFieldInit::initialize_from_inputfile()
     if (m_initial_wind_profile) {
         pp_abl.query("rans_1dprofile_file", m_1d_rans);
         if (!m_1d_rans.empty()) {
-            std::ifstream ransfile(m_1d_rans, std::ios::in);
-            if (!ransfile.good()) {
-                amrex::Abort("Cannot find 1-D RANS profile file " + m_1d_rans);
-            }
-            amrex::Real value1, value2, value3, value4, value5;
-            while (ransfile >> value1 >> value2 >> value3 >> value4 >> value5) {
-                m_wind_heights.push_back(value1);
-                m_u_values.push_back(value2);
-                m_v_values.push_back(value3);
-                m_tke_values.push_back(value5);
-            }
+            const auto prof = ioutils::read_rans_1d_profile(m_1d_rans);
+            m_wind_heights = prof.z;
+            m_u_values = prof.u;
+            m_v_values = prof.v;
+            m_tke_values = prof.tke;
         }
         amrex::Vector<amrex::Real> xterrain;
         amrex::Vector<amrex::Real> yterrain;

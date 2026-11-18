@@ -62,19 +62,25 @@ private:
     Field* m_tke{nullptr};
     //! Turbulence constant
     amrex::Real m_Cmu{0.556_rt};
-    amrex::Real m_Cmu_prime{0.556_rt};
     amrex::Real m_Cb_stable{0.25_rt};
     amrex::Real m_Cb_unstable{0.35_rt};
-    amrex::Real m_prandtl{1.0_rt};
+    //! von Karman constant (ABL.kappa), shared with KransAxell
+    amrex::Real m_kappa{0.41_rt};
     //! Keep the earlier production terms that carry an extra factor of rho
     bool m_rho_weighted_prod{false};
     Field& m_temperature;
     //! Gravity vector (m/s^2)
     amrex::Vector<amrex::Real> m_gravity{0.0_rt, 0.0_rt, -9.81_rt};
     amrex::Real m_surf_flux{0};
-    amrex::Real m_meso_sponge_start{2000};
+    //! ABL.meso_sponge_start, same default as KransAxell
+    amrex::Real m_meso_sponge_start;
+    //! KLAxell_coeffs.legacy_alphaeff: recompute Rt in update_alphaeff
+    bool m_legacy_alphaeff{false};
 
     std::unique_ptr<ScratchField> m_gradT;
+    //! Pr_t(Rt) from the last update_turbulent_viscosity, used by
+    //! update_alphaeff
+    std::unique_ptr<ScratchField> m_prandtl_rt;
 
     //! Canopy length scale limit (ForestDrag.canopy_tke, canopy_length_alpha)
     forestdrag::CanopyTurbulence m_canopy;

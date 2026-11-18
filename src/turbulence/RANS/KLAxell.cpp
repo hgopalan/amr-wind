@@ -24,6 +24,7 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
     , m_dissip(sim.repo().declare_field("dissipation", 1))
     , m_rho(sim.repo().get_field("density"))
     , m_temperature(sim.repo().get_field("temperature"))
+    , m_meso_sponge_start(pde::default_meso_sponge_start)
 {
     auto& tke_eqn =
         sim.pde_manager().register_transport_pde(pde::TKE::pde_name());
@@ -40,10 +41,14 @@ KLAxell<Transport>::KLAxell(CFDSim& sim)
     // The friction velocity comes from ABL.monin_obukhov_length and the TKE
     // boundary condition from ABL.surface_temp_flux, both taken from the same
     // 1-D RANS solution
-    surface_stability::require_obukhov_length(
-        surface_stability::parse(
-            identifier(), this->m_transport.reference_temperature()),
-        identifier());
+    {
+        const auto stability = surface_stability::parse(
+            identifier(), this->m_transport.reference_temperature());
+        surface_stability::require_obukhov_length(stability, identifier());
+        // The length scale uses the same ABL.kappa as the KransAxell wall
+        // boundary condition; parse() aborts unless it is > 0
+        m_kappa = stability.kappa;
+    }
 
     {
         amrex::ParmParse pp("incflo");
@@ -63,11 +68,31 @@ void KLAxell<Transport>::parse_model_coeffs()
     const std::string coeffs_dict = this->model_name() + "_coeffs";
     amrex::ParmParse pp(coeffs_dict);
     pp.query("Cmu", this->m_Cmu);
-    pp.query("Cmu_prime", this->m_Cmu_prime);
     pp.query("Cb_stable", this->m_Cb_stable);
     pp.query("Cb_unstable", this->m_Cb_unstable);
-    pp.query("prandtl", this->m_prandtl);
+    pp.query("legacy_alphaeff", m_legacy_alphaeff);
     pp.query("density_weighted_production", this->m_rho_weighted_prod);
+    // The stability functions fix C_mu' = C_mu / (1 + 0.277 Rt) and
+    // Pr_t = (1 + 0.193 Rt) / (1 + 0.0302 Rt); these keys were read and
+    // never used
+    for (const std::string key : {"Cmu_prime", "prandtl"}) {
+        if (pp.contains(key.c_str())) {
+            amrex::Abort(
+                coeffs_dict + "." + key +
+                " is not used by KLAxell: C_mu' and the turbulent Prandtl "
+                "number follow from " +
+                coeffs_dict + ".Cmu and the Richardson number. Remove it.");
+        }
+    }
+    if (!(this->m_Cmu > 0.0_rt)) {
+        amrex::Abort(coeffs_dict + ".Cmu must be > 0");
+    }
+    if (!(this->m_Cb_stable > 0.0_rt)) {
+        amrex::Abort(coeffs_dict + ".Cb_stable must be > 0");
+    }
+    if (!(this->m_Cb_unstable > 0.0_rt)) {
+        amrex::Abort(coeffs_dict + ".Cb_unstable must be > 0");
+    }
 }
 
 template <typename Transport>
@@ -75,22 +100,29 @@ TurbulenceModel::CoeffsDictType KLAxell<Transport>::model_coeffs() const
 {
     return TurbulenceModel::CoeffsDictType{
         {"Cmu", this->m_Cmu},
-        {"Cmu_prime", this->m_Cmu_prime},
         {"Cb_stable", this->m_Cb_stable},
-        {"Cb_unstable", this->m_Cb_unstable},
-        {"prandtl", this->m_prandtl}};
+        {"Cb_unstable", this->m_Cb_unstable}};
 }
 
 template <typename Transport>
 void KLAxell<Transport>::post_init_actions()
 {
     m_gradT = this->m_sim.repo().create_scratch_field(3, 0);
+    // Pr_t = 1 (Rt = 0) until the first update_turbulent_viscosity
+    m_prandtl_rt = this->m_sim.repo().create_scratch_field(1, 0);
+    for (int lev = 0; lev < this->m_sim.repo().num_active_levels(); ++lev) {
+        (*m_prandtl_rt)(lev).setVal(1.0_rt);
+    }
 }
 
 template <typename Transport>
 void KLAxell<Transport>::post_regrid_actions()
 {
     m_gradT = this->m_sim.repo().create_scratch_field(3, 0);
+    m_prandtl_rt = this->m_sim.repo().create_scratch_field(1, 0);
+    for (int lev = 0; lev < this->m_sim.repo().num_active_levels(); ++lev) {
+        (*m_prandtl_rt)(lev).setVal(1.0_rt);
+    }
 }
 
 template <typename Transport>
@@ -120,7 +152,7 @@ void KLAxell<Transport>::update_turbulent_viscosity(
     const amrex::Real Rtc = -1.0_rt;
     const amrex::Real Rtmin = -3.0_rt;
     const amrex::Real lambda = 30.0_rt;
-    const amrex::Real kappa = 0.41_rt;
+    const amrex::Real kappa = m_kappa;
     const amrex::Real surf_flux = m_surf_flux;
     const auto tiny = std::numeric_limits<amrex::Real>::epsilon();
     const amrex::Real lengthscale_switch = m_meso_sponge_start;
@@ -142,6 +174,7 @@ void KLAxell<Transport>::update_turbulent_viscosity(
         const auto& buoy_prod_arrs = (this->m_buoy_prod)(lev).arrays();
         const auto& shear_prod_arrs = (this->m_shear_prod)(lev).arrays();
         const auto& beta_arrs = (*beta)(lev).const_arrays();
+        const auto& prandtl_arrs = (*m_prandtl_rt)(lev).arrays();
 
         //! Add terrain components
         const bool has_terrain =
@@ -175,9 +208,13 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         utils::powi(Cmu, 3) *
                         std::pow(tke_arrs[nbx](i, j, k), 1.5_rt) /
                         (tlscale_arrs[nbx](i, j, k) + tiny);
+                    // k = 0 gives epsilon = 0 and 0/0; every term that uses Rt
+                    // is multiplied by sqrt(k) = 0 there, so take Rt = 0
                     amrex::Real Rt =
-                        utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
-                        stratification;
+                        (tke_arrs[nbx](i, j, k) > 0.0_rt)
+                            ? utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
+                                  stratification
+                            : 0.0_rt;
                     Rt = (Rt > Rtc)
                              ? Rt
                              : amrex::max<amrex::Real>(
@@ -230,6 +267,10 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         rho_weighted_prod ? 1.0_rt : rho_arrs[nbx](i, j, k);
                     buoy_prod_arrs[nbx](i, j, k) =
                         -muPrime * stratification / rho_prod;
+                    // Pr_t from the same Rt as mu_t and muPrime (mu_t / Pr_t is
+                    // within 1% of muPrime for Rt in [-3, 100])
+                    prandtl_arrs[nbx](i, j, k) =
+                        (1.0_rt + 0.193_rt * Rt) / (1.0_rt + 0.0302_rt * Rt);
                     shear_prod_arrs[nbx](i, j, k) *=
                         shear_prod_arrs[nbx](i, j, k) * mu_arrs[nbx](i, j, k) /
                         rho_prod;
@@ -244,8 +285,10 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                           (gradT_arrs[nbx](i, j, k, 2) * gravity[2])) *
                         beta_arrs[nbx](i, j, k);
                     const amrex::Real z = problo[2] + ((k + 0.5_rt) * dz);
+                    // Distance from the wall at prob_lo[2]
+                    const amrex::Real zwall = (k + 0.5_rt) * dz;
                     const amrex::Real lscale_s =
-                        (lambda * kappa * z) / (lambda + kappa * z);
+                        (lambda * kappa * zwall) / (lambda + kappa * zwall);
                     const amrex::Real lscale_b =
                         Cb_stable *
                         std::sqrt(
@@ -255,9 +298,13 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         utils::powi(Cmu, 3) *
                         std::pow(tke_arrs[nbx](i, j, k), 1.5_rt) /
                         (tlscale_arrs[nbx](i, j, k) + tiny);
+                    // k = 0 gives epsilon = 0 and 0/0; every term that uses Rt
+                    // is multiplied by sqrt(k) = 0 there, so take Rt = 0
                     amrex::Real Rt =
-                        utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
-                        stratification;
+                        (tke_arrs[nbx](i, j, k) > 0.0_rt)
+                            ? utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
+                                  stratification
+                            : 0.0_rt;
                     Rt = (Rt > Rtc)
                              ? Rt
                              : amrex::max<amrex::Real>(
@@ -308,6 +355,10 @@ void KLAxell<Transport>::update_turbulent_viscosity(
                         rho_weighted_prod ? 1.0_rt : rho_arrs[nbx](i, j, k);
                     buoy_prod_arrs[nbx](i, j, k) =
                         -muPrime * stratification / rho_prod;
+                    // Pr_t from the same Rt as mu_t and muPrime (mu_t / Pr_t is
+                    // within 1% of muPrime for Rt in [-3, 100])
+                    prandtl_arrs[nbx](i, j, k) =
+                        (1.0_rt + 0.193_rt * Rt) / (1.0_rt + 0.0302_rt * Rt);
                     shear_prod_arrs[nbx](i, j, k) *=
                         shear_prod_arrs[nbx](i, j, k) * mu_arrs[nbx](i, j, k) /
                         rho_prod;
@@ -341,14 +392,37 @@ void KLAxell<Transport>::update_alphaeff(Field& alphaeff)
     auto lam_alpha = (this->m_transport).alpha();
     auto& mu_turb = this->m_mu_turb;
     auto& repo = mu_turb.repo();
+    const int nlevels = repo.num_active_levels();
 
+    if (!m_legacy_alphaeff) {
+        // alpha_t = mu_t / Pr_t(Rt), with the Rt of the last
+        // update_turbulent_viscosity (neutral switch and clipping included)
+        for (int lev = 0; lev < nlevels; ++lev) {
+            const auto& muturb_arrs = mu_turb(lev).const_arrays();
+            const auto& alphaeff_arrs = alphaeff(lev).arrays();
+            const auto& lam_diff_arrs = (*lam_alpha)(lev).const_arrays();
+            const auto& prandtl_arrs = (*m_prandtl_rt)(lev).const_arrays();
+            amrex::ParallelFor(
+                mu_turb(lev),
+                [=] AMREX_GPU_DEVICE(int nbx, int i, int j, int k) {
+                    alphaeff_arrs[nbx](i, j, k) = lam_diff_arrs[nbx](i, j, k) +
+                                                  (muturb_arrs[nbx](i, j, k) /
+                                                   prandtl_arrs[nbx](i, j, k));
+                });
+        }
+        amrex::Gpu::streamSynchronize();
+        alphaeff.fillpatch(this->m_sim.time().current_time());
+        return;
+    }
+
+    // KLAxell_coeffs.legacy_alphaeff = true: Rt recomputed from the current
+    // l, without the neutral switch of update_turbulent_viscosity
     fvm::gradient(*m_gradT, m_temperature);
     auto& gradT = *m_gradT;
     const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> gravity{
         m_gravity[0], m_gravity[1], m_gravity[2]};
     const auto beta = (this->m_transport).beta();
     const amrex::Real Cmu = m_Cmu;
-    const int nlevels = repo.num_active_levels();
     for (int lev = 0; lev < nlevels; ++lev) {
         const auto& muturb_arrs = mu_turb(lev).arrays();
         const auto& alphaeff_arrs = alphaeff(lev).arrays();
@@ -369,9 +443,13 @@ void KLAxell<Transport>::update_alphaeff(Field& alphaeff)
                 amrex::Real epsilon = utils::powi(Cmu, 3) *
                                       std::pow(tke_arrs[nbx](i, j, k), 1.5_rt) /
                                       tlscale_arrs[nbx](i, j, k);
+                // k = 0 gives 0/0; mu_t = 0 there, so take Rt = 0. With
+                // k > 0 and l = 0, epsilon is infinite and Rt = 0 already.
                 amrex::Real Rt =
-                    utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
-                    stratification;
+                    (tke_arrs[nbx](i, j, k) > 0.0_rt)
+                        ? utils::powi(tke_arrs[nbx](i, j, k) / epsilon, 2) *
+                              stratification
+                        : 0.0_rt;
                 Rt = (Rt > Rtc) ? Rt
                                 : amrex::max<amrex::Real>(
                                       Rt, Rt - (utils::powi(Rt - Rtc, 2) /

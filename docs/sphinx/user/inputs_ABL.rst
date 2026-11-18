@@ -325,7 +325,12 @@ This section is for setting atmospheric boundary layer parameters.
 
    **type:** String, optional, default = ""
 
-   This input is required when the ABL.initial_wind_profile is set to True. 
+   This input is required when the ABL.initial_wind_profile is set to True.
+   Each line holds five numbers, ``z u v w tke``: height (m), the three
+   velocity components (m/s) and the turbulent kinetic energy (m^2/s^2).
+   Blank lines and lines that start with ``#`` are skipped. The run aborts if a
+   line does not hold exactly five numbers, if the file has no rows, or if the
+   heights decrease.
 
 .. input_param:: ABL.minimum_vertical_position 
 
@@ -342,6 +347,10 @@ This section is for setting atmospheric boundary layer parameters.
    in the free atmosphere. Recommended for use with RANS model and optionally to run 
    LES with non canonical flow conditions. If not specified in the input file, the 
    default value is active for the TKE source term but not for velocity or temperature.
+   The `KLAxell` model uses the same height, with the same default, for its neutral
+   switch: when `ABL.surface_temp_flux` is below :math:`10^{-5}` in magnitude, the
+   length scale is the neutral one and :math:`R_t = 0` at and below this height.
+   Before, `KLAxell` used a default of 2000 m.
    For this value to be used, the source terms must be included as input arguments 
    as follows, for temperature, velocity, or TKE, respectively.
    
@@ -366,6 +375,22 @@ This section is for setting atmospheric boundary layer parameters.
    Instead of specifying the same sponge start location for velocity, temperature, and TKE,
    this input argument allows the temperature sponge start (involved in `TemperatureFreeAtmosphereForcing`)
    to be differentiated from the value specified by :input_param:`ABL.meso_sponge_start`.
+
+.. input_param:: ABL.horizontal_sponge_tke
+
+   **type:** Boolean, optional, default = false
+
+   With `TKE.source_terms = KransAxell`, relaxes the turbulent kinetic energy to the
+   :input_param:`ABL.rans_1dprofile_file` profile inside the `DragForcing` horizontal
+   sponge zones (`DragForcing.sponge_west`, `sponge_east`, `sponge_south`,
+   `sponge_north`), with or without `TerrainDrag`. Before, it had no effect without
+   `TerrainDrag`. When true, at least one sponge side must be on,
+   `DragForcing.sponge_distance_west` and `sponge_distance_south` must be < 0 and
+   `sponge_distance_east` and `sponge_distance_north` must be > 0; the run aborts
+   otherwise. Inside a sponge zone, at and below :input_param:`ABL.meso_sponge_start`,
+   the source is :math:`-(k - k_{ref})/\Delta t`. Above that height the vertical
+   TKE sponge already applies the same source, so the horizontal sponge is not
+   added there.
 
 .. input_param:: ABL.wall_het_model
 

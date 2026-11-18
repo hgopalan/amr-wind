@@ -88,6 +88,25 @@ void read_flat_grid_file(
     amrex::Vector<amrex::Real>& ys,
     amrex::Vector<amrex::Real>& zs);
 
+//! Columns of a 1-D RANS profile file (ABL.rans_1dprofile_file)
+struct Rans1DProfile
+{
+    amrex::Vector<amrex::Real> z;   ///< Height (m)
+    amrex::Vector<amrex::Real> u;   ///< x velocity (m/s)
+    amrex::Vector<amrex::Real> v;   ///< y velocity (m/s)
+    amrex::Vector<amrex::Real> w;   ///< z velocity (m/s)
+    amrex::Vector<amrex::Real> tke; ///< Turbulent kinetic energy (m^2/s^2)
+};
+
+/** Read a 1-D RANS profile file (ABL.rans_1dprofile_file)
+ *
+ *  Each line holds five numbers, `z u v w tke`. Blank lines and lines that
+ *  start with `#` are skipped. Aborts when the file cannot be opened, when a
+ *  line does not hold exactly five numbers, when there are no rows, or when
+ *  the heights decrease.
+ */
+Rans1DProfile read_rans_1d_profile(const std::string& fname);
+
 } // namespace kynema_sgf::ioutils
 
 #endif /* IO_UTILS_H */

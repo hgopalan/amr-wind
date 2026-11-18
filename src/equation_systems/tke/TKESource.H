@@ -13,6 +13,10 @@ class CFDSim;
 
 namespace pde {
 
+//! Default ABL.meso_sponge_start (m), shared by the KLAxell length scale and
+//! the KransAxell TKE sponge
+inline constexpr amrex::Real default_meso_sponge_start = 600.0;
+
 /** Base class for all TKE source terms
  *  \ingroup tke_src
  */
