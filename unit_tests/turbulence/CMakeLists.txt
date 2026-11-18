@@ -6,4 +6,5 @@ target_sources(${kynema_sgf_unit_test_exe_name}
   test_turbulence_RANS.cpp
   test_turbulence_LES_bc.cpp
   test_turbulence_kosovic.cpp
+  test_klaxell_terrain.cpp
   )

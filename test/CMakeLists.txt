@@ -252,6 +252,13 @@ set_tests_properties(klaxell_stability_abort PROPERTIES
 add_test_r(abl_subvolume)
 add_test_r(abl_surf_temp_flux_timetable)
 add_test_r(abl_surf_temp_timetable)
+add_test_r(abl_terrain_improved_wall_stable)
+add_test_r(abl_terrain_improved_wall_unstable)
+add_test_r(abl_terrain_original_wall_stable)
+# TerrainDrag.wall_treatment accepts only original or improved
+add_test_r(terraindrag_wall_treatment_abort)
+set_tests_properties(terraindrag_wall_treatment_abort PROPERTIES
+                     PASS_REGULAR_EXPRESSION "TerrainDrag.wall_treatment must be original or improved, not improve")
 add_test_r(abl_unstable)
 add_test_r(abl_unstable_constant_wall_model)
 add_test_r(abl_unstable_local_wall_model)

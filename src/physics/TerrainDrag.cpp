@@ -67,6 +67,9 @@ TerrainDrag::TerrainDrag(CFDSim& sim)
     pp.query("vertical_slope", m_vertical_slope);
     pp.query("vertical_full", m_vertical_full);
     pp.query("terrain_aware_damping", m_terrain_aware_damping);
+    // Check TerrainDrag.wall_treatment at start-up; KLAxell and
+    // DragTempForcing read it for the defaults of their options
+    amrex::ignore_unused(improved_wall_treatment());
 }
 
 void TerrainDrag::initialize_fields(int level, const amrex::Geometry& geom)
@@ -364,6 +367,19 @@ void TerrainDrag::convert_waves_to_terrain_fields()
                 }
             });
     }
+}
+
+bool improved_wall_treatment()
+{
+    std::string treatment{"original"};
+    amrex::ParmParse pp(TerrainDrag::identifier());
+    pp.query("wall_treatment", treatment);
+    if ((treatment != "original") && (treatment != "improved")) {
+        amrex::Abort(
+            "TerrainDrag.wall_treatment must be original or improved, not " +
+            treatment);
+    }
+    return treatment == "improved";
 }
 
 } // namespace kynema_sgf::terraindrag
