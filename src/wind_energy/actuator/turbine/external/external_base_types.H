@@ -67,6 +67,11 @@ struct ExternalTurbine
 
     bool is_solution0{true};
 
+    //! True when a restart or a replay has left the external solver at the
+    //! time of the CFD solver, with its loads. The first step requested after
+    //! it has nothing to compute.
+    bool is_at_cfd_time{false};
+
     //! Start time for this turbine
     amrex::Real start_time{0.0_rt};
 
@@ -84,9 +89,6 @@ struct ExternalTurbine
 
     //! Time step index for external
     int time_index{0};
-
-    //! Checkpoint interval for external
-    int chkpt_interval;
 
     //! Data access functions that have to be defined for each type
     virtual float* position_at_vel(int dir) const = 0;

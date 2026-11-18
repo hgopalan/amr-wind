@@ -113,6 +113,29 @@ template <>
 void ExtTurbIface<FastTurbine, FastSolverData>::allocate_ext_turbines()
 {
     BL_PROFILE("kynema-sgf::FastIface::allocate_turbines");
+    // OpenFAST keeps one count of time steps for all the turbines of a
+    // process and moves it on when the last of them is stepped
+    // (FAST_CFD_Step), while a turbine here takes all its steps of a CFD
+    // time step, and writes its checkpoint, before the next turbine is
+    // stepped; a replay takes all the steps of one turbine in a row. With
+    // several turbines in a process, a turbine that takes more than one
+    // OpenFAST step per CFD step repeats a time step or gets the time of
+    // another turbine, and the checkpoint of every turbine but the last is
+    // named and stamped one step low. So every OpenFAST turbine needs a
+    // process of its own. Every turbine of this process is registered by now
+    // (register_turbine refuses one after the allocation), so the run stops
+    // here, before OpenFAST reads its inputs.
+    if (m_turbine_data.size() > 1) {
+        amrex::Abort(
+            "FastIface: process " +
+            std::to_string(amrex::ParallelDescriptor::MyProc()) + " holds " +
+            std::to_string(m_turbine_data.size()) +
+            " OpenFAST turbines. OpenFAST counts the time steps of the "
+            "turbines of a process together, so they cannot be stepped, "
+            "checkpointed or replayed one after the other: use at least as "
+            "many MPI ranks as there are actuators, so that every turbine has "
+            "a rank of its own.");
+    }
     int nturbines = static_cast<int>(m_turbine_data.size());
     fast_func(FAST_AllocateTurbines, &nturbines);
     m_is_initialized = true;
@@ -211,8 +234,11 @@ void ExtTurbIface<FastTurbine, FastSolverData>::write_velocity_data(
     const std::string fname =
         m_solver_data.output_dir + "/" + fi.tlabel + ".nc";
     auto ncf = ncutils::NCFile::open(fname, NC_WRITE);
-    const std::string nt_name = "num_time_steps";
-    const size_t nt = ncf.dim(nt_name).len();
+    // Record n holds the velocities of CFD time step n of the turbine,
+    // counted from the start of the external solver, which is how a replay
+    // reads the file. A run restarted from a checkpoint older than the last
+    // record writes over the records of the steps it takes again.
+    const auto nt = static_cast<size_t>(fi.time_index / fi.num_substeps);
     const auto npts = static_cast<size_t>(fi.from_cfd.u_Len);
 
     const amrex::Real time = fi.time_index * fi.dt_ext;
@@ -233,6 +259,27 @@ void ExtTurbIface<FastTurbine, FastSolverData>::read_velocity_data(
 #ifdef KYNEMA_SGF_USE_NETCDF
     const auto nt = static_cast<size_t>(tid);
     const auto npts = static_cast<size_t>(fi.from_cfd.u_Len);
+
+    // Record nt holds the velocities of CFD time step nt of the turbine. A
+    // record of another time, or one never written, would be replayed without
+    // notice.
+    amrex::Real time = 0.0_rt;
+    ncf.var("time").get(&time, {nt}, {1});
+    const amrex::Real dt_record =
+        static_cast<amrex::Real>(fi.num_substeps) * fi.dt_ext;
+    const amrex::Real time_expected = static_cast<amrex::Real>(nt) * dt_record;
+    const bool never_written =
+        !(time < 0.5_rt * static_cast<amrex::Real>(NC_FILL_FLOAT));
+    if (never_written || !(std::abs(time - time_expected) <=
+                           0.5_rt * dt_record + 1.0e-6_rt * time_expected)) {
+        amrex::Abort(
+            "FastIface: record " + std::to_string(nt) +
+            " of the velocity file of " + fi.tlabel +
+            (never_written ? " was never written"
+                           : " has time " + std::to_string(time)) +
+            ", time expected " + std::to_string(time_expected) +
+            ". The file is not the one written by the run being replayed");
+    }
 
     auto& uu = fi.from_cfd;
     ncf.var("uvel").get(uu.u, {nt, 0}, {1, npts});
@@ -269,6 +316,8 @@ void ExtTurbIface<FastTurbine, FastSolverData>::read_velocity_data(
 template <>
 void ExtTurbIface<FastTurbine, FastSolverData>::do_turbine_step(FastTurbine& fi)
 {
+    // One OpenFAST turbine per process (allocate_ext_turbines)
+    AMREX_ALWAYS_ASSERT(m_turbine_data.size() == 1);
     fast_func(FAST_Step, &fi.tid_local);
 }
 
@@ -331,20 +380,11 @@ void ExtTurbIface<FastTurbine, FastSolverData>::ext_init_turbine(
 #endif
     }
 
-    // Determine the number of substeps for FAST per CFD timestep
-    fi.num_substeps = static_cast<int>(std::floor(fi.dt_cfd / fi.dt_ext));
-
+    // Number of OpenFAST time steps in one CFD time step
+    fi.num_substeps = num_whole_steps(
+        fi.dt_cfd, fi.dt_ext, "FastIface: the CFD time step of " + fi.tlabel,
+        "OpenFAST time steps");
     AMREX_ALWAYS_ASSERT(fi.num_substeps > 0);
-    // Check that the time step sizes are consistent and FAST advances at an
-    // integral multiple of CFD timestep
-    amrex::Real dt_err =
-        fi.dt_cfd / (static_cast<amrex::Real>(fi.num_substeps) * fi.dt_ext) -
-        1.0_rt;
-    if (dt_err > 1.0e-12_rt) {
-        amrex::Abort(
-            "FastIFace: OpenFAST timestep is not an integral "
-            "multiple of CFD timestep");
-    }
 }
 
 // cppcheck-suppress constParameterReference
@@ -356,11 +396,14 @@ void ExtTurbIface<FastTurbine, FastSolverData>::ext_replay_turbine(
 #ifdef KYNEMA_SGF_USE_NETCDF
     BL_PROFILE("kynema-sgf::FastIface::replay_turbine");
 
-    // Determine the number of timesteps we should advance this turbine
-    const auto num_steps =
-        static_cast<int>(std::floor(fi.start_time / fi.dt_ext));
-    // Compute the number of CFD steps to read velocity data
-    const auto num_cfd_steps = num_steps / fi.num_substeps;
+    // Number of CFD time steps up to the start time: one velocity record is
+    // read for each
+    const int num_cfd_steps = num_whole_steps(
+        fi.start_time, fi.dt_cfd,
+        "FastIface: the start time of the replay of " + fi.tlabel,
+        "CFD time steps");
+    // Number of OpenFAST time steps this turbine is advanced by
+    const int num_steps = num_cfd_steps * fi.num_substeps;
 
     // Ensure that the NetCDF file exists and contains the required number of
     // timesteps for restart.
@@ -375,6 +418,10 @@ void ExtTurbIface<FastTurbine, FastSolverData>::ext_replay_turbine(
         const int nt = static_cast<int>(ncf.dim("num_time_steps").len());
         AMREX_ALWAYS_ASSERT(nt >= num_cfd_steps);
     }
+
+    // The replay takes all the time steps of this turbine in a row: one
+    // OpenFAST turbine per process (allocate_ext_turbines)
+    AMREX_ALWAYS_ASSERT(m_turbine_data.size() == 1);
 
     // Replay OpenFAST simulation for the desired number of timesteps to mimic
     // restart
@@ -438,24 +485,27 @@ void ExtTurbIface<FastTurbine, FastSolverData>::ext_restart_turbine(
                 << std::endl;
             fi.num_pts_tower = 0;
         }
-        AMREX_ALWAYS_ASSERT(npts == (nrotor_pts + fi.num_pts_tower));
+        // OpenFAST takes the number of actuator points from its checkpoint,
+        // not from the inputs of this run
+        if (npts != (nrotor_pts + fi.num_pts_tower)) {
+            amrex::Abort(
+                "FastIface: the OpenFAST checkpoint of " + fi.tlabel + " has " +
+                std::to_string(npts) +
+                " actuator points (blades, hub and tower); this run asks for " +
+                std::to_string(nrotor_pts + fi.num_pts_tower) +
+                " (num_points_blade = " + std::to_string(fi.num_pts_blade) +
+                ", num_points_tower = " + std::to_string(fi.num_pts_tower) +
+                "). A restart keeps the number of actuator points of the run "
+                "that wrote the checkpoint.");
+        }
 #endif
     }
 
-    // Determine the number of substeps for FAST per CFD timestep
-    fi.num_substeps = static_cast<int>(std::floor(fi.dt_cfd / fi.dt_ext));
-
+    // Number of OpenFAST time steps in one CFD time step
+    fi.num_substeps = num_whole_steps(
+        fi.dt_cfd, fi.dt_ext, "FastIface: the CFD time step of " + fi.tlabel,
+        "OpenFAST time steps");
     AMREX_ALWAYS_ASSERT(fi.num_substeps > 0);
-    // Check that the time step sizes are consistent and FAST advances at an
-    // integral multiple of CFD timestep
-    amrex::Real dt_err =
-        fi.dt_cfd / (static_cast<amrex::Real>(fi.num_substeps) * fi.dt_ext) -
-        1.0_rt;
-    if (dt_err > 1.0e-4_rt) {
-        amrex::Abort(
-            "FastIFace: OpenFAST timestep is not an integral "
-            "multiple of CFD timestep");
-    }
 }
 
 template class ExtTurbIface<FastTurbine, FastSolverData>;

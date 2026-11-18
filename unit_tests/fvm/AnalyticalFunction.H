@@ -362,7 +362,7 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real nonlinearsum_22(
     const amrex::Real wy = dphidy_eval(degree, coeffz, x, y, z);
 
     return (vx * uy + vy * vy + vz * wy) - (vx * vx + vy * vy + vz * vz) +
-           (3.0_rt * (uy * vx + vy * vy + wy * wy)) +
+           (3.0_rt * (uy * uy + vy * vy + wy * wy)) +
            (uy * vx + vy * vy + wy * vz);
 }
 
@@ -385,7 +385,7 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real nonlinearsum_23(
     const amrex::Real wz = dphidz_eval(degree, coeffz, x, y, z);
 
     return (vx * uz + vy * vz + vz * wz) - (vx * wx + vy * wy + vz * wz) +
-           (3.0_rt * (uy * wx + vy * vz + wy * wz)) +
+           (3.0_rt * (uy * uz + vy * vz + wy * wz)) +
            (uy * wx + vy * wy + wy * wz);
 }
 

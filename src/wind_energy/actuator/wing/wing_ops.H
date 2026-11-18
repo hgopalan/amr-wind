@@ -1,13 +1,16 @@
 #ifndef WING_OPS_H
 #define WING_OPS_H
 
+#include <fstream>
 #include "src/wind_energy/actuator/wing/ActuatorWing.H"
 #include "src/wind_energy/actuator/actuator_types.H"
 #include "src/wind_energy/actuator/actuator_ops.H"
+#include "src/wind_energy/actuator/actuator_restart.H"
 #include "src/wind_energy/actuator/aero/AirfoilTable.H"
 #include "src/wind_energy/actuator/ActParser.H"
 #include "src/wind_energy/actuator/FLLCOp.H"
 #include "src/utilities/linear_interpolation.H"
+#include "src/utilities/IOManager.H"
 #include "src/core/vs/vector_space.H"
 #include "AMReX_REAL.H"
 
@@ -61,6 +64,70 @@ ComponentView make_component_view(typename T::DataType& data)
     view.vel = ::kynema_sgf::utils::slice(grid.vel, 0, meta.num_pts);
 
     return view;
+}
+
+/** Write the state of the filtered lifting line correction of a wing into a
+ *  checkpoint
+ *
+ *  The state of the correction (fllc_write_state), and the relative
+ *  velocity and the force at the actuator points, which the lift of the next
+ *  step is made of. The root process of the wing writes them, and nothing is
+ *  written before the correction has started.
+ */
+template <typename T>
+void write_checkpoint(typename T::DataType& data, const std::string& chkname)
+{
+    auto& wdata = data.meta();
+    if (!data.info().is_root_proc || !wdata.fllc || !wdata.fllc->initialized) {
+        return;
+    }
+
+    auto os = restart::create_file(
+        chkname, data.info().label, data.sim().time().new_time());
+    fllc_write_state(os, *(wdata.fllc));
+    restart::write_list(os, "relative_velocity", wdata.component_view.vel_rel);
+    restart::write_list(os, "force", wdata.component_view.force);
+}
+
+/** Take the state of the filtered lifting line correction of a wing from the
+ *  checkpoint that the run restarts from
+ *
+ *  Every process that computes the forces of the wing reads it.
+ *
+ *  \return False when the checkpoint has no state of this wing for the
+ *  current time, or when the state is for another number of points, for
+ *  other positions of the points or for other inputs of the correction.
+ *  Nothing is changed then.
+ */
+template <typename T>
+bool read_checkpoint(typename T::DataType& data, const std::string& chkname)
+{
+    auto& wdata = data.meta();
+    std::ifstream is;
+    if (!restart::open_file(
+            is, chkname, data.info().label, data.sim().time().current_time())) {
+        return false;
+    }
+
+    // Read into copies, so that nothing is changed when the state does not
+    // fit
+    const auto npts = wdata.fllc->correction_velocity.size();
+    FLLCData fllc(*(wdata.fllc));
+    VecList vel_rel(npts);
+    VecList force(npts);
+    if (!fllc_read_state(is, fllc) ||
+        !restart::read_list(is, "relative_velocity", vel_rel) ||
+        !restart::read_list(is, "force", force)) {
+        return false;
+    }
+
+    *(wdata.fllc) = fllc;
+    auto& view = wdata.component_view;
+    for (int i = 0; i < static_cast<int>(npts); ++i) {
+        view.vel_rel[i] = vel_rel[i];
+        view.force[i] = force[i];
+    }
+    return true;
 }
 
 } // namespace wing
@@ -244,16 +311,67 @@ struct ComputeForceOp<
         wdata.drag = total_drag;
 
         if (wdata.fllc) {
-            if (!(wdata.fllc->initialized) &&
-                (time.current_time() > wdata.fllc->fllc_start_time)) {
+            // A run that restarts with the correction on goes on from the
+            // state of the checkpoint. Without it the correction starts from
+            // zero and needs many time steps to come back. The checkpoint
+            // holds the state only when the correction had started before
+            // it was written. When it holds none, the correction does not
+            // start at the first force call of the restart: that call is
+            // made at the time of the checkpoint, where a run without
+            // restart makes none. It starts at the force call of the first
+            // time step, as it does in that run.
+            auto& io = data.sim().io_manager();
+            const bool restart_call =
+                wdata.at_first_force_call && io.is_restart();
+            bool has_state = false;
+            if (restart_call) {
+                has_state = restart::has_file(
+                    io.restart_file(), data.info().label, time.current_time());
+            }
+
+            const bool due =
+                !(wdata.fllc->initialized) &&
+                (time.current_time() > wdata.fllc->fllc_start_time);
+            const bool waits = due && restart_call && !has_state;
+            const bool started = due && !waits;
+            if (started) {
                 wdata.component_view =
                     kynema_sgf::actuator::wing::make_component_view<ActTrait>(
                         data);
                 fllc_init(
                     *(wdata.fllc.get()), wdata.component_view,
-                    wdata.epsilon_chord[0]);
+                    wdata.epsilon_chord[0], data.info().label,
+                    data.info().is_root_proc);
+            }
+
+            if (started && restart_call) {
+                const bool found =
+                    kynema_sgf::actuator::wing::read_checkpoint<ActTrait>(
+                        data, io.restart_file());
+                if (!found && data.info().is_root_proc) {
+                    amrex::OutStream()
+                        << "\nWARNING: Actuator " << data.info().label
+                        << ": the state of the filtered lifting line "
+                        << "correction in the checkpoint " << io.restart_file()
+                        << " does not fit this wing: it is for another "
+                        << "number of points, for other positions of the "
+                        << "points or for other inputs of the correction. "
+                        << "The correction starts from zero." << std::endl;
+                }
+            }
+            if (waits && data.info().is_root_proc) {
+                amrex::OutStream()
+                    << "\nWARNING: Actuator " << data.info().label
+                    << ": the checkpoint " << io.restart_file()
+                    << " has no state of the filtered lifting line "
+                    << "correction for this time. If the correction had not "
+                    << "started when the checkpoint was written, nothing is "
+                    << "lost. If it had (a checkpoint written without the "
+                    << "state), the restart loses it. The correction starts "
+                    << "from zero in the first time step." << std::endl;
             }
         }
+        wdata.at_first_force_call = false;
     }
 };
 
